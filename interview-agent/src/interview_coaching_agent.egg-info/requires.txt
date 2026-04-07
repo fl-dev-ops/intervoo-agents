@@ -1,0 +1,6 @@
+livekit-agents[deepgram,openai,sarvam,silero,turn-detector]==1.4.4
+livekit-plugins-noise-cancellation~=0.2.5
+python-dotenv>=1.0
+asyncpg>=0.30.0
+boto3>=1.35.0
+av==16.1.0

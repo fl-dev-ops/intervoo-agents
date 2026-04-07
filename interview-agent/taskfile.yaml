@@ -1,0 +1,30 @@
+version: "3"
+dotenv: [".env.local"]
+
+tasks:
+  install:
+    desc: Install runtime and development dependencies
+    cmds:
+      - uv sync --group dev
+
+  download-files:
+    desc: Download required LiveKit model assets
+    cmds:
+      - uv run src/agent.py download-files
+
+  dev:
+    interactive: true
+    desc: Run the agent in development mode
+    cmds:
+      - uv run src/agent.py dev
+
+  start:
+    desc: Run the agent in production mode
+    cmds:
+      - uv run src/agent.py start
+
+  test:
+    desc: Run the test suite
+    cmds:
+      - uv sync --group dev
+      - uv run pytest -q
