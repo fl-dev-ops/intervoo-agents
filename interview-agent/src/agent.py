@@ -387,6 +387,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     recording_metadata = build_recording_metadata(metadata, mode)
     await ctx.connect()
 
+    logger.info(f"Room metadata: {json.dumps(metadata, indent=2)}")
+    student_profile = metadata.get("studentProfile")
+    if student_profile:
+        logger.info(f"Student profile: {json.dumps(student_profile, indent=2)}")
+    else:
+        logger.warning("No student profile found in room metadata")
+
     initial_user_id = resolve_user_id_from_room_metadata(room_metadata)
     resolved_user_id, participant_identity, phone_number = await _resolve_call_state(
         ctx, initial_user_id
