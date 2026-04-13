@@ -1,0 +1,10 @@
+README.md
+pyproject.toml
+src/agent_template.egg-info/PKG-INFO
+src/agent_template.egg-info/SOURCES.txt
+src/agent_template.egg-info/dependency_links.txt
+src/agent_template.egg-info/requires.txt
+src/agent_template.egg-info/top_level.txt
+tests/test_agent.py
+tests/test_assessment.py
+tests/test_recording.py
