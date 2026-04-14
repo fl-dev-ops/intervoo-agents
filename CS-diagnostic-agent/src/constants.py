@@ -18,12 +18,12 @@ DEFAULT_OPENROUTER_MODEL = "openai/gpt-5.1"
 DEFAULT_DEEPGRAM_STT_LANGUAGE = "en-IN"
 DEFAULT_DEEPGRAM_STT_MODEL = "nova-3"
 DEFAULT_SARVAM_TTS_LANGUAGE = "en-IN"
-DEFAULT_SARVAM_TTS_MODEL = "bulbul:v3-beta"
-DEFAULT_SARVAM_TTS_SPEAKER = "kavya"
+DEFAULT_SARVAM_TTS_MODEL = "bulbul:v2"
+DEFAULT_SARVAM_TTS_SPEAKER = "manisha"
+
 
 INITIAL_REPLY = (
-    "Greet the user, introduce yourself as their interview coach, and ask "
-    "what role or interview they want to prepare for today."
+    "Greet the user, introduce yourself as interviewer"
 )
 CALLER_LOOKUP_TIMEOUT_SECONDS = 5
 

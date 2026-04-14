@@ -87,7 +87,7 @@ _recording_sessions: dict[str, RecordingSessionState] = {}
 @dataclass(frozen=True)
 class SessionConfig:
     voice: str | None = None
-    speaking_speed: float | None = None
+    speaking_speed: float | None = 0.8
 
 
 def build_runtime_config(env: Mapping[str, str] | None = None) -> RuntimeConfig:
