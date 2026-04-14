@@ -3,6 +3,6 @@
 .pytest_cache/
 .ruff_cache/
 __pycache__/
-
+agent_template.egg-info
 
 .env

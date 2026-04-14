@@ -15,6 +15,44 @@ from constants import (
 logger = logging.getLogger("interview_coaching_agent")
 
 
+def _format_questions_for_prompt(questions: list[dict[str, object]]) -> str:
+    """Format questions from room metadata into a structured prompt section.
+
+    Groups questions by category (opening, domain, behavioral, closing) so the
+    LLM can follow the assessment structure defined in PROMPT_DIAGNOSTIC.md.
+    """
+    if not questions:
+        return ""
+
+    grouped: dict[str, list[dict[str, object]]] = {}
+    for q in questions:
+        cat = str(q.get("category", "domain")).lower()
+        grouped.setdefault(cat, []).append(q)
+
+    category_order = ["opening", "domain", "behavioral", "closing"]
+    lines: list[str] = ["## ASSESSMENT QUESTIONS", ""]
+
+    question_number = 1
+    for cat in category_order:
+        cat_questions = grouped.get(cat, [])
+        if not cat_questions:
+            continue
+
+        lines.append(f"### {cat.capitalize()} Questions")
+        for q in cat_questions:
+            text = q.get("text", "")
+            difficulty = q.get("difficulty_level", "")
+            q_id = q.get("id", "")
+            lines.append(
+                f"{question_number}. [{difficulty}] {text} (id: {q_id})"
+            )
+            question_number += 1
+        lines.append("")
+
+    lines.append(f"**Total questions: {question_number - 1}**")
+    return "\n".join(lines)
+
+
 class _SafePromptContext(UserDict[str, object]):
     def __missing__(self, key: str) -> str:
         logger.warning("Prompt placeholder '%s' missing from prompt_context", key)
@@ -53,6 +91,12 @@ def build_prompt_context(
 
     if not metadata:
         return prompt_context
+
+    raw_questions = metadata.get("questions") or []
+    if isinstance(raw_questions, list) and raw_questions:
+        prompt_context["questions"] = _format_questions_for_prompt(raw_questions)
+    else:
+        prompt_context["questions"] = ""
 
     metadata_user_name = metadata.get("userName") or metadata.get("user_name")
     if isinstance(metadata_user_name, str) and metadata_user_name.strip():

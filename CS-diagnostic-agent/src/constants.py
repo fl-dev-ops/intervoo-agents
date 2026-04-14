@@ -11,7 +11,7 @@ load_dotenv(str(APP_DIR / ".env.local"))
 load_dotenv(str(APP_DIR / ".env"))
 
 PROMPT_PATH = APP_DIR / "PROMPT_DIAGNOSTIC.md"
-AGENT_NAME = "agent-template"
+AGENT_NAME = "diagnostic-agent-dev"
 DEFAULT_PROMPT_AGENT_NAME = "Sara"
 DEFAULT_PROMPT_USER_NAME = "the student"
 DEFAULT_OPENROUTER_MODEL = "openai/gpt-5.1"

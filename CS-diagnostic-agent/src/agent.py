@@ -321,6 +321,12 @@ def _register_push_to_talk_rpcs(
         session.input.set_audio_enabled(False)
         return "ok"
 
+    @ctx.room.local_participant.register_rpc_method("resume_session")
+    async def resume_session(data: rtc.RpcInvocationData) -> str:
+        logger.info(f"resume_session RPC called by {data.caller_identity}")
+        session.input.set_audio_enabled(True)
+        return "ok"
+
 
 async def _start_auto_session(
     ctx: agents.JobContext,
