@@ -7,7 +7,6 @@ import math
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from enum import Enum
 
 from livekit import agents, rtc
@@ -187,26 +186,11 @@ def build_recording_metadata(
     return metadata
 
 
-async def _publish_session_ending(event: EndCallTool.ToolCalledEvent) -> None:
-    """Notify connected clients that the agent is ending the session."""
-    try:
-        local_participant = event.ctx.session.room_io.room.local_participant
-        payload = json.dumps({
-            "type": "session_status",
-            "status": "ending",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
-        await local_participant.publish_data(payload, reliable=True)
-    except Exception as e:
-        logger.warning(f"Failed to publish session_status ending event: {e}")
-
-
 def build_end_call_tool() -> EndCallTool:
     return EndCallTool(
         extra_description=END_CALL_EXTRA_DESCRIPTION,
         delete_room=True,
         end_instructions=END_CALL_INSTRUCTIONS,
-        on_tool_called=_publish_session_ending,
     )
 
 
