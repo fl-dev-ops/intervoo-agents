@@ -34,7 +34,7 @@ requires-dist = [
     { name = "boto3", specifier = ">=1.35.0" },
     { name = "livekit-agents", extras = ["deepgram", "google", "openai", "silero", "turn-detector"], specifier = "~=1.4" },
     { name = "livekit-plugins-noise-cancellation", specifier = "~=0.2.5" },
-    { name = "livekit-plugins-sarvam", specifier = "==1.4.4" },
+    { name = "livekit-plugins-sarvam", specifier = "==1.4.6" },
     { name = "python-dotenv", specifier = ">=1.0" },
 ]
 
@@ -1417,16 +1417,16 @@ wheels = [
 
 [[package]]
 name = "livekit-plugins-sarvam"
-version = "1.4.4"
+version = "1.4.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "livekit-agents", extra = ["codecs"] },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e2/93/6ff4c33c790cd902e7cd307af5a48cdccd72631f366d231414c04ea04aa3/livekit_plugins_sarvam-1.4.4.tar.gz", hash = "sha256:d8786523dabdabb66ac46e9d57cc09b0d52f96355ad947fbe31a898a4ca7ee05", size = 22573, upload-time = "2026-03-03T01:12:53.331Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f7/80/bb99b3e4d31b3500dcd579246d8369b831998c890b2d9b7bda744163ed97/livekit_plugins_sarvam-1.4.6.tar.gz", hash = "sha256:f49e0cf64bbd5aa4a17240d2873fcc0805bf24b0a85ff56ca2925494fbe92e58", size = 23481, upload-time = "2026-03-16T19:09:16.172Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/66/bf64f538a29b70fc32c7541b3651d439af05fb85a62488fcde8c27449ae3/livekit_plugins_sarvam-1.4.4-py3-none-any.whl", hash = "sha256:e489826df451dc59bd2b06d9bf8b4cab8e27d7bf61168c440ceabdc447ca48b6", size = 23501, upload-time = "2026-03-03T01:12:52.306Z" },
+    { url = "https://files.pythonhosted.org/packages/12/86/5c9058a13fb3643257086d745882e89d43f2d05135ac7f241f2c319cfcb0/livekit_plugins_sarvam-1.4.6-py3-none-any.whl", hash = "sha256:8371926744ec961784b14d9645c75116caaa8eb90c8ce94b348a987043d55ae4", size = 24329, upload-time = "2026-03-16T19:09:15.085Z" },
 ]
 
 [[package]]
