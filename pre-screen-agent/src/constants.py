@@ -20,6 +20,7 @@ DEFAULT_DEEPGRAM_STT_MODEL = "nova-3"
 DEFAULT_SARVAM_TTS_LANGUAGE = "en-IN"
 DEFAULT_SARVAM_TTS_MODEL = "bulbul:v3-beta"
 DEFAULT_SARVAM_TTS_SPEAKER = "kavya"
+DEFAULT_SARVAM_TTS_DICT_ID = "p_fcfdd23b"
 
 INITIAL_REPLY = (
     "Greet the user, introduce yourself as their interview coach, and ask "

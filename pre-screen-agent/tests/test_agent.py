@@ -35,6 +35,7 @@ from constants import (
     DEFAULT_OPENROUTER_MODEL,
     DEFAULT_PROMPT_AGENT_NAME,
     DEFAULT_PROMPT_USER_NAME,
+    DEFAULT_SARVAM_TTS_DICT_ID,
     DEFAULT_SARVAM_TTS_LANGUAGE,
     DEFAULT_SARVAM_TTS_MODEL,
     DEFAULT_SARVAM_TTS_SPEAKER,
@@ -258,6 +259,7 @@ def test_build_agent_session_uses_tts_overrides_from_session_config() -> None:
     tts_kwargs = tts_mock.call_args.kwargs
     assert tts_kwargs["speaker"] == "rahul"
     assert tts_kwargs["pace"] == 0.7
+    assert tts_kwargs["dict_id"] == DEFAULT_SARVAM_TTS_DICT_ID
 
 
 def test_build_agent_session_uses_hindi_language_config_for_stt_and_tts() -> None:
