@@ -53,6 +53,8 @@ TAMIL_MARKERS: set[str] = {
     "naan", "neenga", "unga", "ungaluku", "ungalukku", "enna", "edhu", "iruku", "irukku",
     "iruka", "irukka", "romba", "konjam", "pathi", "pudikum", "pidikkum", "maari", "vandhu",
     "vanakkam", "seri", "appo", "inga", "nalla", "ennaoda", "ungaloda",
+    "illa", "illai", "andha", "antha", "maadhiri", "madhiri", "edhuvum", "ethuvum",
+    "pola", "ellam", "ellaam", "appadi", "ippadi", "yosikkala", "yosikala",
 }
 
 HINDI_MARKERS: set[str] = {
@@ -108,8 +110,8 @@ def detect_language_style(text: str, fallback: str = "English") -> str:
 def response_style_instruction(style: str) -> str:
     if style == "Tanglish":
         return (
-            "For your next reply, use Tamil-English code-mix. Mirror the student's latest message style. "
-            "Keep job and technical terms in English where natural."
+            "For your next reply, use natural Tamil in Tamil script (தமிழ்), not Tanglish or Romanized Tamil. "
+            "Use English only for unavoidable technical terms."
         )
     if style == "Hinglish":
         return (

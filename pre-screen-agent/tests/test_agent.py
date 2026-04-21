@@ -41,6 +41,7 @@ from constants import (
     PROMPT_PATH,
     REGISTERED_AGENT_NAME,
 )
+from language import detect_language_style, resolve_language_config
 from prompt import build_prompt_context, load_prompt, render_prompt
 from recording import RecordingConfig
 from watchdog import (
@@ -225,7 +226,13 @@ def test_render_prompt_injects_context_and_blanks_missing_values() -> None:
 
 
 def test_build_agent_session_uses_manual_turn_detection_in_ptt() -> None:
-    session = build_agent_session(build_runtime_config({}), InteractionMode.PTT)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        session = build_agent_session(build_runtime_config({}), InteractionMode.PTT)
+    finally:
+        loop.close()
+        asyncio.set_event_loop(None)
 
     assert session.turn_detection == "manual"
 
@@ -235,11 +242,17 @@ def test_build_agent_session_uses_tts_overrides_from_session_config() -> None:
         tts_instance = MagicMock()
         tts_mock.return_value = tts_instance
 
-        build_agent_session(
-            build_runtime_config({}),
-            InteractionMode.PTT,
-            SessionConfig(voice="rahul", speaking_speed=0.7),
-        )
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            build_agent_session(
+                build_runtime_config({}),
+                InteractionMode.PTT,
+                SessionConfig(voice="rahul", speaking_speed=0.7),
+            )
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
 
     tts_mock.assert_called_once()
     tts_kwargs = tts_mock.call_args.kwargs
@@ -247,10 +260,142 @@ def test_build_agent_session_uses_tts_overrides_from_session_config() -> None:
     assert tts_kwargs["pace"] == 0.7
 
 
+def test_build_agent_session_uses_hindi_language_config_for_stt_and_tts() -> None:
+    with patch("agent.sarvam.STT") as stt_mock, patch("agent.sarvam.TTS") as tts_mock:
+        stt_mock.return_value = MagicMock()
+        tts_mock.return_value = MagicMock()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            build_agent_session(
+                build_runtime_config({}),
+                InteractionMode.PTT,
+                language_info=resolve_language_config("hindi"),
+            )
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
+
+    stt_mock.assert_called_once()
+    stt_kwargs = stt_mock.call_args.kwargs
+    assert stt_kwargs["language"] == "hi-IN"
+    assert stt_kwargs["mode"] == "codemix"
+
+    tts_mock.assert_called_once()
+    tts_kwargs = tts_mock.call_args.kwargs
+    assert tts_kwargs["target_language_code"] == "hi-IN"
+
+
 def test_voice_assistant_agent_exposes_end_call_tool() -> None:
     agent = VoiceAssistantAgent()
 
     assert [tool.id for tool in agent.tools] == ["end_call"]
+
+
+def test_resolve_language_config_defaults_to_english() -> None:
+    default_config = resolve_language_config(None)
+
+    assert default_config["language_style"] == "English"
+    assert default_config["stt_language"] == "en-IN"
+
+
+def test_detect_language_style_supports_common_romanized_tamil_phrases() -> None:
+    text = (
+        "Illa naan andha maadhiri edhuvum pola. Tuition-kku ellaam pola. "
+        "Coaching tuition appadi yosikkala."
+    )
+
+    assert detect_language_style(text, fallback="English") == "Tanglish"
+
+
+def test_voice_assistant_agent_uses_initial_language_style() -> None:
+    agent = VoiceAssistantAgent(language_style="Hinglish")
+
+    assert agent._current_style == "Hinglish"
+
+
+@pytest.mark.asyncio
+async def test_voice_assistant_agent_switches_to_hinglish_in_same_turn() -> None:
+    agent = VoiceAssistantAgent(language_style="English")
+    turn_ctx = SimpleNamespace(add_message=MagicMock())
+
+    await agent.on_user_turn_completed(
+        turn_ctx,
+        SimpleNamespace(text_content="main python aur sql use karta hoon"),
+    )
+    assert agent._current_style == "Hinglish"
+    instruction = turn_ctx.add_message.call_args.kwargs["content"]
+    assert "Hindi-English code-mix" in instruction
+
+
+@pytest.mark.asyncio
+async def test_voice_assistant_agent_switches_to_tanglish_in_same_turn() -> None:
+    agent = VoiceAssistantAgent(language_style="English")
+    turn_ctx = SimpleNamespace(add_message=MagicMock())
+
+    await agent.on_user_turn_completed(
+        turn_ctx,
+        SimpleNamespace(text_content="naan neenga romba nalla irukku"),
+    )
+    assert agent._current_style == "Tanglish"
+    instruction = turn_ctx.add_message.call_args.kwargs["content"]
+    assert "natural Tamil in Tamil script" in instruction
+
+
+@pytest.mark.asyncio
+async def test_voice_assistant_agent_requires_two_english_turns_to_switch_back() -> (
+    None
+):
+    agent = VoiceAssistantAgent(language_style="Hinglish")
+    turn_ctx = SimpleNamespace(add_message=MagicMock())
+
+    await agent.on_user_turn_completed(
+        turn_ctx,
+        SimpleNamespace(text_content="I want software testing role"),
+    )
+    assert agent._current_style == "Hinglish"
+
+    await agent.on_user_turn_completed(
+        turn_ctx,
+        SimpleNamespace(text_content="I have done selenium and python projects"),
+    )
+    assert agent._current_style == "English"
+    instruction = turn_ctx.add_message.call_args.kwargs["content"]
+    assert "use clear English" in instruction
+
+
+@pytest.mark.asyncio
+async def test_voice_assistant_agent_switches_to_english_immediately_on_explicit_request() -> (
+    None
+):
+    agent = VoiceAssistantAgent(language_style="Tanglish")
+    turn_ctx = SimpleNamespace(add_message=MagicMock())
+
+    await agent.on_user_turn_completed(
+        turn_ctx,
+        SimpleNamespace(text_content="Can we continue in English please?"),
+    )
+
+    assert agent._current_style == "English"
+
+
+@pytest.mark.asyncio
+async def test_voice_assistant_agent_stays_tanglish_on_single_english_like_turn() -> None:
+    agent = VoiceAssistantAgent(language_style="Tanglish")
+    turn_ctx = SimpleNamespace(add_message=MagicMock())
+
+    await agent.on_user_turn_completed(
+        turn_ctx,
+        SimpleNamespace(
+            text_content=(
+                "Hmm, I don't have anything like that right now. For now, I need to go "
+                "to work and help the family. That's all."
+            )
+        ),
+    )
+
+    assert agent._current_style == "Tanglish"
 
 
 def test_build_end_call_tool_returns_goodbye_instructions() -> None:
@@ -311,7 +456,7 @@ async def test_start_ptt_session_uses_standard_session_start() -> None:
     )
     config = build_runtime_config({})
 
-    await _start_ptt_session(ctx, session, config, agent, "web-user")
+    await _start_ptt_session(ctx, session, config, agent)
 
     session.start.assert_awaited_once()
     call_kwargs = session.start.await_args.kwargs

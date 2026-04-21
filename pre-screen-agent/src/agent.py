@@ -212,7 +212,8 @@ class VoiceAssistantAgent(Agent):
             instructions=instructions or render_prompt(),
             tools=[build_end_call_tool()],
         )
-        self._language_style = language_style
+        self._current_style = language_style
+        self._english_switch_streak = 0
 
     async def on_user_turn_completed(
         self,
@@ -220,11 +221,34 @@ class VoiceAssistantAgent(Agent):
         new_message: llm.ChatMessage,
     ) -> None:
         text = new_message.text_content or ""
-        style = detect_language_style(text, fallback=self._language_style)
-        self._language_style = style
+        detected_style = detect_language_style(text, fallback=self._current_style)
+        normalized_text = text.lower()
+        explicit_english_switch = any(
+            phrase in normalized_text
+            for phrase in (
+                "in english",
+                "speak english",
+                "english please",
+                "let's do english",
+                "lets do english",
+            )
+        )
+
+        if detected_style in {"Tanglish", "Hinglish"}:
+            self._current_style = detected_style
+            self._english_switch_streak = 0
+        elif detected_style == "English" and self._current_style in {"Tanglish", "Hinglish"}:
+            self._english_switch_streak += 1
+            if explicit_english_switch or self._english_switch_streak >= 2:
+                self._current_style = "English"
+                self._english_switch_streak = 0
+        else:
+            self._current_style = detected_style
+            self._english_switch_streak = 0
+
         turn_ctx.add_message(
             role="developer",
-            content=response_style_instruction(style),
+            content=response_style_instruction(self._current_style),
         )
 
 
