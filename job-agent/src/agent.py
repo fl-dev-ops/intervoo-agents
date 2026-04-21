@@ -42,6 +42,7 @@ from recording_db import init_pool
 from recording_runtime import finalize_recording, start_recording
 
 logger = logging.getLogger("job_finder_agent")
+MAX_CONCURRENT_SESSIONS = 10
 
 APP_DIR = Path(__file__).resolve().parent.parent
 PROMPT_PATH = APP_DIR / "PROMPT.md"
@@ -564,7 +565,15 @@ async def _resolve_call_state(
     return resolved_user_id, participant_identity, phone_number
 
 
-server = AgentServer(shutdown_process_timeout=60)
+def _compute_worker_load(current_server: AgentServer) -> float:
+    return 1.0 if len(current_server.active_jobs) >= MAX_CONCURRENT_SESSIONS else 0.0
+
+
+server = AgentServer(
+    shutdown_process_timeout=60,
+    load_fnc=_compute_worker_load,
+    load_threshold=0.5,
+)
 
 
 async def on_session_end(ctx: agents.JobContext) -> None:

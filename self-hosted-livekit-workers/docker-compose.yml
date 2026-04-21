@@ -1,0 +1,38 @@
+name: intervoo-livekit-workers
+
+x-agent-service: &agent-service
+  restart: unless-stopped
+  networks:
+    - livekit-workers
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  cs-diagnostic-agent:
+    <<: *agent-service
+    image: ${CS_DIAGNOSTIC_AGENT_IMAGE:-intervoo/cs-diagnostic-agent:latest}
+    build:
+      context: ../CS-diagnostic-agent
+      dockerfile: Dockerfile
+    env_file:
+      - ../CS-diagnostic-agent/.env
+    environment:
+      AGENT_NAME: ${CS_DIAGNOSTIC_AGENT_NAME:-diagnostic-agent-dev}
+
+  pre-screen-agent:
+    <<: *agent-service
+    image: ${PRE_SCREEN_AGENT_IMAGE:-intervoo/pre-screen-agent:latest}
+    build:
+      context: ../pre-screen-agent
+      dockerfile: Dockerfile
+    env_file:
+      - ../pre-screen-agent/.env
+    environment:
+      AGENT_NAME: ${PRE_SCREEN_AGENT_NAME:-pre-screen-agent}
+
+networks:
+  livekit-workers:
+    driver: bridge

@@ -22,10 +22,10 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY pyproject.toml ./
+COPY pyproject.toml uv.lock ./
 RUN mkdir -p src
 
-RUN uv sync --no-dev
+RUN uv sync --frozen --no-dev
 
 COPY . .
 
