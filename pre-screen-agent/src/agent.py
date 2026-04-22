@@ -6,10 +6,11 @@ import json
 import logging
 import math
 import os
-from functools import wraps
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
+from functools import wraps
 
 from livekit import agents, rtc
 from livekit.agents import (
@@ -59,6 +60,7 @@ from recording import (
     finalize_recording,
     start_recording,
 )
+from tracing import flush_langfuse, setup_langfuse
 from watchdog import cancel_idle_room_watchdog, register_idle_room_watchdog
 
 logger = logging.getLogger("interview_coaching_agent")
@@ -270,6 +272,8 @@ class RecordingSessionState:
     resolved_user_id: str | None
     participant_identity: str | None
     phone_number: str | None
+    metrics_events: list[dict] = field(default_factory=list)
+    usage_collector: metrics.UsageCollector | None = None
 
 
 _recording_sessions: dict[str, RecordingSessionState] = {}
@@ -500,13 +504,38 @@ def build_agent_session(
     )
 
 
-def _attach_metrics_logging(session: AgentSession) -> None:
+def _serialize_metric(metric_obj: object) -> dict:
+    if hasattr(metric_obj, "model_dump"):
+        try:
+            return metric_obj.model_dump()
+        except Exception:
+            pass
+    if hasattr(metric_obj, "__dict__"):
+        return {k: v for k, v in vars(metric_obj).items() if not k.startswith("_")}
+    return {"repr": repr(metric_obj)}
+
+
+def _attach_metrics_logging(
+    session: AgentSession, buffer: list[dict]
+) -> metrics.UsageCollector:
     usage_collector = metrics.UsageCollector()
 
     @session.on("metrics_collected")
     def _on_metrics_collected(ev: MetricsCollectedEvent) -> None:
         metrics.log_metrics(ev.metrics)
         usage_collector.collect(ev.metrics)
+        try:
+            buffer.append(
+                {
+                    "type": type(ev.metrics).__name__,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "data": _serialize_metric(ev.metrics),
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Failed to capture metric: {e}")
+
+    return usage_collector
 
 
 def _build_room_options() -> room_io.RoomOptions:
@@ -663,6 +692,16 @@ async def on_session_end(ctx: agents.JobContext) -> None:
     except Exception as e:
         logger.warning(f"Failed to create session report: {e}")
 
+    usage_summary: dict | None = None
+    if state.usage_collector is not None:
+        try:
+            summary = state.usage_collector.get_summary()
+            usage_summary = (
+                summary.model_dump() if hasattr(summary, "model_dump") else dict(summary)
+            )
+        except Exception as e:
+            logger.warning(f"Failed to build usage summary: {e}")
+
     try:
         await finalize_recording(
             config=state.config,
@@ -677,9 +716,13 @@ async def on_session_end(ctx: agents.JobContext) -> None:
             resolved_user_id=state.resolved_user_id,
             participant_identity=state.participant_identity,
             phone_number=state.phone_number,
+            metrics_events=state.metrics_events,
+            usage_summary=usage_summary,
         )
     except Exception as e:
         logger.error(f"Recording finalization failed: {e}")
+
+    flush_langfuse()
 
 
 @server.rtc_session(agent_name=REGISTERED_AGENT_NAME, on_session_end=on_session_end)
@@ -702,6 +745,19 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         ctx, initial_user_id
     )
 
+    try:
+        setup_langfuse(
+            metadata={
+                "langfuse.session.id": ctx.room.name,
+                "langfuse.user.id": resolved_user_id or "anonymous",
+                "agent_name": REGISTERED_AGENT_NAME,
+                "job_id": ctx.job.id,
+                "mode": mode.value,
+            }
+        )
+    except Exception as e:
+        logger.warning(f"Langfuse setup failed: {e}")
+
     prompt_context = build_prompt_context(metadata)
     agent_instructions = render_prompt(context=prompt_context)
 
@@ -719,7 +775,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     )
 
     session = build_agent_session(config, mode, session_config, language_info)
-    _attach_metrics_logging(session)
+    metrics_buffer: list[dict] = []
+    usage_collector = _attach_metrics_logging(session, metrics_buffer)
 
     rec_cfg = build_recording_config()
     if rec_cfg.enabled:
@@ -744,6 +801,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 resolved_user_id=resolved_user_id,
                 participant_identity=participant_identity,
                 phone_number=phone_number,
+                metrics_events=metrics_buffer,
+                usage_collector=usage_collector,
             )
         except Exception as e:
             logger.error(f"Failed to initialize recording: {e}")

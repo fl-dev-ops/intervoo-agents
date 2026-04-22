@@ -18,10 +18,12 @@ from identity import (
 from recording import (
     RecordingConfig,
     build_audio_s3_key,
+    build_metrics_s3_key,
     build_recording_config,
     build_s3_key,
     build_s3_url,
     build_transcript_s3_key,
+    normalize_metrics_payload,
     normalize_session_report,
 )
 
@@ -89,6 +91,12 @@ def test_build_s3_url_custom_endpoint() -> None:
         endpoint="https://s3.custom.io",
     )
     assert url == "https://s3.custom.io/my-bucket/agents/room/audio.mp3"
+
+
+def test_build_metrics_s3_key() -> None:
+    now = datetime(2026, 12, 25, 18, 0, 0, tzinfo=timezone.utc)
+    key = build_metrics_s3_key("interview-agent", "room-123", "agents", now)
+    assert key == "agents/interview-agent/sessions/2026/12/25/room-123/metrics.json"
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +207,21 @@ def test_normalize_missing_optional_fields() -> None:
     assert result["session"]["started_at"] is None
     assert result["session"]["duration_seconds"] is None
     assert len(result["turns"]) == 1
+
+
+def test_normalize_metrics_payload_includes_usage_summary_and_events() -> None:
+    result = normalize_metrics_payload(
+        _sample_report_dict(),
+        agent_type="interview-agent",
+        agent_name="test",
+        events=[{"type": "llm", "timestamp": "2026-01-01T00:00:00+00:00"}],
+        usage_summary={"total_tokens": 42},
+        resolved_user_id="user_1",
+    )
+
+    assert result["usage_summary"] == {"total_tokens": 42}
+    assert result["metadata"]["event_count"] == 1
+    assert result["subject"]["resolved_user_id"] == "user_1"
 
 
 # ---------------------------------------------------------------------------
@@ -325,6 +348,9 @@ async def test_finalize_recording_uploads_transcript_and_triggers_webhook() -> N
             recording, "upload_transcript_json", return_value="https://url"
         ) as upload_mock,
         patch.object(
+            recording, "upload_metrics_json", return_value="https://metrics"
+        ) as metrics_mock,
+        patch.object(
             recording, "_post_completion_webhook", new_callable=AsyncMock
         ) as webhook_mock,
     ):
@@ -342,6 +368,7 @@ async def test_finalize_recording_uploads_transcript_and_triggers_webhook() -> N
 
     mock_lk_api.egress.stop_egress.assert_called_once()
     upload_mock.assert_called_once()
+    metrics_mock.assert_called_once()
     webhook_mock.assert_awaited_once()
 
 
@@ -370,6 +397,7 @@ async def test_finalize_recording_skips_webhook_when_egress_fails() -> None:
 
     with (
         patch.object(recording, "upload_transcript_json", return_value="https://url"),
+        patch.object(recording, "upload_metrics_json", return_value="https://metrics"),
         patch.object(
             recording, "_post_completion_webhook", new_callable=AsyncMock
         ) as webhook_mock,

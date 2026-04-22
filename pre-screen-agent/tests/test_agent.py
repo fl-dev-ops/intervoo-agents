@@ -29,6 +29,7 @@ from agent import (
     parse_room_metadata,
     resolve_interaction_mode,
 )
+from livekit.agents import metrics
 from constants import (
     DEFAULT_DEEPGRAM_STT_LANGUAGE,
     DEFAULT_DEEPGRAM_STT_MODEL,
@@ -227,21 +228,36 @@ def test_render_prompt_injects_context_and_blanks_missing_values() -> None:
 
 
 def test_build_agent_session_uses_manual_turn_detection_in_ptt() -> None:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        session = build_agent_session(build_runtime_config({}), InteractionMode.PTT)
-    finally:
-        loop.close()
-        asyncio.set_event_loop(None)
+    with (
+        patch("agent.sarvam.STT") as stt_mock,
+        patch("agent.sarvam.TTS") as tts_mock,
+        patch("agent.openai.LLM.with_openrouter") as llm_mock,
+    ):
+        stt_mock.return_value = MagicMock()
+        tts_mock.return_value = MagicMock()
+        llm_mock.return_value = MagicMock()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            session = build_agent_session(build_runtime_config({}), InteractionMode.PTT)
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
 
     assert session.turn_detection == "manual"
 
 
 def test_build_agent_session_uses_tts_overrides_from_session_config() -> None:
-    with patch("agent.sarvam.TTS") as tts_mock:
+    with (
+        patch("agent.sarvam.STT") as stt_mock,
+        patch("agent.sarvam.TTS") as tts_mock,
+        patch("agent.openai.LLM.with_openrouter") as llm_mock,
+    ):
+        stt_mock.return_value = MagicMock()
         tts_instance = MagicMock()
         tts_mock.return_value = tts_instance
+        llm_mock.return_value = MagicMock()
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -281,9 +297,14 @@ def test_build_agent_session_uses_bulbul_v3_for_default_dict_id_patch_path() -> 
 
 
 def test_build_agent_session_uses_hindi_language_config_for_stt_and_tts() -> None:
-    with patch("agent.sarvam.STT") as stt_mock, patch("agent.sarvam.TTS") as tts_mock:
+    with (
+        patch("agent.sarvam.STT") as stt_mock,
+        patch("agent.sarvam.TTS") as tts_mock,
+        patch("agent.openai.LLM.with_openrouter") as llm_mock,
+    ):
         stt_mock.return_value = MagicMock()
         tts_mock.return_value = MagicMock()
+        llm_mock.return_value = MagicMock()
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -581,15 +602,51 @@ async def test_on_session_end_cancels_watchdog_and_keeps_recording_finalize_flow
         resolved_user_id="user_1",
         participant_identity="participant_1",
         phone_number="+911234567890",
+        metrics_events=[{"type": "llm"}],
+        usage_collector=MagicMock(),
     )
 
-    with patch("agent.finalize_recording", new_callable=AsyncMock) as finalize_mock:
+    with (
+        patch("agent.finalize_recording", new_callable=AsyncMock) as finalize_mock,
+        patch("agent.flush_langfuse") as flush_mock,
+    ):
         await on_session_end(ctx)
     await asyncio.sleep(0)
 
     finalize_mock.assert_awaited_once()
+    flush_mock.assert_called_once()
     assert room.name not in _idle_room_watchdogs
     assert watchdog.cancelled()
+
+
+def test_attach_metrics_logging_collects_events() -> None:
+    from agent import _attach_metrics_logging
+
+    session = MagicMock()
+    handlers: dict[str, object] = {}
+
+    def _register(event_name: str):
+        def _decorator(fn):
+            handlers[event_name] = fn
+            return fn
+
+        return _decorator
+
+    session.on.side_effect = _register
+    buffer: list[dict] = []
+
+    with patch("agent.metrics.log_metrics"), patch.object(
+        metrics.UsageCollector, "collect"
+    ) as collect_mock:
+        usage_collector = _attach_metrics_logging(session, buffer)
+
+        metric_obj = SimpleNamespace(total_tokens=5)
+        handlers["metrics_collected"](SimpleNamespace(metrics=metric_obj))
+
+    assert isinstance(usage_collector, metrics.UsageCollector)
+    collect_mock.assert_called_once_with(metric_obj)
+    assert buffer[0]["type"] == "SimpleNamespace"
+    assert buffer[0]["data"] == {"total_tokens": 5}
 
 
 @pytest.fixture(autouse=True)

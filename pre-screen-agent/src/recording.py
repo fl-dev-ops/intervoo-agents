@@ -133,6 +133,15 @@ def build_transcript_s3_key(
     return build_s3_key(agent_type, room_name, "transcript.json", base_prefix, now)
 
 
+def build_metrics_s3_key(
+    agent_type: str,
+    room_name: str,
+    base_prefix: str = "agents",
+    now: datetime | None = None,
+) -> str:
+    return build_s3_key(agent_type, room_name, "metrics.json", base_prefix, now)
+
+
 def upload_transcript_json(
     config: RecordingConfig,
     s3_key: str,
@@ -148,6 +157,24 @@ def upload_transcript_json(
     )
     url = build_s3_url(config.s3_bucket, s3_key, config.s3_region, config.s3_endpoint)
     logger.info(f"Uploaded transcript to s3://{config.s3_bucket}/{s3_key}")
+    return url
+
+
+def upload_metrics_json(
+    config: RecordingConfig,
+    s3_key: str,
+    metrics_data: dict,
+) -> str:
+    client = _get_s3_client(config)
+    body = json.dumps(metrics_data, indent=2, default=str)
+    client.put_object(
+        Bucket=config.s3_bucket,
+        Key=s3_key,
+        Body=body.encode("utf-8"),
+        ContentType="application/json",
+    )
+    url = build_s3_url(config.s3_bucket, s3_key, config.s3_region, config.s3_endpoint)
+    logger.info(f"Uploaded metrics to s3://{config.s3_bucket}/{s3_key}")
     return url
 
 
@@ -275,6 +302,50 @@ def normalize_session_report(
     }
 
 
+def normalize_metrics_payload(
+    report_dict: dict[str, Any],
+    *,
+    agent_type: str,
+    agent_name: str,
+    egress_id: str | None = None,
+    egress_status: str | None = None,
+    resolved_user_id: str | None = None,
+    participant_identity: str | None = None,
+    phone_number: str | None = None,
+    events: list[dict[str, Any]] | None = None,
+    usage_summary: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    session_started = report_dict.get("started_at")
+    session_timestamp = report_dict.get("timestamp", time.time())
+    duration = report_dict.get("duration")
+
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "session": {
+            "agent_type": agent_type,
+            "agent_name": agent_name,
+            "room": report_dict.get("room"),
+            "room_id": report_dict.get("room_id"),
+            "job_id": report_dict.get("job_id"),
+            "egress_id": egress_id,
+            "egress_status": egress_status,
+            "started_at": _ts_to_iso(session_started),
+            "ended_at": _ts_to_iso(session_timestamp),
+            "duration_seconds": round(duration, 2) if duration else None,
+        },
+        "subject": {
+            "resolved_user_id": resolved_user_id,
+            "participant_identity": participant_identity,
+            "phone_number": phone_number,
+        },
+        "usage_summary": usage_summary or {},
+        "events": events or [],
+        "metadata": {
+            "event_count": len(events) if events else 0,
+        },
+    }
+
+
 def _build_s3_upload(config: RecordingConfig) -> S3Upload:
     kwargs: dict[str, Any] = {
         "access_key": config.s3_access_key,
@@ -349,6 +420,8 @@ def _build_webhook_payload(
     audio_s3_key: str,
     transcript_url: str | None,
     transcript_s3_key: str | None,
+    metrics_url: str | None,
+    metrics_s3_key: str | None,
     duration_ms: int | None,
     report_dict: dict[str, Any],
     transcript_data: dict[str, Any] | None,
@@ -369,6 +442,8 @@ def _build_webhook_payload(
         "audio_s3_key": audio_s3_key,
         "transcript_url": transcript_url,
         "transcript_s3_key": transcript_s3_key,
+        "metrics_url": metrics_url,
+        "metrics_s3_key": metrics_s3_key,
         "duration_ms": duration_ms,
         "started_at": transcript_data.get("session", {}).get("started_at")
         if transcript_data
@@ -425,8 +500,10 @@ async def finalize_recording(
     resolved_user_id: str | None = None,
     participant_identity: str | None = None,
     phone_number: str | None = None,
+    metrics_events: list[dict[str, Any]] | None = None,
+    usage_summary: dict[str, Any] | None = None,
 ) -> None:
-    """Finalize recording: stop egress, upload transcript, send webhook."""
+    """Finalize recording: stop egress, upload transcript + metrics, send webhook."""
     now = datetime.now(timezone.utc)
 
     egress_status_str: str | None = None
@@ -498,6 +575,28 @@ async def finalize_recording(
     except Exception as e:
         logger.error(f"Failed to upload transcript: {e}")
 
+    metrics_url: str | None = None
+    metrics_s3_key: str | None = None
+    try:
+        metrics_payload = normalize_metrics_payload(
+            report_dict,
+            agent_type=agent_type,
+            agent_name=agent_name,
+            egress_id=egress_id,
+            egress_status=egress_status_str,
+            resolved_user_id=resolved_user_id,
+            participant_identity=participant_identity,
+            phone_number=phone_number,
+            events=metrics_events,
+            usage_summary=usage_summary,
+        )
+        metrics_s3_key = build_metrics_s3_key(
+            agent_type, room_name, config.s3_base_prefix, now
+        )
+        metrics_url = upload_metrics_json(config, metrics_s3_key, metrics_payload)
+    except Exception as e:
+        logger.error(f"Failed to upload metrics: {e}")
+
     if final_status == "COMPLETED" and transcript_url:
         try:
             await _post_completion_webhook(
@@ -513,6 +612,8 @@ async def finalize_recording(
                     audio_s3_key=audio_s3_key,
                     transcript_url=transcript_url,
                     transcript_s3_key=transcript_s3_key,
+                    metrics_url=metrics_url,
+                    metrics_s3_key=metrics_s3_key,
                     duration_ms=duration_ms,
                     report_dict=report_dict,
                     transcript_data=transcript_data,
@@ -527,5 +628,6 @@ async def finalize_recording(
     logger.info(
         f"Recording finalized for room {room_name}: status={final_status}, "
         f"egress={egress_status_str}, transcript={'yes' if transcript_url else 'no'}, "
+        f"metrics={'yes' if metrics_url else 'no'}, "
         f"webhook={'yes' if final_status == 'COMPLETED' and transcript_url and config.webhook_url else 'no'}"
     )
