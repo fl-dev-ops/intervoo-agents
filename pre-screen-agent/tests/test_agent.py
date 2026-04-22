@@ -262,6 +262,24 @@ def test_build_agent_session_uses_tts_overrides_from_session_config() -> None:
     assert tts_kwargs["dict_id"] == DEFAULT_SARVAM_TTS_DICT_ID
 
 
+def test_build_agent_session_uses_bulbul_v3_for_default_dict_id_patch_path() -> None:
+    with patch("agent.sarvam.TTS") as tts_mock:
+        tts_mock.return_value = MagicMock()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            build_agent_session(build_runtime_config({}), InteractionMode.PTT)
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
+
+    tts_mock.assert_called_once()
+    tts_kwargs = tts_mock.call_args.kwargs
+    assert tts_kwargs["model"] == "bulbul:v3"
+    assert tts_kwargs["dict_id"] == DEFAULT_SARVAM_TTS_DICT_ID
+
+
 def test_build_agent_session_uses_hindi_language_config_for_stt_and_tts() -> None:
     with patch("agent.sarvam.STT") as stt_mock, patch("agent.sarvam.TTS") as tts_mock:
         stt_mock.return_value = MagicMock()
