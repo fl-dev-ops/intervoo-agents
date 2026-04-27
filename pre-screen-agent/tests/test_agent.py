@@ -12,6 +12,8 @@ from livekit import rtc
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from livekit.agents import metrics
+
 from agent import (
     InteractionMode,
     RecordingSessionState,
@@ -29,7 +31,6 @@ from agent import (
     parse_room_metadata,
     resolve_interaction_mode,
 )
-from livekit.agents import metrics
 from constants import (
     DEFAULT_OPENROUTER_MODEL,
     DEFAULT_PROMPT_AGENT_NAME,
@@ -535,11 +536,13 @@ async def test_on_session_end_cancels_watchdog_and_keeps_recording_finalize_flow
 
     with (
         patch("agent.finalize_recording", new_callable=AsyncMock) as finalize_mock,
+        patch("agent.flush_langfuse") as flush_mock,
     ):
         await on_session_end(ctx)
     await asyncio.sleep(0)
 
     finalize_mock.assert_awaited_once()
+    flush_mock.assert_called_once()
     assert room.name not in _idle_room_watchdogs
     assert watchdog.cancelled()
 

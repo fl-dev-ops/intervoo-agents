@@ -50,6 +50,7 @@ from recording import (
     finalize_recording,
     start_recording,
 )
+from tracing import flush_langfuse, setup_langfuse
 from watchdog import cancel_idle_room_watchdog, register_idle_room_watchdog
 
 logger = logging.getLogger("interview_coaching_agent")
@@ -454,6 +455,8 @@ async def on_session_end(ctx: agents.JobContext) -> None:
     except Exception as e:
         logger.error(f"Recording finalization failed: {e}")
 
+    flush_langfuse()
+
 
 @server.rtc_session(agent_name=REGISTERED_AGENT_NAME, on_session_end=on_session_end)
 async def entrypoint(ctx: agents.JobContext) -> None:
@@ -474,6 +477,19 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     resolved_user_id, participant_identity, phone_number = await _resolve_call_state(
         ctx, initial_user_id
     )
+
+    try:
+        setup_langfuse(
+            metadata={
+                "langfuse.session.id": ctx.room.name,
+                "langfuse.user.id": resolved_user_id or "anonymous",
+                "agent_name": REGISTERED_AGENT_NAME,
+                "job_id": ctx.job.id,
+                "mode": mode.value,
+            }
+        )
+    except Exception as e:
+        logger.warning(f"Langfuse setup failed: {e}")
 
     prompt_context = build_prompt_context(metadata)
     agent_instructions = render_prompt(context=prompt_context)
