@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -10,21 +11,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from agent import (
     AGENT_NAME,
-    DEFAULT_DEEPGRAM_STT_LANGUAGE,
-    DEFAULT_DEEPGRAM_STT_MODEL,
     DEFAULT_OPENROUTER_MODEL,
+    DEFAULT_SARVAM_TTS_DICT_ID,
     DEFAULT_SARVAM_TTS_LANGUAGE,
     DEFAULT_SARVAM_TTS_MODEL,
     DEFAULT_SARVAM_TTS_SPEAKER,
     PROMPT_PATH,
     InterviewCoachingAgent,
+    SessionConfig,
     SessionMode,
     build_agent_session,
     build_runtime_config,
+    extract_session_config,
     load_prompt,
     parse_room_metadata,
     resolve_session_mode,
 )
+from language import resolve_language_config
 
 
 def test_load_prompt_reads_prompt_file() -> None:
@@ -39,11 +42,10 @@ def test_build_runtime_config_uses_defaults() -> None:
 
     assert config.agent_name == AGENT_NAME
     assert config.openrouter_model == DEFAULT_OPENROUTER_MODEL
-    assert config.deepgram_stt_language == DEFAULT_DEEPGRAM_STT_LANGUAGE
-    assert config.deepgram_stt_model == DEFAULT_DEEPGRAM_STT_MODEL
     assert config.sarvam_tts_language == DEFAULT_SARVAM_TTS_LANGUAGE
     assert config.sarvam_tts_model == DEFAULT_SARVAM_TTS_MODEL
     assert config.sarvam_tts_speaker == DEFAULT_SARVAM_TTS_SPEAKER
+    assert config.sarvam_tts_dict_id == DEFAULT_SARVAM_TTS_DICT_ID
 
 
 def test_build_runtime_config_honors_overrides() -> None:
@@ -51,21 +53,28 @@ def test_build_runtime_config_honors_overrides() -> None:
         {
             "AGENT_NAME": "custom-interview-agent",
             "OPENROUTER_MODEL": "openai/gpt-5.1",
-            "DEEPGRAM_STT_LANGUAGE": "en-US",
-            "DEEPGRAM_STT_MODEL": "nova-2",
             "SARVAM_TTS_LANGUAGE": "hi-IN",
-            "SARVAM_TTS_MODEL": "bulbul:v2",
+            "SARVAM_TTS_MODEL": "bulbul:v3",
             "SARVAM_TTS_SPEAKER": "anushka",
+            "SARVAM_TTS_DICT_ID": "p_test_dict",
         }
     )
 
     assert config.agent_name == "custom-interview-agent"
     assert config.openrouter_model == "openai/gpt-5.1"
-    assert config.deepgram_stt_language == "en-US"
-    assert config.deepgram_stt_model == "nova-2"
     assert config.sarvam_tts_language == "hi-IN"
-    assert config.sarvam_tts_model == "bulbul:v2"
+    assert config.sarvam_tts_model == "bulbul:v3"
     assert config.sarvam_tts_speaker == "anushka"
+    assert config.sarvam_tts_dict_id == "p_test_dict"
+
+
+def test_extract_session_config_reads_voice_and_speed() -> None:
+    config = extract_session_config(
+        {"sessionConfig": {"voice": "rahul", "speakingSpeed": "0.8"}}
+    )
+
+    assert config.voice == "rahul"
+    assert config.speaking_speed == 0.8
 
 
 def test_parse_room_metadata_returns_empty_dict_for_invalid_json() -> None:
@@ -83,9 +92,45 @@ def test_resolve_session_mode_reads_diagnostics_flag() -> None:
 
 
 def test_build_agent_session_uses_manual_turn_detection_in_diagnostics() -> None:
-    session = build_agent_session(build_runtime_config({}), SessionMode.DIAGNOSTICS)
+    with (
+        patch("agent.sarvam.STT") as stt_mock,
+        patch("agent.sarvam.TTS") as tts_mock,
+        patch("agent.openai.LLM.with_openrouter") as llm_mock,
+    ):
+        stt_mock.return_value = MagicMock()
+        tts_mock.return_value = MagicMock()
+        llm_mock.return_value = MagicMock()
+        session = build_agent_session(build_runtime_config({}), SessionMode.DIAGNOSTICS)
 
     assert session.turn_detection == "manual"
+
+
+def test_build_agent_session_uses_sarvam_language_and_tts_options() -> None:
+    with (
+        patch("agent.sarvam.STT") as stt_mock,
+        patch("agent.sarvam.TTS") as tts_mock,
+        patch("agent.openai.LLM.with_openrouter") as llm_mock,
+    ):
+        stt_mock.return_value = MagicMock()
+        tts_mock.return_value = MagicMock()
+        llm_mock.return_value = MagicMock()
+
+        build_agent_session(
+            build_runtime_config({}),
+            SessionMode.DIAGNOSTICS,
+            SessionConfig(voice="rahul", speaking_speed=0.7),
+            resolve_language_config("hindi"),
+        )
+
+    stt_kwargs = stt_mock.call_args.kwargs
+    assert stt_kwargs["language"] == "hi-IN"
+    assert stt_kwargs["mode"] == "codemix"
+
+    tts_kwargs = tts_mock.call_args.kwargs
+    assert tts_kwargs["target_language_code"] == "hi-IN"
+    assert tts_kwargs["speaker"] == "rahul"
+    assert tts_kwargs["pace"] == 0.7
+    assert tts_kwargs["dict_id"] == DEFAULT_SARVAM_TTS_DICT_ID
 
 
 @pytest.mark.asyncio

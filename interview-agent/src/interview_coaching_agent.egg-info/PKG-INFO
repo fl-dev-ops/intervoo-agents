@@ -3,9 +3,11 @@ Name: interview-coaching-agent
 Version: 0.1.0
 Summary: Standalone LiveKit interview coaching voice agent
 Requires-Python: >=3.10
-Requires-Dist: livekit-agents[deepgram,openai,sarvam,silero,turn-detector]==1.4.4
+Requires-Dist: livekit-agents[deepgram,google,openai,silero,turn-detector]~=1.4
+Requires-Dist: livekit-plugins-sarvam==1.5.5
 Requires-Dist: livekit-plugins-noise-cancellation~=0.2.5
 Requires-Dist: python-dotenv>=1.0
 Requires-Dist: asyncpg>=0.30.0
 Requires-Dist: boto3>=1.35.0
 Requires-Dist: av==16.1.0
+Requires-Dist: langfuse>=3.0

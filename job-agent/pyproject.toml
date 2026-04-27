@@ -9,13 +9,15 @@ description = "Standalone LiveKit job finder voice agent"
 requires-python = ">=3.10"
 
 dependencies = [
-    "livekit-agents[deepgram,openai,sarvam,silero,turn-detector]==1.4.4",
+    "livekit-agents[deepgram,google,openai,silero,turn-detector]~=1.4",
+    "livekit-plugins-sarvam==1.5.5",
     "livekit-plugins-noise-cancellation~=0.2.5",
     "mem0ai>=0.1.0",
     "python-dotenv>=1.0",
     "asyncpg>=0.30.0",
     "boto3>=1.35.0",
     "av==16.1.0",
+    "langfuse>=3.0",
 ]
 
 [dependency-groups]
