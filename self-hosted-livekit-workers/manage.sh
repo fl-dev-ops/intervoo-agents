@@ -7,6 +7,7 @@ ENV_FILE="${ENV_FILE:-${ROOT_DIR}/.env}"
 
 CS_REPLICAS="${CS_DIAGNOSTIC_AGENT_REPLICAS:-2}"
 PRE_REPLICAS="${PRE_SCREEN_AGENT_REPLICAS:-2}"
+INTERVIEW_REPLICAS="${INTERVIEW_AGENT_REPLICAS:-1}"
 JOB_REPLICAS="${JOB_AGENT_REPLICAS:-1}"
 
 compose() {
@@ -30,13 +31,14 @@ Commands:
   down                Stop and remove worker containers
   restart             Restart running worker containers
   config              Render the resolved compose config
-  scale [cs] [pre] [job]
-                      Change replica counts without changing the image
+  scale [cs] [pre] [interview] [job]
+                       Change replica counts without changing the image
 
 Environment:
   ENV_FILE                            Optional path to compose override values
   CS_DIAGNOSTIC_AGENT_REPLICAS        Default replicas for cs-diagnostic-agent
   PRE_SCREEN_AGENT_REPLICAS           Default replicas for pre-screen-agent
+  INTERVIEW_AGENT_REPLICAS            Default replicas for interview-agent
   JOB_AGENT_REPLICAS                  Default replicas for job-agent
 EOF
 }
@@ -49,6 +51,7 @@ case "${COMMAND}" in
     compose up -d --build \
       --scale "cs-diagnostic-agent=${CS_REPLICAS}" \
       --scale "pre-screen-agent=${PRE_REPLICAS}" \
+      --scale "interview-agent=${INTERVIEW_REPLICAS}" \
       --scale "job-agent=${JOB_REPLICAS}"
     ;;
   build)
@@ -79,10 +82,12 @@ case "${COMMAND}" in
   scale)
     cs_target="${1:-${CS_REPLICAS}}"
     pre_target="${2:-${PRE_REPLICAS}}"
-    job_target="${3:-${JOB_REPLICAS}}"
+    interview_target="${3:-${INTERVIEW_REPLICAS}}"
+    job_target="${4:-${JOB_REPLICAS}}"
     compose up -d \
       --scale "cs-diagnostic-agent=${cs_target}" \
       --scale "pre-screen-agent=${pre_target}" \
+      --scale "interview-agent=${interview_target}" \
       --scale "job-agent=${job_target}"
     ;;
   -h|--help|help)
