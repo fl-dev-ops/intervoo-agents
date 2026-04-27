@@ -4,7 +4,7 @@ Standalone LiveKit voice agent for interview coaching. This app is separate from
 
 ## Stack
 
-- STT: Deepgram
+- STT: Sarvam
 - LLM: OpenAI plugin with OpenRouter
 - TTS: Sarvam
 - VAD: Silero

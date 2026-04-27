@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 import json
 import logging
 import math
 import os
 from collections.abc import Mapping
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
 from enum import Enum
-from functools import wraps
 
 from livekit import agents, rtc
 from livekit.agents import (
@@ -18,26 +15,15 @@ from livekit.agents import (
     AgentServer,
     AgentSession,
     MetricsCollectedEvent,
-    llm,
     metrics,
     room_io,
 )
 from livekit.agents.beta.tools import EndCallTool
-from livekit.plugins import deepgram, google, noise_cancellation, openai, sarvam, silero
-from livekit.plugins.sarvam import tts as sarvam_tts_module
+from livekit.plugins import noise_cancellation, openai, sarvam, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-
-from language import (
-    detect_language_style,
-    resolve_language_config,
-    resolve_stt_mode,
-    response_style_instruction,
-)
 
 from constants import (
     CALLER_LOOKUP_TIMEOUT_SECONDS,
-    DEFAULT_DEEPGRAM_STT_LANGUAGE,
-    DEFAULT_DEEPGRAM_STT_MODEL,
     DEFAULT_OPENROUTER_MODEL,
     DEFAULT_SARVAM_TTS_DICT_ID,
     DEFAULT_SARVAM_TTS_LANGUAGE,
@@ -53,6 +39,10 @@ from identity import (
     resolve_user_id_from_call_context,
     resolve_user_id_from_room_metadata,
 )
+from language import (
+    resolve_language_config,
+    resolve_stt_mode,
+)
 from prompt import build_prompt_context, render_prompt
 from recording import (
     RecordingConfig,
@@ -60,189 +50,10 @@ from recording import (
     finalize_recording,
     start_recording,
 )
-from tracing import flush_langfuse, setup_langfuse
 from watchdog import cancel_idle_room_watchdog, register_idle_room_watchdog
 
 logger = logging.getLogger("interview_coaching_agent")
 MAX_CONCURRENT_SESSIONS = 10
-
-
-def _patch_sarvam_tts_compatibility() -> None:
-    if getattr(sarvam_tts_module, "_intervoo_compat_patch_applied", False):
-        return
-
-    def _patch_output_emitter_mime_type(output_emitter):
-        original_initialize = output_emitter.initialize
-
-        def _patched_initialize(*args, **kwargs):
-            if kwargs.get("mime_type") == "audio/wav":
-                kwargs = {**kwargs, "mime_type": "audio/mpeg"}
-            return original_initialize(*args, **kwargs)
-
-        output_emitter.initialize = _patched_initialize
-        return original_initialize
-
-    def _add_kwonly_signature(fn, original_fn, parameter_name: str):
-        original_signature = inspect.signature(original_fn)
-        parameters = list(original_signature.parameters.values())
-        parameters.append(
-            inspect.Parameter(
-                parameter_name,
-                kind=inspect.Parameter.KEYWORD_ONLY,
-                default=None,
-                annotation=str | None,
-            )
-        )
-        fn.__signature__ = original_signature.replace(parameters=parameters)
-
-    original_tts_init = sarvam_tts_module.TTS.__init__
-    original_update_options = sarvam_tts_module.TTS.update_options
-    original_chunked_init = sarvam_tts_module.ChunkedStream.__init__
-    original_chunked_run = sarvam_tts_module.ChunkedStream._run
-    original_synthesize_run = sarvam_tts_module.SynthesizeStream._run
-    original_synthesize_init = sarvam_tts_module.SynthesizeStream.__init__
-    original_run_ws = sarvam_tts_module.SynthesizeStream._run_ws
-
-    @wraps(original_tts_init)
-    def _patched_tts_init(self, *args, dict_id: str | None = None, **kwargs):
-        original_tts_init(self, *args, **kwargs)
-        self._dict_id = dict_id
-
-    _add_kwonly_signature(_patched_tts_init, original_tts_init, "dict_id")
-
-    @wraps(original_update_options)
-    def _patched_update_options(self, *args, dict_id: str | None = None, **kwargs):
-        original_update_options(self, *args, **kwargs)
-        if dict_id is not None:
-            self._dict_id = dict_id
-
-    _add_kwonly_signature(_patched_update_options, original_update_options, "dict_id")
-
-    @wraps(original_chunked_init)
-    def _patched_chunked_init(self, *, tts, input_text, conn_options):
-        original_chunked_init(
-            self, tts=tts, input_text=input_text, conn_options=conn_options
-        )
-        self._dict_id = getattr(tts, "_dict_id", None)
-
-    @wraps(original_chunked_run)
-    async def _patched_chunked_run(self, output_emitter, *args, **kwargs):
-        original_initialize = _patch_output_emitter_mime_type(output_emitter)
-        dict_id = getattr(self, "_dict_id", None)
-        try:
-            if not dict_id or self._opts.model != "bulbul:v3":
-                return await original_chunked_run(self, output_emitter, *args, **kwargs)
-
-            original_ensure_session = self._tts._ensure_session
-            base_session = original_ensure_session()
-
-            class _SessionProxy:
-                def __init__(self, session):
-                    self._session = session
-
-                def post(self, *post_args, **post_kwargs):
-                    payload = post_kwargs.get("json")
-                    if isinstance(payload, dict):
-                        post_kwargs = {
-                            **post_kwargs,
-                            "json": {**payload, "dict_id": dict_id},
-                        }
-                    return self._session.post(*post_args, **post_kwargs)
-
-                def __getattr__(self, name):
-                    return getattr(self._session, name)
-
-            self._tts._ensure_session = lambda: _SessionProxy(base_session)
-            try:
-                return await original_chunked_run(self, output_emitter, *args, **kwargs)
-            finally:
-                self._tts._ensure_session = original_ensure_session
-        finally:
-            output_emitter.initialize = original_initialize
-
-    @wraps(original_synthesize_init)
-    def _patched_synthesize_init(self, *, tts, conn_options):
-        original_synthesize_init(self, tts=tts, conn_options=conn_options)
-        self._dict_id = getattr(tts, "_dict_id", None)
-
-    @wraps(original_synthesize_run)
-    async def _patched_synthesize_run(self, output_emitter, *args, **kwargs):
-        original_initialize = _patch_output_emitter_mime_type(output_emitter)
-        try:
-            return await original_synthesize_run(self, output_emitter, *args, **kwargs)
-        finally:
-            output_emitter.initialize = original_initialize
-
-    @wraps(original_run_ws)
-    async def _patched_run_ws(self, word_stream, output_emitter):
-        dict_id = getattr(self, "_dict_id", None)
-        if not dict_id or self._opts.model != "bulbul:v3":
-            return await original_run_ws(self, word_stream, output_emitter)
-
-        original_pool = self._tts._pool
-
-        class _ConnectionContext:
-            def __init__(self, inner_context):
-                self._inner_context = inner_context
-                self._ws = None
-
-            async def __aenter__(self):
-                ws = await self._inner_context.__aenter__()
-                original_send_str = ws.send_str
-
-                async def _patched_send_str(message, *send_args, **send_kwargs):
-                    try:
-                        payload = json.loads(message)
-                    except json.JSONDecodeError:
-                        return await original_send_str(
-                            message, *send_args, **send_kwargs
-                        )
-
-                    if payload.get("type") == "config" and isinstance(
-                        payload.get("data"), dict
-                    ):
-                        payload = {
-                            **payload,
-                            "data": {**payload["data"], "dict_id": dict_id},
-                        }
-                        message = json.dumps(payload)
-
-                    return await original_send_str(message, *send_args, **send_kwargs)
-
-                ws.send_str = _patched_send_str
-                self._ws = ws
-                return ws
-
-            async def __aexit__(self, exc_type, exc, tb):
-                return await self._inner_context.__aexit__(exc_type, exc, tb)
-
-        class _PoolProxy:
-            def __init__(self, pool):
-                self._pool = pool
-
-            def connection(self, *pool_args, **pool_kwargs):
-                return _ConnectionContext(self._pool.connection(*pool_args, **pool_kwargs))
-
-            def __getattr__(self, name):
-                return getattr(self._pool, name)
-
-        self._tts._pool = _PoolProxy(original_pool)
-        try:
-            return await original_run_ws(self, word_stream, output_emitter)
-        finally:
-            self._tts._pool = original_pool
-
-    sarvam_tts_module.TTS.__init__ = _patched_tts_init
-    sarvam_tts_module.TTS.update_options = _patched_update_options
-    sarvam_tts_module.ChunkedStream.__init__ = _patched_chunked_init
-    sarvam_tts_module.ChunkedStream._run = _patched_chunked_run
-    sarvam_tts_module.SynthesizeStream.__init__ = _patched_synthesize_init
-    sarvam_tts_module.SynthesizeStream._run = _patched_synthesize_run
-    sarvam_tts_module.SynthesizeStream._run_ws = _patched_run_ws
-    sarvam_tts_module._intervoo_compat_patch_applied = True
-
-
-_patch_sarvam_tts_compatibility()
 
 
 class InteractionMode(str, Enum):
@@ -254,11 +65,10 @@ class InteractionMode(str, Enum):
 class RuntimeConfig:
     agent_name: str = REGISTERED_AGENT_NAME
     openrouter_model: str = DEFAULT_OPENROUTER_MODEL
-    deepgram_stt_language: str = DEFAULT_DEEPGRAM_STT_LANGUAGE
-    deepgram_stt_model: str = DEFAULT_DEEPGRAM_STT_MODEL
     sarvam_tts_language: str = DEFAULT_SARVAM_TTS_LANGUAGE
     sarvam_tts_model: str = DEFAULT_SARVAM_TTS_MODEL
     sarvam_tts_speaker: str = DEFAULT_SARVAM_TTS_SPEAKER
+    sarvam_tts_dict_id: str | None = DEFAULT_SARVAM_TTS_DICT_ID
     initial_reply: str = INITIAL_REPLY
 
 
@@ -272,8 +82,6 @@ class RecordingSessionState:
     resolved_user_id: str | None
     participant_identity: str | None
     phone_number: str | None
-    metrics_events: list[dict] = field(default_factory=list)
-    usage_collector: metrics.UsageCollector | None = None
 
 
 _recording_sessions: dict[str, RecordingSessionState] = {}
@@ -290,15 +98,14 @@ def build_runtime_config(env: Mapping[str, str] | None = None) -> RuntimeConfig:
     return RuntimeConfig(
         agent_name=values.get("AGENT_NAME", REGISTERED_AGENT_NAME),
         openrouter_model=values.get("OPENROUTER_MODEL", DEFAULT_OPENROUTER_MODEL),
-        deepgram_stt_language=values.get(
-            "DEEPGRAM_STT_LANGUAGE", DEFAULT_DEEPGRAM_STT_LANGUAGE
-        ),
-        deepgram_stt_model=values.get("DEEPGRAM_STT_MODEL", DEFAULT_DEEPGRAM_STT_MODEL),
         sarvam_tts_language=values.get(
             "SARVAM_TTS_LANGUAGE", DEFAULT_SARVAM_TTS_LANGUAGE
         ),
         sarvam_tts_model=values.get("SARVAM_TTS_MODEL", DEFAULT_SARVAM_TTS_MODEL),
         sarvam_tts_speaker=values.get("SARVAM_TTS_SPEAKER", DEFAULT_SARVAM_TTS_SPEAKER),
+        sarvam_tts_dict_id=(
+            values.get("SARVAM_TTS_DICT_ID", DEFAULT_SARVAM_TTS_DICT_ID).strip() or None
+        ),
         initial_reply=INITIAL_REPLY,
     )
 
@@ -393,49 +200,10 @@ class VoiceAssistantAgent(Agent):
     def __init__(
         self,
         instructions: str | None = None,
-        language_style: str = "English",
     ) -> None:
         super().__init__(
             instructions=instructions or render_prompt(),
             tools=[build_end_call_tool()],
-        )
-        self._current_style = language_style
-        self._english_switch_streak = 0
-
-    async def on_user_turn_completed(
-        self,
-        turn_ctx: llm.ChatContext,
-        new_message: llm.ChatMessage,
-    ) -> None:
-        text = new_message.text_content or ""
-        detected_style = detect_language_style(text, fallback=self._current_style)
-        normalized_text = text.lower()
-        explicit_english_switch = any(
-            phrase in normalized_text
-            for phrase in (
-                "in english",
-                "speak english",
-                "english please",
-                "let's do english",
-                "lets do english",
-            )
-        )
-
-        if detected_style in {"Tanglish", "Hinglish"}:
-            self._current_style = detected_style
-            self._english_switch_streak = 0
-        elif detected_style == "English" and self._current_style in {"Tanglish", "Hinglish"}:
-            self._english_switch_streak += 1
-            if explicit_english_switch or self._english_switch_streak >= 2:
-                self._current_style = "English"
-                self._english_switch_streak = 0
-        else:
-            self._current_style = detected_style
-            self._english_switch_streak = 0
-
-        turn_ctx.add_message(
-            role="developer",
-            content=response_style_instruction(self._current_style),
         )
 
 
@@ -463,10 +231,11 @@ def build_agent_session(
         speaker=effective_session_config.voice or config.sarvam_tts_speaker,
         pace=effective_session_config.speaking_speed or 1.0,
         temperature=0.6,
+        enable_preprocessing=True,
         output_audio_bitrate="128k",
         min_buffer_size=50,
         max_chunk_length=150,
-        dict_id=DEFAULT_SARVAM_TTS_DICT_ID,
+        dict_id=config.sarvam_tts_dict_id,
     )
 
     if hasattr(tts, "prewarm"):
@@ -504,38 +273,13 @@ def build_agent_session(
     )
 
 
-def _serialize_metric(metric_obj: object) -> dict:
-    if hasattr(metric_obj, "model_dump"):
-        try:
-            return metric_obj.model_dump()
-        except Exception:
-            pass
-    if hasattr(metric_obj, "__dict__"):
-        return {k: v for k, v in vars(metric_obj).items() if not k.startswith("_")}
-    return {"repr": repr(metric_obj)}
-
-
-def _attach_metrics_logging(
-    session: AgentSession, buffer: list[dict]
-) -> metrics.UsageCollector:
+def _attach_metrics_logging(session: AgentSession) -> None:
     usage_collector = metrics.UsageCollector()
 
     @session.on("metrics_collected")
     def _on_metrics_collected(ev: MetricsCollectedEvent) -> None:
         metrics.log_metrics(ev.metrics)
         usage_collector.collect(ev.metrics)
-        try:
-            buffer.append(
-                {
-                    "type": type(ev.metrics).__name__,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "data": _serialize_metric(ev.metrics),
-                }
-            )
-        except Exception as e:
-            logger.warning(f"Failed to capture metric: {e}")
-
-    return usage_collector
 
 
 def _build_room_options() -> room_io.RoomOptions:
@@ -692,16 +436,6 @@ async def on_session_end(ctx: agents.JobContext) -> None:
     except Exception as e:
         logger.warning(f"Failed to create session report: {e}")
 
-    usage_summary: dict | None = None
-    if state.usage_collector is not None:
-        try:
-            summary = state.usage_collector.get_summary()
-            usage_summary = (
-                summary.model_dump() if hasattr(summary, "model_dump") else dict(summary)
-            )
-        except Exception as e:
-            logger.warning(f"Failed to build usage summary: {e}")
-
     try:
         await finalize_recording(
             config=state.config,
@@ -716,13 +450,9 @@ async def on_session_end(ctx: agents.JobContext) -> None:
             resolved_user_id=state.resolved_user_id,
             participant_identity=state.participant_identity,
             phone_number=state.phone_number,
-            metrics_events=state.metrics_events,
-            usage_summary=usage_summary,
         )
     except Exception as e:
         logger.error(f"Recording finalization failed: {e}")
-
-    flush_langfuse()
 
 
 @server.rtc_session(agent_name=REGISTERED_AGENT_NAME, on_session_end=on_session_end)
@@ -745,19 +475,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         ctx, initial_user_id
     )
 
-    try:
-        setup_langfuse(
-            metadata={
-                "langfuse.session.id": ctx.room.name,
-                "langfuse.user.id": resolved_user_id or "anonymous",
-                "agent_name": REGISTERED_AGENT_NAME,
-                "job_id": ctx.job.id,
-                "mode": mode.value,
-            }
-        )
-    except Exception as e:
-        logger.warning(f"Langfuse setup failed: {e}")
-
     prompt_context = build_prompt_context(metadata)
     agent_instructions = render_prompt(context=prompt_context)
 
@@ -769,14 +486,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             comfortable_language = candidate.strip()
     language_info = resolve_language_config(comfortable_language)
 
-    agent = VoiceAssistantAgent(
-        instructions=agent_instructions,
-        language_style=language_info["language_style"],
-    )
+    agent = VoiceAssistantAgent(instructions=agent_instructions)
 
     session = build_agent_session(config, mode, session_config, language_info)
-    metrics_buffer: list[dict] = []
-    usage_collector = _attach_metrics_logging(session, metrics_buffer)
+    _attach_metrics_logging(session)
 
     rec_cfg = build_recording_config()
     if rec_cfg.enabled:
@@ -801,8 +514,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 resolved_user_id=resolved_user_id,
                 participant_identity=participant_identity,
                 phone_number=phone_number,
-                metrics_events=metrics_buffer,
-                usage_collector=usage_collector,
             )
         except Exception as e:
             logger.error(f"Failed to initialize recording: {e}")

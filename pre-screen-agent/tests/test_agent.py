@@ -31,8 +31,6 @@ from agent import (
 )
 from livekit.agents import metrics
 from constants import (
-    DEFAULT_DEEPGRAM_STT_LANGUAGE,
-    DEFAULT_DEEPGRAM_STT_MODEL,
     DEFAULT_OPENROUTER_MODEL,
     DEFAULT_PROMPT_AGENT_NAME,
     DEFAULT_PROMPT_USER_NAME,
@@ -43,7 +41,7 @@ from constants import (
     PROMPT_PATH,
     REGISTERED_AGENT_NAME,
 )
-from language import detect_language_style, resolve_language_config
+from language import resolve_language_config
 from prompt import build_prompt_context, load_prompt, render_prompt
 from recording import RecordingConfig
 from watchdog import (
@@ -121,11 +119,10 @@ def test_build_runtime_config_uses_defaults() -> None:
 
     assert config.agent_name == REGISTERED_AGENT_NAME
     assert config.openrouter_model == DEFAULT_OPENROUTER_MODEL
-    assert config.deepgram_stt_language == DEFAULT_DEEPGRAM_STT_LANGUAGE
-    assert config.deepgram_stt_model == DEFAULT_DEEPGRAM_STT_MODEL
     assert config.sarvam_tts_language == DEFAULT_SARVAM_TTS_LANGUAGE
     assert config.sarvam_tts_model == DEFAULT_SARVAM_TTS_MODEL
     assert config.sarvam_tts_speaker == DEFAULT_SARVAM_TTS_SPEAKER
+    assert config.sarvam_tts_dict_id == DEFAULT_SARVAM_TTS_DICT_ID
 
 
 def test_build_runtime_config_honors_overrides() -> None:
@@ -133,21 +130,19 @@ def test_build_runtime_config_honors_overrides() -> None:
         {
             "AGENT_NAME": "custom-interview-agent",
             "OPENROUTER_MODEL": "openai/gpt-5.1",
-            "DEEPGRAM_STT_LANGUAGE": "en-US",
-            "DEEPGRAM_STT_MODEL": "nova-2",
             "SARVAM_TTS_LANGUAGE": "hi-IN",
-            "SARVAM_TTS_MODEL": "bulbul:v2",
+            "SARVAM_TTS_MODEL": "bulbul:v3",
             "SARVAM_TTS_SPEAKER": "anushka",
+            "SARVAM_TTS_DICT_ID": "p_test_dict",
         }
     )
 
     assert config.agent_name == "custom-interview-agent"
     assert config.openrouter_model == "openai/gpt-5.1"
-    assert config.deepgram_stt_language == "en-US"
-    assert config.deepgram_stt_model == "nova-2"
     assert config.sarvam_tts_language == "hi-IN"
-    assert config.sarvam_tts_model == "bulbul:v2"
+    assert config.sarvam_tts_model == "bulbul:v3"
     assert config.sarvam_tts_speaker == "anushka"
+    assert config.sarvam_tts_dict_id == "p_test_dict"
 
 
 def test_parse_room_metadata_returns_empty_dict_for_invalid_json() -> None:
@@ -279,8 +274,14 @@ def test_build_agent_session_uses_tts_overrides_from_session_config() -> None:
 
 
 def test_build_agent_session_uses_bulbul_v3_for_default_dict_id_patch_path() -> None:
-    with patch("agent.sarvam.TTS") as tts_mock:
+    with (
+        patch("agent.sarvam.STT") as stt_mock,
+        patch("agent.sarvam.TTS") as tts_mock,
+        patch("agent.openai.LLM.with_openrouter") as llm_mock,
+    ):
+        stt_mock.return_value = MagicMock()
         tts_mock.return_value = MagicMock()
+        llm_mock.return_value = MagicMock()
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -294,6 +295,32 @@ def test_build_agent_session_uses_bulbul_v3_for_default_dict_id_patch_path() -> 
     tts_kwargs = tts_mock.call_args.kwargs
     assert tts_kwargs["model"] == "bulbul:v3"
     assert tts_kwargs["dict_id"] == DEFAULT_SARVAM_TTS_DICT_ID
+
+
+def test_build_agent_session_uses_runtime_dict_id_override() -> None:
+    with (
+        patch("agent.sarvam.STT") as stt_mock,
+        patch("agent.sarvam.TTS") as tts_mock,
+        patch("agent.openai.LLM.with_openrouter") as llm_mock,
+    ):
+        stt_mock.return_value = MagicMock()
+        tts_mock.return_value = MagicMock()
+        llm_mock.return_value = MagicMock()
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            build_agent_session(
+                build_runtime_config({"SARVAM_TTS_DICT_ID": "p_custom_dict"}),
+                InteractionMode.PTT,
+            )
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
+
+    tts_mock.assert_called_once()
+    tts_kwargs = tts_mock.call_args.kwargs
+    assert tts_kwargs["dict_id"] == "p_custom_dict"
 
 
 def test_build_agent_session_uses_hindi_language_config_for_stt_and_tts() -> None:
@@ -339,104 +366,6 @@ def test_resolve_language_config_defaults_to_english() -> None:
 
     assert default_config["language_style"] == "English"
     assert default_config["stt_language"] == "en-IN"
-
-
-def test_detect_language_style_supports_common_romanized_tamil_phrases() -> None:
-    text = (
-        "Illa naan andha maadhiri edhuvum pola. Tuition-kku ellaam pola. "
-        "Coaching tuition appadi yosikkala."
-    )
-
-    assert detect_language_style(text, fallback="English") == "Tanglish"
-
-
-def test_voice_assistant_agent_uses_initial_language_style() -> None:
-    agent = VoiceAssistantAgent(language_style="Hinglish")
-
-    assert agent._current_style == "Hinglish"
-
-
-@pytest.mark.asyncio
-async def test_voice_assistant_agent_switches_to_hinglish_in_same_turn() -> None:
-    agent = VoiceAssistantAgent(language_style="English")
-    turn_ctx = SimpleNamespace(add_message=MagicMock())
-
-    await agent.on_user_turn_completed(
-        turn_ctx,
-        SimpleNamespace(text_content="main python aur sql use karta hoon"),
-    )
-    assert agent._current_style == "Hinglish"
-    instruction = turn_ctx.add_message.call_args.kwargs["content"]
-    assert "Hindi-English code-mix" in instruction
-
-
-@pytest.mark.asyncio
-async def test_voice_assistant_agent_switches_to_tanglish_in_same_turn() -> None:
-    agent = VoiceAssistantAgent(language_style="English")
-    turn_ctx = SimpleNamespace(add_message=MagicMock())
-
-    await agent.on_user_turn_completed(
-        turn_ctx,
-        SimpleNamespace(text_content="naan neenga romba nalla irukku"),
-    )
-    assert agent._current_style == "Tanglish"
-    instruction = turn_ctx.add_message.call_args.kwargs["content"]
-    assert "natural Tamil in Tamil script" in instruction
-
-
-@pytest.mark.asyncio
-async def test_voice_assistant_agent_requires_two_english_turns_to_switch_back() -> (
-    None
-):
-    agent = VoiceAssistantAgent(language_style="Hinglish")
-    turn_ctx = SimpleNamespace(add_message=MagicMock())
-
-    await agent.on_user_turn_completed(
-        turn_ctx,
-        SimpleNamespace(text_content="I want software testing role"),
-    )
-    assert agent._current_style == "Hinglish"
-
-    await agent.on_user_turn_completed(
-        turn_ctx,
-        SimpleNamespace(text_content="I have done selenium and python projects"),
-    )
-    assert agent._current_style == "English"
-    instruction = turn_ctx.add_message.call_args.kwargs["content"]
-    assert "use clear English" in instruction
-
-
-@pytest.mark.asyncio
-async def test_voice_assistant_agent_switches_to_english_immediately_on_explicit_request() -> (
-    None
-):
-    agent = VoiceAssistantAgent(language_style="Tanglish")
-    turn_ctx = SimpleNamespace(add_message=MagicMock())
-
-    await agent.on_user_turn_completed(
-        turn_ctx,
-        SimpleNamespace(text_content="Can we continue in English please?"),
-    )
-
-    assert agent._current_style == "English"
-
-
-@pytest.mark.asyncio
-async def test_voice_assistant_agent_stays_tanglish_on_single_english_like_turn() -> None:
-    agent = VoiceAssistantAgent(language_style="Tanglish")
-    turn_ctx = SimpleNamespace(add_message=MagicMock())
-
-    await agent.on_user_turn_completed(
-        turn_ctx,
-        SimpleNamespace(
-            text_content=(
-                "Hmm, I don't have anything like that right now. For now, I need to go "
-                "to work and help the family. That's all."
-            )
-        ),
-    )
-
-    assert agent._current_style == "Tanglish"
 
 
 def test_build_end_call_tool_returns_goodbye_instructions() -> None:
@@ -602,19 +531,15 @@ async def test_on_session_end_cancels_watchdog_and_keeps_recording_finalize_flow
         resolved_user_id="user_1",
         participant_identity="participant_1",
         phone_number="+911234567890",
-        metrics_events=[{"type": "llm"}],
-        usage_collector=MagicMock(),
     )
 
     with (
         patch("agent.finalize_recording", new_callable=AsyncMock) as finalize_mock,
-        patch("agent.flush_langfuse") as flush_mock,
     ):
         await on_session_end(ctx)
     await asyncio.sleep(0)
 
     finalize_mock.assert_awaited_once()
-    flush_mock.assert_called_once()
     assert room.name not in _idle_room_watchdogs
     assert watchdog.cancelled()
 
@@ -633,20 +558,15 @@ def test_attach_metrics_logging_collects_events() -> None:
         return _decorator
 
     session.on.side_effect = _register
-    buffer: list[dict] = []
-
     with patch("agent.metrics.log_metrics"), patch.object(
         metrics.UsageCollector, "collect"
     ) as collect_mock:
-        usage_collector = _attach_metrics_logging(session, buffer)
+        _attach_metrics_logging(session)
 
         metric_obj = SimpleNamespace(total_tokens=5)
         handlers["metrics_collected"](SimpleNamespace(metrics=metric_obj))
 
-    assert isinstance(usage_collector, metrics.UsageCollector)
     collect_mock.assert_called_once_with(metric_obj)
-    assert buffer[0]["type"] == "SimpleNamespace"
-    assert buffer[0]["data"] == {"total_tokens": 5}
 
 
 @pytest.fixture(autouse=True)
