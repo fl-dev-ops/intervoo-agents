@@ -33,6 +33,17 @@ services:
     environment:
       AGENT_NAME: ${PRE_SCREEN_AGENT_NAME:-pre-screen-agent}
 
+  job-agent:
+    <<: *agent-service
+    image: ${JOB_AGENT_IMAGE:-intervoo/job-agent:latest}
+    build:
+      context: ../job-agent
+      dockerfile: Dockerfile
+    env_file:
+      - ../job-agent/.env
+    environment:
+      AGENT_NAME: ${JOB_AGENT_NAME:-job-finder-agent}
+
 networks:
   livekit-workers:
     driver: bridge
