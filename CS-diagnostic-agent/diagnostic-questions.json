@@ -1,0 +1,5030 @@
+[
+  {
+    "id": "q001",
+    "text": "What is a class and what is an object — can you give a simple real-world example of each?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q002",
+    "text": "What is inheritance in OOP — can you give a simple real-world analogy to explain it?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q003",
+    "text": "What is a design pattern — why do developers use patterns?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q004",
+    "text": "What is a database — what is a table, a row, and a column?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q005",
+    "text": "What is a JOIN in SQL — what does it do?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q006",
+    "text": "What is a primary key in a database table?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q007",
+    "text": "What is an API — can you describe in one sentence what it does?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q008",
+    "text": "What is software testing — why do developers test their code before releasing it?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q009",
+    "text": "What is the software development lifecycle — can you name two or three stages?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q010",
+    "text": "What is cloud computing — why would a company use it?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q011",
+    "text": "What does an operating system do — why do we need one?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q012",
+    "text": "What is a network protocol — why do computers need to agree on rules?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q013",
+    "text": "What is machine learning — can you describe in plain terms how a machine can learn from data?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q014",
+    "text": "What is an average — can you calculate the average of five numbers and explain what it tells you?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q015",
+    "text": "What is a decision tree — can you describe how it makes a decision using a simple example?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q016",
+    "text": "What is data storage — why does a large company need to store and organise enormous amounts of data?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q017",
+    "text": "What is a frontend in a web application — what does it do?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q018",
+    "text": "What is a backend framework — why would a developer use one?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q019",
+    "text": "What is Docker — what problem does containerisation solve?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q020",
+    "text": "What is a cache — can you give a simple real-world example?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q021",
+    "text": "What is manual testing — what does a tester do when they test a web application by hand?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q022",
+    "text": "What does a library management system do — what are the basic things a librarian needs to track?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q023",
+    "text": "What is a bank account — what are the basic operations you can perform on one?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q024",
+    "text": "What is a notification in software — can you name three different ways an app might notify you?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q025",
+    "text": "What are the four pillars of OOP — can you name them and give a one-line description of each?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q026",
+    "text": "What is the difference between single and multiple inheritance?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q027",
+    "text": "What is the Singleton pattern and when would you use it?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q028",
+    "text": "What is the difference between a SQL and a NoSQL database?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q029",
+    "text": "What is the difference between INNER JOIN and LEFT JOIN?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q030",
+    "text": "What is the difference between a primary key and a foreign key?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q031",
+    "text": "What does it mean for an API to be RESTful — what are the core principles?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q032",
+    "text": "What is the difference between unit testing and integration testing?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q033",
+    "text": "What is the difference between Waterfall and Agile development?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q034",
+    "text": "What is the difference between IaaS, PaaS, and SaaS?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q035",
+    "text": "What is the difference between a process and a thread?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q036",
+    "text": "What is the difference between TCP and UDP?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q037",
+    "text": "What is the difference between supervised and unsupervised machine learning?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q038",
+    "text": "What is the difference between mean, median, and mode — when would you use the median over the mean?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q039",
+    "text": "What is a Random Forest — how does combining many decision trees produce a better result?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q040",
+    "text": "What is a data warehouse — how is it different from a regular database?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q041",
+    "text": "What is React.js — what problem does it solve compared to plain HTML and JavaScript?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q042",
+    "text": "What is Node.js — what makes it different from a traditional server-side language?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q043",
+    "text": "What is Redis and when would you use it instead of querying the database directly?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q044",
+    "text": "What is Selenium — how does it automate browser-based testing?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q045",
+    "text": "If you were modelling a library system in code, what would be the core entities — and how would you handle a book with multiple copies?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q046",
+    "text": "If you were modelling a banking system in code, what would be the core classes?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q047",
+    "text": "If you were building a notification system that sends email and SMS, how would you structure it so the two channels do not depend on each other?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q048",
+    "text": "What is OOP and can you explain the four main principles — encapsulation, inheritance, polymorphism, and abstraction — with a real-world example for each?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q049",
+    "text": "What is the difference between an abstract class and an interface, and when would you use one over the other?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q050",
+    "text": "What is the Factory design pattern and how does it help when you need to create objects without specifying the exact class?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q051",
+    "text": "What is database normalisation and can you walk me through 1NF, 2NF, and 3NF?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q052",
+    "text": "What is a window function in SQL and when would you use ROW_NUMBER or RANK?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q053",
+    "text": "How do primary keys and foreign keys work together to maintain referential integrity?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q054",
+    "text": "What is the difference between GET, POST, PUT, and DELETE in a REST API, and when do you use each?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q055",
+    "text": "What is the difference between unit testing, integration testing, and end-to-end testing?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q056",
+    "text": "What is Agile and what does a typical Scrum sprint look like — what happens in each ceremony?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q057",
+    "text": "What is the difference between AWS, Azure, and IBM Cloud at a high level — how do you decide which to use?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q058",
+    "text": "What is virtual memory and how does the OS use paging to manage it?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q059",
+    "text": "What is the OSI model — can you name the seven layers and explain what each one is responsible for?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q060",
+    "text": "What is the difference between supervised and unsupervised machine learning, and can you give an example of each?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q061",
+    "text": "What is A/B testing, and can you walk me through how you would set one up to test whether a new feature improves user engagement?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q062",
+    "text": "What is the difference between overfitting and underfitting in a machine learning model, and how do you fix each?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q063",
+    "text": "What is the difference between a data warehouse and a data lake, and when would a company use each?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q064",
+    "text": "What is the difference between props and state in React, and how do they affect how a component renders?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q065",
+    "text": "How would you design a REST API using Node.js or Django — what are the key steps and decisions?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q066",
+    "text": "What is Docker and what problem does containerisation solve for a development team?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q067",
+    "text": "What is Redis and how would you use it to cache the results of a slow database query — when would you NOT use it?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q068",
+    "text": "What is the difference between functional testing and performance testing, and what tools are commonly used for each?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q069",
+    "text": "How would you design a library management system — what are the entities, how do you handle book availability, and how do you model borrowing and returns?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q070",
+    "text": "How would you design a banking system from an OOP perspective — what are the core classes, and how do you model different account types and transaction rules?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q071",
+    "text": "How would you design a notification service that sends alerts by email, SMS, and push — and how would you build it so adding a new channel later does not break anything?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q072",
+    "text": "What are the four pillars of OOP — can you explain each one with a real-world example?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q073",
+    "text": "What is memory in a program — why does a variable need memory to exist?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q074",
+    "text": "What is a variable in programming — what does it mean to store a value in memory?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q075",
+    "text": "What is a CPU and what does it do — why does it need to access data quickly?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q076",
+    "text": "What is an embedded system — can you give two examples of everyday devices that have one?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q077",
+    "text": "What is database normalisation and why do we do it?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q078",
+    "text": "What is a lock in a database — why would a database lock a row during a transaction?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q079",
+    "text": "What is an API — can you describe in plain terms what it does and why applications use them?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q080",
+    "text": "What is caching — can you give a simple real-world example?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q081",
+    "text": "What is the difference between RAM and a hard drive — why does your computer have both?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q082",
+    "text": "What is a program — what is the difference between a program sitting on disk and one that is running?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q083",
+    "text": "What happens when you tap your card at a shop — basic steps from tap to approval?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q084",
+    "text": "What happens when you order food on an app like Zomato — basic steps from order to delivery?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q085",
+    "text": "What does a search feature do — what happens when you type a restaurant name into a food delivery app?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q086",
+    "text": "What is a CRM system — what kind of business uses one and what problem does it solve?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q087",
+    "text": "What is a support ticket — what information does it typically contain and who creates it?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q088",
+    "text": "What is a microservice — how is it different from a regular application?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q089",
+    "text": "What is a digital wallet — how is it different from a regular bank account?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q090",
+    "text": "What happens when you book a movie ticket online — steps from choosing a film to confirmation?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q091",
+    "text": "What is a REST API — can you describe what happens when a mobile app makes an API call to a server?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q092",
+    "text": "What is a report in a business application — what kind of questions does it help a manager answer?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q093",
+    "text": "What is payment fraud — can you give a simple example?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q094",
+    "text": "What does it mean for a software system to handle a lot of users?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q095",
+    "text": "What is the difference between a payment succeeding and a payment failing?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q096",
+    "text": "What is high availability in software — why would an ecommerce site going down for an hour be a serious problem?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q097",
+    "text": "What does multi-tenant mean in software?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q098",
+    "text": "What is a cache — why would storing the result of a database query in memory make subsequent requests faster?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q099",
+    "text": "What is real-time tracking — can you describe how a food delivery app shows you where your driver is?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q100",
+    "text": "What is the difference between an abstract class and an interface — when would you use each?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q101",
+    "text": "What is the difference between stack and heap memory in C++ — when does a program use each?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q102",
+    "text": "What is a pointer in C++ — how is it different from a regular variable?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q103",
+    "text": "What is a CPU cache and why is it faster than RAM — what is the difference between L1, L2, and L3 cache?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q104",
+    "text": "What is an interrupt in an embedded system — why would a processor stop what it is doing to handle one?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q105",
+    "text": "What is a database index and how does it make a query faster?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q106",
+    "text": "What is deadlock in a database — can you describe a simple scenario?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q107",
+    "text": "What is the difference between REST and GraphQL — how does each one decide what data to return to the client?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q108",
+    "text": "What is Redis and when would you use it instead of querying the database directly?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q109",
+    "text": "What is virtual memory — why does the OS give each process its own virtual address space?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q110",
+    "text": "What is the difference between a process and a thread — do they share memory?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q111",
+    "text": "If you were designing a simple payment processing system, what are the core components and how would you handle a payment that fails?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q112",
+    "text": "If you were modelling a food delivery system in code, what would be the main entities?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q113",
+    "text": "If you were building a restaurant search system that filters by cuisine, rating, and distance, how would you model those filters?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q114",
+    "text": "If you were modelling a CRM in code, how would you represent the relationship between an Account and its Contacts?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q115",
+    "text": "If you were modelling a ticketing system, what states would a ticket go through from creation to resolution?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q116",
+    "text": "If you have ten microservices and a client needs to talk to all of them, what problems does that create?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q117",
+    "text": "If you were modelling a wallet system that supports both a regular balance and a fixed deposit, how would you represent those two account types in code?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q118",
+    "text": "If two users try to book the last available seat at exactly the same time, what could go wrong?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q119",
+    "text": "If you were designing a REST API for a payment service, what endpoints would you need and what HTTP status codes would you return?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q120",
+    "text": "If you had to build a reporting system that pulls data from thousands of accounts and generates a summary, how would you keep it fast?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q121",
+    "text": "If you were building a fraud detection system, what signals or patterns would you look for?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q122",
+    "text": "If your food delivery platform suddenly gets ten times the orders during a lunch rush, what parts of the system would struggle first?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q123",
+    "text": "If a payment request is sent to your server but the server crashes before sending a response, how do you make sure the user is not charged twice?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q124",
+    "text": "If your ecommerce platform is expecting a flash sale with ten times normal traffic, what changes would you make in advance?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q125",
+    "text": "If you are building a cloud CRM that serves thousands of businesses, how do you make sure one company's data is completely invisible to another?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q126",
+    "text": "If you were adding a caching layer to a high-traffic API, how would you decide what to cache and for how long?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q127",
+    "text": "If you were building a real-time order tracking system, how would the delivery partner's location get from their phone to the customer's screen?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q128",
+    "text": "What is OOP and can you explain the four main principles with a real-world example for each — and how did you apply them in your final year project?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q129",
+    "text": "How does memory management work in C++ — what is the difference between stack and heap, and when would a memory leak occur?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q130",
+    "text": "Can you explain what a pointer is in C++, how pointer arithmetic works, and what a dangling pointer is?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q131",
+    "text": "What is the difference between a RISC and CISC processor architecture, and which approach do modern processors lean towards?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q132",
+    "text": "What is the difference between I2C and SPI as communication protocols, and when would you choose one over the other?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q133",
+    "text": "What is the difference between an ACID transaction and eventual consistency — and when would a fintech company like PayPal choose one over the other?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q134",
+    "text": "What is deadlock in the context of databases, and how do systems like Oracle detect and resolve it?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q135",
+    "text": "What is the difference between REST and GraphQL, and in what situation would you recommend GraphQL over REST?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q136",
+    "text": "What is Redis and how does caching with Redis work — when would you use it versus querying the database directly?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q137",
+    "text": "What is virtual memory and how does the OS use paging to manage it — can you explain what a page fault is?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q138",
+    "text": "What is the difference between a process, a thread, and a coroutine — and which would you use when building a high-concurrency payment service?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q139",
+    "text": "How would you design a payment processing system — what are the core components, how do you handle a failed transaction, and how do you make sure a payment is never processed twice?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q140",
+    "text": "How would you design a food delivery system like Zomato — what are your core entities, how do you model the relationship between restaurants, orders, and delivery partners?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q141",
+    "text": "How would you design a restaurant search system — how do you model filters like cuisine, rating, and distance, and how do you keep results fast?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q142",
+    "text": "How would you design a CRM system — how do you model Accounts, Contacts, and Opportunities, and how do you enforce business rules?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q143",
+    "text": "How would you design a ticketing and incident management system like ServiceNow — what are the core entities and how does a ticket move through its lifecycle?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q144",
+    "text": "How would you design an API gateway for a microservices-based ecommerce platform — what responsibilities does it have and how does it handle authentication and rate limiting?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q145",
+    "text": "How would you design a wallet system that supports fixed deposits and cashback rewards — what are your core classes and how do you model the different account types?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q146",
+    "text": "How would you design a BookMyShow-style event booking system — how do you model events, seats, and bookings, and how do you prevent two users from booking the same seat?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q147",
+    "text": "How would you design a REST API for a financial transactions service — what endpoints do you expose, how do you handle idempotency, and what status codes do you return?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q148",
+    "text": "How would you design a reporting and analytics engine that aggregates data across millions of records and generates summaries on demand?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q149",
+    "text": "How would you design a fraud detection model for a payment platform — what signals would you use and how would you structure the system to flag suspicious transactions in real time?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q150",
+    "text": "How would you design the backend for a food delivery platform like Zomato at scale — how do you handle peak ordering times and keep delivery assignments fast?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q151",
+    "text": "How would you design a payment processing system at the scale of PayPal — how do you ensure no payment is processed twice and how do you handle failures mid-transaction?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q152",
+    "text": "How would you design a high-availability ecommerce platform like Flipkart for a sale event with ten times normal traffic — where are the bottlenecks?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q153",
+    "text": "How would you design a cloud-based CRM platform like Salesforce that serves millions of businesses — how do you isolate data between tenants and keep the platform performant?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q154",
+    "text": "How would you design a caching layer for a high-traffic API — how do you decide what to cache, for how long, and how do you handle stale data?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q155",
+    "text": "How would you design a real-time order tracking system — how does the location of a delivery partner get updated and pushed to the customer?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q156",
+    "text": "What is a thread, and can you give me a simple example of two threads running at the same time?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q157",
+    "text": "What is RAM and why does a program need memory to run?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q158",
+    "text": "What does an operating system do, and why do we need one?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q159",
+    "text": "What is a CPU cache and why is it faster than RAM?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q160",
+    "text": "What does it mean to lock a resource in programming, and why would you need to do that?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q161",
+    "text": "What is a lock in programming and why do threads need to use them?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q162",
+    "text": "What is the difference between RAM and storage — why does your computer have both?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q163",
+    "text": "What does it mean for data to be consistent — why does it matter that two users see the same information?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q164",
+    "text": "What does it mean when we say a system needs to scale?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q165",
+    "text": "What is Salesforce and what kind of problems does it help businesses solve?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q166",
+    "text": "What is a deployment in software development — what does it mean to push code to production?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q167",
+    "text": "What is a code review and why do development teams do them?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q168",
+    "text": "What is object-oriented design — can you describe what a class is and what an object is?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q169",
+    "text": "What is a URL shortener — what problem does it solve and can you name one you have used?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q170",
+    "text": "What is a cache and why do applications use one?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q171",
+    "text": "What happens when you place an order on an ecommerce site — steps from clicking buy to receiving the package?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q172",
+    "text": "What is a notification in software — can you name three different ways an app might notify you?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q173",
+    "text": "What is a document management system — can you name one you have used and describe what it does?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q174",
+    "text": "What does the undo feature in a text editor do — what happens when you press Ctrl+Z?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q175",
+    "text": "What is OOP — can you describe what a class and an object are using a real-world example?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q176",
+    "text": "What is a CRM system — what kind of data does a business store in one?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q177",
+    "text": "What is a collaborative tool — can you describe how something like Google Docs allows multiple people to work simultaneously?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q178",
+    "text": "What happens when you book a ride on an app like Uber — steps from opening the app to arriving at your destination?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q179",
+    "text": "What is a key-value store — can you give a simple real-world example?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q180",
+    "text": "What is a backend in a web application — what does it do?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q181",
+    "text": "What is a scheduled job in software — can you give an example of a task that a system might run automatically at a fixed time every day?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q182",
+    "text": "What is the difference between a regular HTTP request and a WebSocket connection?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q183",
+    "text": "What is a stock exchange at a basic level — what happens when someone wants to buy a share and someone else wants to sell one?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q184",
+    "text": "What is financial risk in simple terms — why would a bank or trading firm want to monitor it continuously?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q185",
+    "text": "What is payment fraud — can you give an example of how someone might fraudulently use another person's card?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q186",
+    "text": "What is a log file — why do large applications generate them?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q187",
+    "text": "What happens when you click a shortened URL — steps between clicking the link and arriving at the destination?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q188",
+    "text": "What is the difference between storing data in memory versus storing it on disk?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q189",
+    "text": "What is state in a frontend application — why does a React component need to keep track of state?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q190",
+    "text": "If two threads both try to update the same variable at the same time, what can go wrong and why?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q191",
+    "text": "What happens when your computer runs out of RAM — does the program crash immediately or does something else happen first?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q192",
+    "text": "If your computer is running ten programs at the same time but only has one CPU, how does it manage that?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q193",
+    "text": "What happens when two threads on different CPU cores keep overwriting each other's cached data — why does that slow things down?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q194",
+    "text": "What is the difference between a spinlock and a mutex — how does each one wait for a lock to become available?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q195",
+    "text": "If two threads are both waiting for each other to release a lock, what happens — can they ever move forward?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q196",
+    "text": "What is virtual memory — why does the OS give each program the illusion that it has its own private memory space?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q197",
+    "text": "If you update your profile picture on a social network and your friend still sees the old one for a few seconds, is that a problem?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q198",
+    "text": "What is the difference between adding more power to one server versus adding more servers?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q199",
+    "text": "What is Apex and how is it different from a general-purpose language like Java?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q200",
+    "text": "If you notice your application is suddenly running much slower after a new release, what are the first two or three things you would check?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q201",
+    "text": "What practices would you put in place to make sure code quality does not drop when your team members are working at different hours?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q202",
+    "text": "If you were modelling a parking lot in code, what would be the main objects you would need?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q203",
+    "text": "If you had to build a simple URL shortener, what would the basic flow look like?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q204",
+    "text": "What does LRU mean — if your cache is full and a new item comes in, which item do you remove and why?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q205",
+    "text": "If you were modelling an order in code, what states would it go through?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q206",
+    "text": "If you were building a notification system that sends both email and SMS, how would you structure the code so that the two channels do not depend on each other?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q207",
+    "text": "If you were building a simple document management system, what are the core operations it needs to support?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q208",
+    "text": "If you were building a text editor that supports undo, what data structure would you use to keep track of changes?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q209",
+    "text": "If you were modelling a chess game in code, what would be the main objects you would need?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q210",
+    "text": "If you were modelling a CRM in code, what would be the core objects like Accounts and Contacts?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q211",
+    "text": "If two people are drawing on a shared whiteboard at the same time and both make changes to the same area, how would you decide which change wins?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q212",
+    "text": "If you were modelling a ride-sharing app in code, what would be the main objects?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q213",
+    "text": "If you were building an in-memory key-value store that automatically deletes entries after a set time, how would you track when each entry was added?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q214",
+    "text": "If your task management app suddenly had ten times more users, what parts of your backend would struggle first?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q215",
+    "text": "If you had a job scheduler sending tasks to ten remote workers and one went offline mid-task, how would you make sure the task still gets completed?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q216",
+    "text": "If you were building a notification system that pushes alerts to users in real time, how would you make sure a message is delivered even if the user's connection drops briefly?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q217",
+    "text": "If you were building a simple order book for a stock exchange, how would you match a buy order with a sell order?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q218",
+    "text": "If you were building a system that watches a trader's portfolio and sends an alert when their exposure crosses a threshold, what are the core components?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q219",
+    "text": "If you were building a system to detect fraudulent transactions, what signals or patterns would you look for?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q220",
+    "text": "If you had a hundred microservices each writing their own log files, what problems would that create?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q221",
+    "text": "If your URL shortener is handling a million clicks a day, what parts of the system would you be most worried about?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q222",
+    "text": "If your key-value store needs to handle millions of reads and writes per second, what would be the first bottleneck you would hit?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q223",
+    "text": "If two users are editing the same document at the same time in a browser, how do you make sure both see each other's changes without refreshing the page?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q224",
+    "text": "Two threads are both trying to increment a shared counter at the same time — why does the final count end up being less than expected, and how would you fix that?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q225",
+    "text": "What actually happens at the operating system level when a program tries to use more memory than the machine physically has?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q226",
+    "text": "Can you explain what a context switch is — what gets saved, what gets restored, and why the OS needs to do it at all?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q227",
+    "text": "What is cache thrashing, and can you walk me through a real scenario where it would slow down a multi-threaded application?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q228",
+    "text": "What is the difference between a spinlock and a mutex, and in a latency-sensitive system like high-frequency trading, which would you reach for and why?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q229",
+    "text": "If two threads try to grab the same lock at the same time, what happens? And can you describe a classic scenario where two threads end up in a deadlock?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q230",
+    "text": "Why does an operating system use virtual memory, and can you explain in plain terms how the OS translates a virtual address into a physical one?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q231",
+    "text": "What is the difference between strong consistency and eventual consistency, and can you give me a real-world example of a situation where eventual consistency is actually acceptable?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q232",
+    "text": "What is the difference between scaling up and scaling out, and if your SaaS product suddenly gets ten times the traffic, which approach would you go with and why?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q233",
+    "text": "How is Apex different from Java, and what are the governor limits in Salesforce that a developer absolutely must keep in mind when writing triggers?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q234",
+    "text": "You push a deployment and within five minutes your latency triples. Talk me through your thought process — what do you check first and how do you decide whether to roll back?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q235",
+    "text": "How do you make sure code quality stays high when your team is working asynchronously across different time zones?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q236",
+    "text": "If I asked you to design a parking lot system from scratch — one that handles different vehicle sizes and multiple floors — how would you think through the classes and relationships involved?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q237",
+    "text": "How would you design a URL shortening service like bit.ly — what are the key components, how do you generate the short codes, and how do you handle two users getting the same code?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q238",
+    "text": "How would you design an LRU cache — what data structures would you combine to make both reads and writes happen in constant time?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q239",
+    "text": "Walk me through how you would design an order management system — what are the core objects, and how does an order move through its different states from placement to return?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q240",
+    "text": "How would you design a notification service that needs to send alerts by email, SMS, and push notification — and how would you build it so adding a new channel later does not break anything?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q241",
+    "text": "Walk me through how you would design a document management system like Google Drive — focusing on the core operations and how you would handle permissions for different users.",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q242",
+    "text": "How would you design a text editor that supports undo and redo — what data structure powers that feature and how does it work?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q243",
+    "text": "If you had to design a chess game using OOP principles, how would you model the board, the pieces, and the rules — including how you detect check?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q244",
+    "text": "Walk me through how you would model a CRM system like Salesforce — what are the core objects, how do they relate, and how do you enforce business rules?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q245",
+    "text": "How would you design a collaborative whiteboard where multiple people can draw at the same time — how do you handle two people editing the same area simultaneously?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q246",
+    "text": "If you were designing a ride-sharing app like Uber from an OOP perspective, how would you model the core entities and how does a ride move through its different states?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q247",
+    "text": "How would you design an in-memory key-value store that supports get, put, and delete — and how would you extend it to automatically expire keys after a set amount of time?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q248",
+    "text": "How would you design the backend for a task management app that needs to handle ten times its current traffic — what does your architecture look like and where are the bottlenecks?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q249",
+    "text": "How would you design a distributed job scheduler that sends tasks to remote workers — and what happens when a worker goes down mid-task?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q250",
+    "text": "How would you design a real-time notification system for a remote team tool — how do you make sure messages are delivered reliably over WebSockets even at high scale?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q251",
+    "text": "How would you design a trade matching engine — how does the order book work, how do you match buyers and sellers, and how do you handle multiple orders coming in at the same time?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q252",
+    "text": "How would you design a real-time risk monitoring system for a trader's portfolio — what does the architecture look like and how do you keep the alert latency as low as possible?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q253",
+    "text": "How would you design a fraud detection system for live payment transactions — how do you spot suspicious behaviour without accidentally blocking a legitimate payment?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q254",
+    "text": "How would you design a centralised logging system that collects logs from thousands of microservices and lets engineers search through them in near real-time?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q255",
+    "text": "How would you design a URL shortener that needs to handle millions of redirects every second — what does the architecture look like and how do you make sure it stays available?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q256",
+    "text": "How would you design an in-memory key-value store that needs to support millions of reads and writes per second, with automatic key expiry built in?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q257",
+    "text": "If you were building the frontend for a real-time collaborative document editor, how would you manage shared state across users and keep everyone's view in sync?",
+    "question_type": [
+      "Thinking",
+      "Language",
+      "Confidence"
+    ],
+    "category": "domain",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q260",
+    "text": "Did you enjoy your Computer Science degree?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q261",
+    "text": "What do you like to do when you are not studying?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q262",
+    "text": "What is one thing you are good at?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q263",
+    "text": "Can you tell me a little about yourself — beyond just your name and college?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q264",
+    "text": "Tell me about your college life — what you studied and what you took away from those years.",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q265",
+    "text": "Why did you choose Computer Science — was it always the plan or did something lead you there?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q266",
+    "text": "How would someone who knows you well describe you as a person?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q267",
+    "text": "What kind of work are you drawn to — and what does that tell you about yourself?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q268",
+    "text": "Walk me through what shaped you — not just your resume, but you as a person.",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q269",
+    "text": "Looking back at your degree — what challenged you most, and did it change how you think?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q270",
+    "text": "What drew you to Computer Science — and now that you have lived it, does that reason still hold?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q271",
+    "text": "If you had to be honest — what is one thing you are genuinely good at, and one thing you are still figuring out?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q272",
+    "text": "How would the people closest to you describe who you are — and how much do you agree with that picture?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q273",
+    "text": "Your manager gives you a task but you do not understand what to do. What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q274",
+    "text": "You finish your work early and your teammate looks stuck. What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q275",
+    "text": "You push wrong code to the shared folder and your team lead sees it. What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q276",
+    "text": "One person in your project group is not doing their part. The deadline is tomorrow. What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q277",
+    "text": "You have to test a feature but you cannot access the testing system. What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q278",
+    "text": "Has there been a time you missed a deadline? What happened?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q279",
+    "text": "Tell me about a time someone in your group was not pulling their weight.",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q280",
+    "text": "Has there been a time you had to follow instructions you did not like? What did you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q281",
+    "text": "Tell me about a time you had to do something you had never done before.",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q282",
+    "text": "Has someone ever criticised your work? What happened?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q283",
+    "text": "You spot a bug your manager already approved — do you raise it or let it go? What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q284",
+    "text": "Two teammates disagree about how to split the work and both turn to you. How do you handle it?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q285",
+    "text": "Your manager asks you to work the weekend but you have plans. What do you do — and how do you say it?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q286",
+    "text": "You see a colleague breaking a rule that nobody else has noticed. Do you say something? What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q287",
+    "text": "Tell me about a time you had too many things at once — how did you decide what mattered most?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q288",
+    "text": "Tell me about a time a project went wrong — what broke down and what did you do about it?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q289",
+    "text": "Has there been a time you disagreed with a technical choice your team made? What did you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q290",
+    "text": "Tell me about a time you were under real pressure to finish something — what did you sacrifice and what did you protect?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q291",
+    "text": "Has there been a time you needed help but found it hard to ask? What happened?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q292",
+    "text": "Tell me about a time you stepped up in a group without being asked to. What moved you to do it?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q293",
+    "text": "Your code works but you know it is messy. You are out of time. Do you ship it — and how do you justify that decision?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q294",
+    "text": "A new colleague is clearly lost and nobody is helping them. What does that situation ask of you?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q295",
+    "text": "Your instructions are unclear and your deadline is close. Where is the line between asking for help and figuring it out yourself?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q296",
+    "text": "You find an error an hour before the deadline. Fixing it properly takes two hours. What do you do — and what does that choice say about you?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q297",
+    "text": "Someone takes credit for work that was partly yours. What do you do — and what stops most people from doing what you would do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q298",
+    "text": "Tell me about a time you had to change course completely midway through something. What did letting go of the original plan feel like?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q299",
+    "text": "Walk me through how you debug a problem — not just the steps, but how you think.",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q300",
+    "text": "Has there been a time you had to learn something fast because you had no choice? What did that reveal about how you learn?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q301",
+    "text": "Tell me about a group project where things nearly fell apart. What held it together — and what was your role in that?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q302",
+    "text": "Tell me about a time you helped someone understand something difficult. What did that teach you about how you explain things?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q303",
+    "text": "Are you okay to relocate to another city for this job?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q305",
+    "text": "Are you applying to other companies right now?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q306",
+    "text": "What salary are you expecting?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q307",
+    "text": "Do you have any questions for us?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "easy",
+    "band": 1
+  },
+  {
+    "id": "q308",
+    "text": "Where do you see yourself in three years — and does this role fit into that picture?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q309",
+    "text": "Why this company — what is it about them specifically that interests you?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q310",
+    "text": "When can you join — and is there anything that might change that?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q311",
+    "text": "What do you know about what this company actually does?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q312",
+    "text": "Is there something you wanted to say in this interview that you did not get a chance to?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 1
+  },
+  {
+    "id": "q313",
+    "text": "If we offered you this role today — what would make you say yes, and what would give you pause?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q314",
+    "text": "What would your first thirty days here look like — and what would you need from us to make them count?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q315",
+    "text": "If you do not get this role — what does that tell you, and what do you do next?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q316",
+    "text": "What is one thing you hope we remember about you after this conversation ends?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q317",
+    "text": "On a scale of one to ten — how ready do you think you are for this role, and what sits behind that number?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 1
+  },
+  {
+    "id": "q321",
+    "text": "What is one technical thing you genuinely enjoy working on?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q322",
+    "text": "Did you enjoy your degree — what was your favourite part of it?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q323",
+    "text": "Can you tell me about yourself — and what you have been working on that you are most interested in?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q324",
+    "text": "Walk me through your academic background and the kind of work you have done alongside it.",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q325",
+    "text": "Why Computer Science — and has your reason for choosing it shifted as you have studied more?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q326",
+    "text": "How would a teammate who has worked closely with you describe your working style?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q327",
+    "text": "What kind of engineer do you want to be in five years — and what are you doing now to move towards that?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q328",
+    "text": "Walk me through your resume — and tell me what you are most proud of and why it matters to you.",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q329",
+    "text": "Tell me about your academic journey — what genuinely challenged you, and how did that shape the engineer you are becoming?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q330",
+    "text": "Why Computer Science — and looking back now, what would you have done differently to prepare yourself better?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q331",
+    "text": "What do you think makes you a genuinely different kind of candidate — not just stronger, but different?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q332",
+    "text": "How would you describe the gap between what your degree gave you and what the industry actually needs from engineers?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q333",
+    "text": "You are mid-way through building a feature and realise your approach will break for some cases. Reworking it delays the sprint. What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q334",
+    "text": "Your code passes unit tests but fails in integration testing the day before release. Your manager says ship it. What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q335",
+    "text": "Two senior developers disagree on which database to use. Both ask for your opinion. What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q336",
+    "text": "You are given a task outside your skillset with a three-day deadline. What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q337",
+    "text": "A critical bug is reported in production. You are the only developer available but it is not your module. What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q338",
+    "text": "Tell me about a time you had a tight deadline. How did you manage it and what did you give up?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q339",
+    "text": "Has there been a time you disagreed with your team on a technical decision? What happened?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q340",
+    "text": "Tell me about a time a miscommunication caused something to go wrong in a project. What did you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q341",
+    "text": "Has there been a time you had to learn a new tool or framework mid-project? How did you handle it?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q342",
+    "text": "Tell me about a time you had to juggle multiple technical tasks. How did you prioritise?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q343",
+    "text": "Your manager asks you to implement something you think is technically the wrong call. Do you push back — and how?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q344",
+    "text": "You join a project mid-sprint and nothing is documented. Your first task is due in two days. Where do you even start?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q345",
+    "text": "Your teammate is cutting corners on testing to hit the deadline. Real users will be affected. What do you do — and what makes it complicated?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q346",
+    "text": "A requirement was misunderstood from the start and your sprint ends tomorrow. How do you handle the damage?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q347",
+    "text": "Two managers both say their task is the priority. You cannot do both. How do you navigate that?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q348",
+    "text": "Tell me about a time you spotted a bug or gap that everyone else had missed. What did you do with that?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q349",
+    "text": "Tell me about a time you had to explain a complex technical problem to someone non-technical. What did that require of you?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q350",
+    "text": "Has there been a time you pushed back on something a senior asked you to do? What happened — and would you do it the same way again?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q351",
+    "text": "Tell me about a time a requirement changed halfway through. How did you adapt — and what did that cost you?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q352",
+    "text": "Tell me about a time a technical decision you made turned out to be wrong. What did you do — and what did it teach you?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q353",
+    "text": "A client escalates a complaint about something you built directly to your manager. What does that situation demand from you — technically and personally?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q354",
+    "text": "You are reviewing a junior developer's code and it is seriously flawed. How do you give feedback that is honest without being damaging?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q355",
+    "text": "Your team makes a technical decision in a meeting and nobody asks for your view. Do you speak up — and if so, how do you do it without derailing things?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q356",
+    "text": "You are about to demo a feature to a client that has a known bug. It may not show up. What do you do — and what is the right thing to do here?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q357",
+    "text": "Your manager is unreachable and a production issue just came in. There is no escalation path. What does this situation require of you?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q358",
+    "text": "Have you ever noticed something in a project that felt ethically off — even if it was not officially a problem? What did you do with that feeling?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q359",
+    "text": "Tell me about a time you had to optimise something that was already working. What guided your decisions about what to change and what to leave alone?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q360",
+    "text": "Tell me about a time you took ownership of something that was not officially yours to fix. What made you step in?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q361",
+    "text": "Describe a time you were under real pressure and had to protect quality anyway. Where did you draw the line — and how did you hold it?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q362",
+    "text": "Has there been a time credit was distributed unfairly in a team? What did that reveal about how you handle recognition and fairness?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q363",
+    "text": "Are you open to relocating for this role?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q364",
+    "text": "What is your expected CTC and when can you start?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q365",
+    "text": "Are you currently interviewing elsewhere?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q366",
+    "text": "What do you know about what this company builds?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q367",
+    "text": "Do you have any questions for us?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "easy",
+    "band": 2
+  },
+  {
+    "id": "q368",
+    "text": "Where do you see yourself in three to five years — and how does this role specifically fit into that path?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q369",
+    "text": "What excites you about working at a product company — and what do you think will be hardest about it?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q370",
+    "text": "What would your first month here look like — and what would you need to make it useful?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q371",
+    "text": "Is there something from this interview you feel you could have answered better?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q372",
+    "text": "What is the one thing you want us to remember about you after this conversation?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 2
+  },
+  {
+    "id": "q373",
+    "text": "Looking at the role we described — where do you think you are strongest, and where is your real gap?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q374",
+    "text": "If we give you this offer and another company does too — how will you decide, and what does that decision say about what you value?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q375",
+    "text": "What is the hardest thing you think you will face in the first six months here — and how are you going to handle it?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q376",
+    "text": "What does your ideal manager look like — and what does that tell you about how you work best?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q377",
+    "text": "Why should we hire you over the other candidates we have seen today — and what would you say to someone who disagreed?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 2
+  },
+  {
+    "id": "q380",
+    "text": "What kind of engineering work do you enjoy most?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q381",
+    "text": "What is one project you are genuinely proud of?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q382",
+    "text": "Tell me one thing about yourself that is not on your resume.",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q383",
+    "text": "Can you walk me through who you are as an engineer — and what you have been most invested in recently?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q384",
+    "text": "Tell me about your background — your college, your projects, and what brought you to this point.",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q385",
+    "text": "Why software engineering — and what keeps you genuinely motivated in it now?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q386",
+    "text": "How would a senior engineer who has worked alongside you describe your technical strengths?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q387",
+    "text": "What is the most technically complex thing you have built — and what specifically made it complex?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q388",
+    "text": "Walk me through what has genuinely shaped you as an engineer — not the CV line items, but the experiences that changed how you think.",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q389",
+    "text": "Tell me about your journey as an engineer — what you have built, what has tested you, and where you are trying to get to.",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q390",
+    "text": "Why software engineering — and now that you are here, what do you think the field actually demands that most people underestimate?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q391",
+    "text": "What is the most significant technical decision you have made — and knowing what you know now, what would you do differently?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q392",
+    "text": "How would you describe the engineer you are right now versus the one you are trying to become — and what stands between those two versions of you?",
+    "question_type": [
+      "Language"
+    ],
+    "category": "opening",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q393",
+    "text": "You find a security vulnerability in your API two days before launch. Your manager wants to ship. What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q394",
+    "text": "You are reviewing a colleague's pull request. It works but it will create real technical debt. How do you handle the review?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q395",
+    "text": "Three weeks into a sprint you realise the architecture will not scale to what you need. A rebuild takes a month. What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q396",
+    "text": "You are asked to build a feature that collects more user data than seems necessary. You have concerns. What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q397",
+    "text": "Your manager asks for a timeline you know is not achievable. They are under pressure from above. What do you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q398",
+    "text": "Tell me about a time you failed at something significant technically. What did you actually learn — not just what you tell interviewers?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q399",
+    "text": "Tell me about a time you had to move a team or stakeholder without having authority over them. How did you do it?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q400",
+    "text": "Describe a time doing the right thing technically was not the popular choice. What did you do?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q401",
+    "text": "Tell me about a time you had to rebuild something from scratch because the original was fundamentally broken. How did you have that conversation with your team?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q402",
+    "text": "Describe a time you worked on a project where the requirements kept shifting. How did you manage the uncertainty?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q403",
+    "text": "You are leading a small team and two senior engineers cannot agree on the system design. The timeline is at risk. How do you move forward — and what does leadership look like in that moment?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q404",
+    "text": "A junior teammate keeps writing low-quality code. Your tech lead asks you to handle it without making it formal. How do you approach it — and where is the line between coaching and escalating?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q405",
+    "text": "You discover your company is using an open source library without the right licence. Nobody else knows. What do you do — and what makes this harder than it looks?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q406",
+    "text": "A colleague takes credit for your solution in front of senior leadership. How do you handle it in the room — and what do you do afterwards?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q407",
+    "text": "Your team is building a feature that meets the business requirement but you believe it will harm the user experience. Do you raise it — and how far do you push?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q408",
+    "text": "Tell me about a time you had to give difficult feedback to a senior colleague about their work. What did you have to weigh before you said anything?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q409",
+    "text": "Describe a time you had to balance technical rigour against business pressure. Where did you draw the line — and are you at peace with where you drew it?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q410",
+    "text": "Tell me about a time you spotted a security or privacy risk others had missed. What made it hard to raise — and what did you do anyway?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q411",
+    "text": "Describe a time you had to rapidly get up to speed in an area outside your comfort zone to deliver something critical. What did that cost you?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q412",
+    "text": "Tell me about a time a team you were part of was coming apart under pressure. What held it together — and what was your actual role in that?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q413",
+    "text": "You are onboarding a new engineer and realise your team's documentation is dangerously outdated. Your sprint is already full. What does this situation ask of you — and what do you let slide?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q414",
+    "text": "Your manager asks you to sign off on a deployment you are not confident about. The business is pushing hard. Where is the line between deference and responsibility?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q415",
+    "text": "You discover that a performance optimisation your team is proud of introduces a subtle race condition under load. The fix is complex. How do you handle the technical problem — and the people problem?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q416",
+    "text": "A senior engineer consistently dismisses ideas from junior members in meetings. Morale is suffering. You are not their manager. What do you do — and what is the cost of doing nothing?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q417",
+    "text": "You are asked to cut testing coverage to hit a launch deadline for a product going to hundreds of thousands of users. What do you do — and how do you make the case for what you believe is right?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q418",
+    "text": "Describe a time you made an unpopular technical decision and stood your ground. What gave you the confidence to hold the line — and at what point would you have backed down?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q419",
+    "text": "Tell me about a time you discovered something your team had been doing for a long time was fundamentally wrong. How do you change a system that people are invested in?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q420",
+    "text": "Describe a time you had to ruthlessly prioritise — where you could not do everything and something had to be let go. How did you decide what mattered most, and what did you mourn?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q421",
+    "text": "You are working on an AI feature and realise it performs significantly worse for certain demographic groups. Your manager wants to ship on schedule. What do you do — and what is the cost of each choice available to you?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q422",
+    "text": "Describe a time you raised an ethical concern about a product or feature. How did you navigate that conversation — and what did you learn about how organisations handle these things?",
+    "question_type": [
+      "Language",
+      "Thinking",
+      "Confidence"
+    ],
+    "category": "behavioral",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q423",
+    "text": "Are you open to relocating for this role?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q424",
+    "text": "What is your expected compensation and when can you join?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q425",
+    "text": "Are you currently evaluating other offers?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q426",
+    "text": "What do you know about this company's engineering culture and what they are building?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q427",
+    "text": "Do you have any questions for us?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "easy",
+    "band": 3
+  },
+  {
+    "id": "q428",
+    "text": "Where do you see yourself in five years — and how does this role specifically accelerate getting there?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q429",
+    "text": "What is it about this company specifically — beyond the brand and the salary — that makes you want to be here?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q430",
+    "text": "What kind of engineering problems do you most want to be working on two years from now — and why here?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q431",
+    "text": "Is there anything from this conversation you would like to come back to — something you feel you did not fully land?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q432",
+    "text": "What would make you turn down an offer from us — even if the package was right?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "medium",
+    "band": 3
+  },
+  {
+    "id": "q433",
+    "text": "Given everything we have covered today — where do you think you genuinely fit this role, and where is the real gap you would have to close?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q434",
+    "text": "If you could redesign how you prepared for this interview — what would you do differently, and what does that tell you about how you learn?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q435",
+    "text": "What is the hardest engineering problem you think you will face here in year one — and what is your honest plan for handling it?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q436",
+    "text": "What does exceptional engineering work actually look like to you — and how far are you from that standard right now?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 3
+  },
+  {
+    "id": "q437",
+    "text": "Why should we hire you — and two years from now, what does the version of you that made this team better actually look like?",
+    "question_type": [
+      "Language",
+      "Confidence"
+    ],
+    "category": "closing",
+    "difficulty_level": "hard",
+    "band": 3
+  }
+]
