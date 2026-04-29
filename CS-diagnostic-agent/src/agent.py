@@ -6,10 +6,10 @@ import json
 import logging
 import math
 import os
-from functools import wraps
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
+from functools import wraps
 
 from livekit import agents, rtc
 from livekit.agents import (
@@ -21,7 +21,7 @@ from livekit.agents import (
     room_io,
 )
 from livekit.agents.beta.tools import EndCallTool
-from livekit.plugins import deepgram, google, noise_cancellation, openai, sarvam, silero
+from livekit.plugins import noise_cancellation, openai, sarvam, silero
 from livekit.plugins.sarvam import tts as sarvam_tts_module
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
@@ -44,13 +44,10 @@ from identity import (
     resolve_user_id_from_call_context,
     resolve_user_id_from_room_metadata,
 )
-from recording import (
-    RecordingConfig,
-    build_recording_config,
-    finalize_recording,
-    start_recording,
-)
 from prompt import build_prompt_context, render_prompt
+from recording_config import RecordingConfig, build_recording_config
+from recording_db import init_pool
+from recording_runtime import finalize_recording, start_recording
 from watchdog import cancel_idle_room_watchdog, register_idle_room_watchdog
 
 logger = logging.getLogger("interview_coaching_agent")
@@ -244,6 +241,7 @@ class RuntimeConfig:
 @dataclass(frozen=True)
 class RecordingSessionState:
     config: RecordingConfig
+    session_id: str | None
     egress_id: str | None
     room_name: str
     audio_url: str
@@ -608,6 +606,7 @@ async def on_session_end(ctx: agents.JobContext) -> None:
             config=state.config,
             lk_api=ctx.api,
             egress_id=state.egress_id,
+            session_id=state.session_id,
             agent_type="interview-agent",
             agent_name=REGISTERED_AGENT_NAME,
             room_name=state.room_name,
@@ -648,7 +647,12 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     rec_cfg = build_recording_config()
     if rec_cfg.enabled:
         try:
-            audio_url, audio_s3_key, egress_id = await start_recording(
+            if rec_cfg.database_url:
+                try:
+                    await init_pool(rec_cfg.database_url)
+                except Exception as e:
+                    logger.error(f"Failed to initialize recording DB: {e}")
+            session_id, audio_url, audio_s3_key, egress_id = await start_recording(
                 config=rec_cfg,
                 lk_api=ctx.api,
                 agent_type="interview-agent",
@@ -661,6 +665,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             )
             _recording_sessions[ctx.room.name] = RecordingSessionState(
                 config=rec_cfg,
+                session_id=session_id,
                 egress_id=egress_id,
                 room_name=ctx.room.name,
                 audio_url=audio_url,

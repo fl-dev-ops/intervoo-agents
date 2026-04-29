@@ -95,9 +95,7 @@ def upload_transcript_json(
         Body=body.encode("utf-8"),
         ContentType="application/json",
     )
-    url = build_s3_url(
-        config.s3_bucket, s3_key, config.s3_region, config.s3_endpoint
-    )
+    url = build_s3_url(config.s3_bucket, s3_key, config.s3_region, config.s3_endpoint)
     logger.info(f"Uploaded transcript to s3://{config.s3_bucket}/{s3_key}")
     return url
 

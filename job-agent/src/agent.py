@@ -720,7 +720,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     rec_cfg = build_recording_config()
     if rec_cfg.enabled:
         try:
-            await init_pool(rec_cfg.database_url)
+            if rec_cfg.database_url:
+                try:
+                    await init_pool(rec_cfg.database_url)
+                except Exception as e:
+                    logger.error(f"Failed to initialize recording DB: {e}")
             room_sid = await ctx.room.sid
             session_id, egress_id = await start_recording(
                 config=rec_cfg,

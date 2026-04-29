@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -11,21 +10,19 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from recording_config import RecordingConfig, build_recording_config
-from recording_store import (
-    build_audio_s3_key,
-    build_s3_key,
-    build_s3_url,
-    build_transcript_s3_key,
-)
-from recording_transcript import normalize_session_report
 from identity import (
     _extract_phone,
     _normalize_user_id,
     resolve_user_id_from_call_context,
     resolve_user_id_from_room_metadata,
 )
-
+from recording_config import RecordingConfig, build_recording_config
+from recording_store import (
+    build_s3_key,
+    build_s3_url,
+    build_transcript_s3_key,
+)
+from recording_transcript import normalize_session_report
 
 # ---------------------------------------------------------------------------
 # recording_config

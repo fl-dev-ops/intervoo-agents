@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -11,6 +10,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from memory import (
+    _extract_phone,
+    _normalize_user_id,
+    resolve_user_id_from_call_context,
+)
 from recording_config import RecordingConfig, build_recording_config
 from recording_store import (
     build_audio_s3_key,
@@ -19,7 +23,6 @@ from recording_store import (
     build_transcript_s3_key,
 )
 from recording_transcript import normalize_session_report
-
 
 # ---------------------------------------------------------------------------
 # recording_config
@@ -272,18 +275,6 @@ def test_normalize_missing_optional_fields() -> None:
     assert result["session"]["duration_seconds"] is None
     assert result["subject"]["resolved_user_id"] is None
     assert len(result["turns"]) == 1
-
-
-# ---------------------------------------------------------------------------
-# Identity resolution (via memory module)
-# ---------------------------------------------------------------------------
-
-from memory import (
-    _extract_phone,
-    _normalize_user_id,
-    resolve_user_id_from_call_context,
-    resolve_user_id_from_room_metadata,
-)
 
 
 def test_extract_phone_sip_prefix() -> None:
@@ -543,13 +534,6 @@ async def test_finalize_recording_handles_egress_failure() -> None:
     mock_lk_api.egress = AsyncMock()
     mock_lk_api.egress.stop_egress = AsyncMock()
     mock_lk_api.egress.list_egress = AsyncMock(return_value=mock_list_resp)
-
-    config = RecordingConfig(
-        database_url="postgres://localhost/test",
-        s3_bucket="test-bucket",
-        s3_access_key="key",
-        s3_secret_key="secret",
-    )
 
     config_short = RecordingConfig(
         database_url="postgres://localhost/test",

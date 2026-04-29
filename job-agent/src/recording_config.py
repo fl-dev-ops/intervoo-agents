@@ -18,7 +18,7 @@ class RecordingConfig:
 
     @property
     def enabled(self) -> bool:
-        return bool(self.database_url and self.s3_bucket)
+        return bool(self.s3_bucket)
 
 
 def build_recording_config(env: dict[str, str] | None = None) -> RecordingConfig:

@@ -73,6 +73,15 @@ def build_transcript_s3_key(
     return build_s3_key(agent_type, room_name, "transcript.json", base_prefix, now)
 
 
+def build_metrics_s3_key(
+    agent_type: str,
+    room_name: str,
+    base_prefix: str = "agents",
+    now: datetime | None = None,
+) -> str:
+    return build_s3_key(agent_type, room_name, "metrics.json", base_prefix, now)
+
+
 def upload_transcript_json(
     config: RecordingConfig,
     s3_key: str,
@@ -90,4 +99,22 @@ def upload_transcript_json(
         config.s3_bucket, s3_key, config.s3_region, config.s3_endpoint
     )
     logger.info(f"Uploaded transcript to s3://{config.s3_bucket}/{s3_key}")
+    return url
+
+
+def upload_metrics_json(
+    config: RecordingConfig,
+    s3_key: str,
+    metrics_data: dict,
+) -> str:
+    client = _get_s3_client(config)
+    body = json.dumps(metrics_data, indent=2, default=str)
+    client.put_object(
+        Bucket=config.s3_bucket,
+        Key=s3_key,
+        Body=body.encode("utf-8"),
+        ContentType="application/json",
+    )
+    url = build_s3_url(config.s3_bucket, s3_key, config.s3_region, config.s3_endpoint)
+    logger.info(f"Uploaded metrics to s3://{config.s3_bucket}/{s3_key}")
     return url

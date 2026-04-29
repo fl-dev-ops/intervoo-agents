@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import logging
 import time
 from datetime import datetime, timezone
 from typing import Any
-
-logger = logging.getLogger(__name__)
 
 SCHEMA_VERSION = "1.0"
 
@@ -147,6 +144,9 @@ def normalize_metrics_payload(
     events: list[dict[str, Any]] | None = None,
     usage_summary: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    session_started = report_dict.get("started_at")
+    session_timestamp = report_dict.get("timestamp", time.time())
+    duration = report_dict.get("duration")
     resolved_events = events
     if resolved_events is None:
         report_events = report_dict.get("events")
@@ -162,6 +162,9 @@ def normalize_metrics_payload(
             "job_id": report_dict.get("job_id"),
             "egress_id": egress_id,
             "egress_status": egress_status,
+            "started_at": _ts_to_iso(session_started),
+            "ended_at": _ts_to_iso(session_timestamp),
+            "duration_seconds": round(duration, 2) if duration else None,
         },
         "subject": {
             "resolved_user_id": resolved_user_id,

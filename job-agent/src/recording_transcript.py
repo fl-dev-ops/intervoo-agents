@@ -132,3 +132,43 @@ def normalize_session_report(
             "events_summary": metadata_events[:20],
         },
     }
+
+
+def normalize_metrics_payload(
+    report_dict: dict[str, Any],
+    *,
+    agent_type: str,
+    agent_name: str,
+    egress_id: str | None = None,
+    egress_status: str | None = None,
+    resolved_user_id: str | None = None,
+    participant_identity: str | None = None,
+    phone_number: str | None = None,
+    events: list[dict[str, Any]] | None = None,
+    usage_summary: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    resolved_events = events
+    if resolved_events is None:
+        report_events = report_dict.get("events")
+        resolved_events = report_events if isinstance(report_events, list) else []
+
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "session": {
+            "agent_type": agent_type,
+            "agent_name": agent_name,
+            "room": report_dict.get("room"),
+            "room_id": report_dict.get("room_id"),
+            "job_id": report_dict.get("job_id"),
+            "egress_id": egress_id,
+            "egress_status": egress_status,
+        },
+        "subject": {
+            "resolved_user_id": resolved_user_id,
+            "participant_identity": participant_identity,
+            "phone_number": phone_number,
+        },
+        "usage_summary": usage_summary or {},
+        "events": resolved_events,
+        "metadata": {"event_count": len(resolved_events)},
+    }

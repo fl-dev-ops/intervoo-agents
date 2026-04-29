@@ -16,25 +16,25 @@ from agent import (
     InteractionMode,
     RecordingSessionState,
     SessionConfig,
+    VoiceAssistantAgent,
     _build_room_options,
     _recording_sessions,
     _register_push_to_talk_rpcs,
     _start_ptt_session,
-    build_end_call_tool,
     build_agent_session,
+    build_end_call_tool,
     build_runtime_config,
     extract_session_config,
     on_session_end,
     parse_room_metadata,
     resolve_interaction_mode,
-    VoiceAssistantAgent,
 )
 from constants import (
     DEFAULT_DEEPGRAM_STT_LANGUAGE,
     DEFAULT_DEEPGRAM_STT_MODEL,
+    DEFAULT_OPENROUTER_MODEL,
     DEFAULT_PROMPT_AGENT_NAME,
     DEFAULT_PROMPT_USER_NAME,
-    DEFAULT_OPENROUTER_MODEL,
     DEFAULT_SARVAM_TTS_LANGUAGE,
     DEFAULT_SARVAM_TTS_MODEL,
     DEFAULT_SARVAM_TTS_SPEAKER,
@@ -42,7 +42,7 @@ from constants import (
     REGISTERED_AGENT_NAME,
 )
 from prompt import build_prompt_context, load_prompt, render_prompt
-from recording import RecordingConfig
+from recording_config import RecordingConfig
 from watchdog import (
     _idle_room_watchdogs,
     cancel_idle_room_watchdog,
@@ -401,6 +401,7 @@ async def test_on_session_end_cancels_watchdog_and_keeps_recording_finalize_flow
     _idle_room_watchdogs[room.name] = watchdog
     _recording_sessions[room.name] = RecordingSessionState(
         config=RecordingConfig(s3_bucket="bucket"),
+        session_id=None,
         egress_id="egress-1",
         room_name=room.name,
         audio_url="https://example.com/audio.mp3",

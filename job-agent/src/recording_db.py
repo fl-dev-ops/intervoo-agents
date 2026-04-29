@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS agent_sessions (
     audio_s3_key    TEXT,
     transcript_url  TEXT,
     transcript_s3_key TEXT,
+    metrics_url     TEXT,
+    metrics_s3_key  TEXT,
 
     metadata        JSONB DEFAULT '{}'::jsonb,
 
@@ -59,6 +61,14 @@ async def init_pool(database_url: str) -> asyncpg.Pool:
     _pool = await asyncpg.create_pool(database_url, min_size=1, max_size=3)
     async with _pool.acquire() as conn:
         await conn.execute(CREATE_TABLE_SQL)
+        await conn.execute(
+            """
+            ALTER TABLE agent_sessions
+            ADD COLUMN IF NOT EXISTS metrics_url TEXT;
+            ALTER TABLE agent_sessions
+            ADD COLUMN IF NOT EXISTS metrics_s3_key TEXT;
+            """
+        )
     logger.info("Recording DB pool initialized and schema bootstrapped")
     return _pool
 
@@ -144,6 +154,8 @@ async def update_session_completed(
     duration_ms: int | None = None,
     transcript_url: str | None = None,
     transcript_s3_key: str | None = None,
+    metrics_url: str | None = None,
+    metrics_s3_key: str | None = None,
     egress_status: str | None = None,
     egress_error: str | None = None,
     status: str = "COMPLETED",
@@ -161,11 +173,13 @@ async def update_session_completed(
             duration_ms = COALESCE($3, duration_ms),
             transcript_url = COALESCE($4, transcript_url),
             transcript_s3_key = COALESCE($5, transcript_s3_key),
-            egress_status = COALESCE($6, egress_status),
-            egress_error = COALESCE($7, egress_error),
-            status = $8,
-            metadata = CASE WHEN $9::jsonb IS NOT NULL
-                THEN metadata || $9::jsonb ELSE metadata END,
+            metrics_url = COALESCE($6, metrics_url),
+            metrics_s3_key = COALESCE($7, metrics_s3_key),
+            egress_status = COALESCE($8, egress_status),
+            egress_error = COALESCE($9, egress_error),
+            status = $10,
+            metadata = CASE WHEN $11::jsonb IS NOT NULL
+                THEN metadata || $11::jsonb ELSE metadata END,
             updated_at = now()
         WHERE id = $1
         """,
@@ -174,6 +188,8 @@ async def update_session_completed(
         duration_ms,
         transcript_url,
         transcript_s3_key,
+        metrics_url,
+        metrics_s3_key,
         egress_status,
         egress_error,
         status,
