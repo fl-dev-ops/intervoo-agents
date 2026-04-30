@@ -110,7 +110,7 @@ def test_load_prompt_reads_prompt_file() -> None:
     prompt = load_prompt()
 
     assert prompt == PROMPT_PATH.read_text(encoding="utf-8").strip()
-    assert "ai voice agent for intervoo" in prompt.lower()
+    assert "diagnostic interview agent prompt" in prompt.lower()
 
 
 def test_build_runtime_config_uses_defaults() -> None:
@@ -193,6 +193,7 @@ def test_build_prompt_context_merges_prompt_context_values() -> None:
     assert context == {
         "agentName": "Maya",
         "additionalContext": '{"jobRole": "Backend Developer", "nativeLanguage": "Tamil"}',
+        "questions": "",
         "userName": "Asha",
         "jobRole": "Backend Developer",
         "nativeLanguage": "Tamil",
@@ -225,15 +226,29 @@ def test_render_prompt_injects_context_and_blanks_missing_values() -> None:
 
 
 def test_build_agent_session_uses_manual_turn_detection_in_ptt() -> None:
-    session = build_agent_session(build_runtime_config({}), InteractionMode.PTT)
+    with (
+        patch("agent.sarvam.STT") as stt_mock,
+        patch("agent.sarvam.TTS") as tts_mock,
+        patch("agent.openai.LLM.with_openrouter") as llm_mock,
+    ):
+        stt_mock.return_value = MagicMock()
+        tts_mock.return_value = MagicMock()
+        llm_mock.return_value = MagicMock()
+        session = build_agent_session(build_runtime_config({}), InteractionMode.PTT)
 
     assert session.turn_detection == "manual"
 
 
 def test_build_agent_session_uses_tts_overrides_from_session_config() -> None:
-    with patch("agent.sarvam.TTS") as tts_mock:
+    with (
+        patch("agent.sarvam.STT") as stt_mock,
+        patch("agent.sarvam.TTS") as tts_mock,
+        patch("agent.openai.LLM.with_openrouter") as llm_mock,
+    ):
+        stt_mock.return_value = MagicMock()
         tts_instance = MagicMock()
         tts_mock.return_value = tts_instance
+        llm_mock.return_value = MagicMock()
 
         build_agent_session(
             build_runtime_config({}),
@@ -411,11 +426,16 @@ async def test_on_session_end_cancels_watchdog_and_keeps_recording_finalize_flow
         phone_number="+911234567890",
     )
 
-    with patch("agent.finalize_recording", new_callable=AsyncMock) as finalize_mock:
+    with (
+        patch("agent.finalize_recording", new_callable=AsyncMock) as finalize_mock,
+        patch("agent.flush_langfuse") as flush_mock,
+    ):
         await on_session_end(ctx)
     await asyncio.sleep(0)
 
     finalize_mock.assert_awaited_once()
+    assert finalize_mock.await_args.kwargs["agent_type"] == REGISTERED_AGENT_NAME
+    flush_mock.assert_called_once()
     assert room.name not in _idle_room_watchdogs
     assert watchdog.cancelled()
 

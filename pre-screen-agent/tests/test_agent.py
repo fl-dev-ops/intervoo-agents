@@ -543,6 +543,7 @@ async def test_on_session_end_cancels_watchdog_and_keeps_recording_finalize_flow
     await asyncio.sleep(0)
 
     finalize_mock.assert_awaited_once()
+    assert finalize_mock.await_args.kwargs["agent_type"] == REGISTERED_AGENT_NAME
     flush_mock.assert_called_once()
     assert room.name not in _idle_room_watchdogs
     assert watchdog.cancelled()

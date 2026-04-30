@@ -21,6 +21,12 @@ def setup_langfuse(
     secret_key: str | None = None,
     strict: bool = False,
 ) -> TracerProvider | None:
+    """Initialize Langfuse tracing once per process, attach per-session metadata.
+
+    Returns None (and logs a warning) when env vars are missing, unless strict=True.
+    Subsequent calls reuse the existing provider and just update the metadata
+    attached to new spans for this session.
+    """
     global _provider
 
     public_key = public_key or os.getenv("LANGFUSE_PUBLIC_KEY")

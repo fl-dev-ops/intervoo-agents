@@ -14,7 +14,6 @@ from livekit.agents import (
     AgentServer,
     AgentSession,
     MetricsCollectedEvent,
-    RoomIO,
     metrics,
     room_io,
 )
@@ -61,22 +60,23 @@ __all__ = [
     "DEFAULT_SARVAM_TTS_MODEL",
     "DEFAULT_SARVAM_TTS_SPEAKER",
     "PROMPT_PATH",
+    "InteractionMode",
     "InterviewCoachingAgent",
     "RuntimeConfig",
     "SessionConfig",
-    "SessionMode",
     "build_agent_session",
     "build_runtime_config",
     "extract_session_config",
     "load_prompt",
     "parse_room_metadata",
+    "resolve_interaction_mode",
     "resolve_session_mode",
 ]
 
 
-class SessionMode(str, Enum):
-    PRACTICE = "practice"
-    DIAGNOSTICS = "diagnostics"
+class InteractionMode(str, Enum):
+    AUTO = "auto"
+    PTT = "ptt"
 
 
 @dataclass(frozen=True)
@@ -96,6 +96,8 @@ class RecordingSessionState:
     session_id: str | None
     egress_id: str | None
     room_name: str
+    audio_url: str
+    audio_s3_key: str
     resolved_user_id: str | None
     participant_identity: str | None
     phone_number: str | None
@@ -144,15 +146,16 @@ def parse_room_metadata(metadata: str | None) -> dict[str, object]:
     return {}
 
 
-def extract_session_config(metadata: Mapping[str, object]) -> SessionConfig:
-    raw_config = metadata.get("session_config") or metadata.get("sessionConfig")
+def extract_session_config(metadata: Mapping[str, object] | None) -> SessionConfig:
+    if not metadata:
+        return SessionConfig()
+
+    raw_config = metadata.get("config")
     if not isinstance(raw_config, Mapping):
         return SessionConfig()
 
     voice = raw_config.get("voice")
-    speaking_speed = raw_config.get("speaking_speed") or raw_config.get(
-        "speakingSpeed"
-    )
+    speaking_speed = raw_config.get("speakingSpeed")
 
     resolved_speed: float | None = None
     if isinstance(speaking_speed, int | float):
@@ -169,32 +172,33 @@ def extract_session_config(metadata: Mapping[str, object]) -> SessionConfig:
     )
 
 
-def resolve_session_mode(metadata: Mapping[str, object] | None) -> SessionMode:
+def resolve_interaction_mode(metadata: Mapping[str, object] | None) -> InteractionMode:
     if not metadata:
-        return SessionMode.PRACTICE
+        return InteractionMode.AUTO
 
-    candidates = (
-        metadata.get("session_mode"),
-        metadata.get("sessionMode"),
-        metadata.get("mode"),
+    interaction_mode = metadata.get("interaction_mode") or metadata.get(
+        "interactionMode"
     )
-    for candidate in candidates:
-        if isinstance(candidate, str):
-            normalized = candidate.strip().lower()
-            if normalized == SessionMode.DIAGNOSTICS.value:
-                return SessionMode.DIAGNOSTICS
-            if normalized == SessionMode.PRACTICE.value:
-                return SessionMode.PRACTICE
+    if isinstance(interaction_mode, str):
+        normalized_interaction_mode = interaction_mode.strip().lower()
+        if normalized_interaction_mode == "ptt":
+            return InteractionMode.PTT
+        if normalized_interaction_mode == "auto":
+            return InteractionMode.AUTO
 
-    return SessionMode.PRACTICE
+    return InteractionMode.AUTO
+
+
+def resolve_session_mode(metadata: Mapping[str, object] | None) -> InteractionMode:
+    return resolve_interaction_mode(metadata)
 
 
 def build_recording_metadata(
     room_metadata: Mapping[str, object] | None,
-    mode: SessionMode,
+    mode: InteractionMode,
 ) -> dict[str, object]:
     metadata = dict(room_metadata) if room_metadata else {}
-    metadata["session_mode"] = mode.value
+    metadata["interaction_mode"] = mode.value
     return metadata
 
 
@@ -205,7 +209,7 @@ class InterviewCoachingAgent(Agent):
 
 def build_agent_session(
     config: RuntimeConfig,
-    mode: SessionMode = SessionMode.PRACTICE,
+    mode: InteractionMode = InteractionMode.AUTO,
     session_config: SessionConfig | None = None,
     language_info: Mapping[str, str] | None = None,
 ) -> AgentSession:
@@ -240,13 +244,13 @@ def build_agent_session(
         "min_consecutive_speech_delay": 0.2,
     }
 
-    if mode is SessionMode.DIAGNOSTICS:
+    if mode is InteractionMode.PTT:
         return AgentSession(
             **common_kwargs,
             turn_detection="manual",
             resume_false_interruption=True,
             use_tts_aligned_transcript=True,
-            preemptive_generation=True,
+            preemptive_generation=False,
         )
 
     return AgentSession(
@@ -281,16 +285,13 @@ def _build_room_options() -> room_io.RoomOptions:
 def _register_push_to_talk_rpcs(
     ctx: agents.JobContext,
     session: AgentSession,
-    diagnostic_room_io: RoomIO | None = None,
 ) -> None:
     @ctx.room.local_participant.register_rpc_method("start_turn")
     async def start_turn(data: rtc.RpcInvocationData) -> str:
         logger.info(f"start_turn RPC called by {data.caller_identity}")
         session.interrupt()
         session.clear_user_turn()
-        if diagnostic_room_io is not None:
-            diagnostic_room_io.set_participant(data.caller_identity)
-        elif getattr(session, "room_io", None) is not None:
+        if getattr(session, "room_io", None) is not None:
             session.room_io.set_participant(data.caller_identity)
         session.input.set_audio_enabled(True)
         return "ok"
@@ -319,8 +320,14 @@ def _register_push_to_talk_rpcs(
         session.input.set_audio_enabled(False)
         return "ok"
 
+    @ctx.room.local_participant.register_rpc_method("resume_session")
+    async def resume_session(data: rtc.RpcInvocationData) -> str:
+        logger.info(f"resume_session RPC called by {data.caller_identity}")
+        session.input.set_audio_enabled(True)
+        return "ok"
 
-async def _start_practice_session(
+
+async def _start_auto_session(
     ctx: agents.JobContext,
     session: AgentSession,
     config: RuntimeConfig,
@@ -331,29 +338,25 @@ async def _start_practice_session(
         agent=agent,
         room_options=_build_room_options(),
     )
-    logger.info("Interview coaching practice session started")
+    logger.info("Interview coaching auto session started")
     await session.generate_reply(instructions=config.initial_reply)
 
 
-async def _start_diagnostics_session(
+async def _start_ptt_session(
     ctx: agents.JobContext,
     session: AgentSession,
     config: RuntimeConfig,
     agent: InterviewCoachingAgent,
 ) -> None:
-    diagnostic_room_io = RoomIO(
-        session,
+    await session.start(
         room=ctx.room,
-        options=_build_room_options(),
+        agent=agent,
+        room_options=_build_room_options(),
     )
-    await diagnostic_room_io.start()
-    logger.info("Interview coaching diagnostics RoomIO started")
-
-    await session.start(agent=agent)
 
     session.input.set_audio_enabled(False)
-    _register_push_to_talk_rpcs(ctx, session, diagnostic_room_io)
-    logger.info("Interview coaching diagnostics session started")
+    _register_push_to_talk_rpcs(ctx, session)
+    logger.info("Interview coaching PTT session started")
     await session.generate_reply(instructions=config.initial_reply)
 
 
@@ -433,9 +436,11 @@ async def on_session_end(ctx: agents.JobContext) -> None:
             lk_api=ctx.api,
             session_id=state.session_id,
             egress_id=state.egress_id,
-            agent_type="interview-agent",
+            agent_type=REGISTERED_AGENT_NAME,
             agent_name=REGISTERED_AGENT_NAME,
             room_name=state.room_name,
+            audio_url=state.audio_url,
+            audio_s3_key=state.audio_s3_key,
             report_dict=report_dict,
             resolved_user_id=state.resolved_user_id,
             participant_identity=state.participant_identity,
@@ -452,7 +457,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     config = build_runtime_config()
     room_metadata = ctx.job.room.metadata or ctx.room.metadata
     metadata = parse_room_metadata(room_metadata)
-    mode = resolve_session_mode(metadata)
+    mode = resolve_interaction_mode(metadata)
     session_config = extract_session_config(metadata)
     recording_metadata = build_recording_metadata(metadata, mode)
     await ctx.connect()
@@ -508,10 +513,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 except Exception as e:
                     logger.error(f"Failed to initialize recording DB: {e}")
             room_sid = await ctx.room.sid
-            session_id, egress_id = await start_recording(
+            session_id, audio_url, audio_s3_key, egress_id = await start_recording(
                 config=rec_cfg,
                 lk_api=ctx.api,
-                agent_type="interview-agent",
+                agent_type=REGISTERED_AGENT_NAME,
                 agent_name=config.agent_name,
                 room_name=ctx.room.name,
                 room_sid=room_sid,
@@ -525,6 +530,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 session_id=session_id,
                 egress_id=egress_id,
                 room_name=ctx.room.name,
+                audio_url=audio_url,
+                audio_s3_key=audio_s3_key,
                 resolved_user_id=resolved_user_id,
                 participant_identity=participant_identity,
                 phone_number=phone_number,
@@ -532,10 +539,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         except Exception as e:
             logger.error(f"Failed to initialize recording: {e}")
 
-    if mode is SessionMode.DIAGNOSTICS:
-        await _start_diagnostics_session(ctx, session, config, agent)
+    if mode is InteractionMode.PTT:
+        await _start_ptt_session(ctx, session, config, agent)
     else:
-        await _start_practice_session(ctx, session, config, agent)
+        await _start_auto_session(ctx, session, config, agent)
 
 
 if __name__ == "__main__":

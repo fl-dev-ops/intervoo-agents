@@ -53,6 +53,7 @@ def sync_idle_room_watchdog(
             await asyncio.sleep(timeout_seconds)
             if room_has_user_participants(ctx.room):
                 return
+
             logger.info(
                 "Ending room after idle timeout with no STANDARD or SIP participants",
                 extra={"room_name": room_name, "timeout_seconds": timeout_seconds},

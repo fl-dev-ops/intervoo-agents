@@ -442,18 +442,22 @@ async def test_start_recording_inserts_row_even_on_egress_failure() -> None:
     )
 
     try:
-        session_id, egress_id = await recording_runtime.start_recording(
+        session_id, audio_url, audio_s3_key, egress_id = await recording_runtime.start_recording(
             config=config,
             lk_api=mock_lk_api,
             agent_type="job-agent",
             agent_name="job-finder-agent",
             room_name="test-room",
-            metadata={"session_mode": "diagnostics", "source": "web_session"},
+            metadata={"interaction_mode": "ptt", "source": "web_session"},
         )
         assert session_id == "sess-002"
+        assert "/agents/job-agent/sessions/" in audio_url
+        assert audio_url.endswith("/audio.mp3")
+        assert "/job-agent/sessions/" in audio_s3_key
+        assert audio_s3_key.endswith("/audio.mp3")
         assert egress_id is None
         inserted_metadata = json.loads(mock_pool.fetchrow.await_args.args[-1])
-        assert inserted_metadata["session_mode"] == "diagnostics"
+        assert inserted_metadata["interaction_mode"] == "ptt"
         assert inserted_metadata["source"] == "web_session"
     finally:
         recording_db._pool = None
@@ -463,7 +467,6 @@ async def test_start_recording_inserts_row_even_on_egress_failure() -> None:
 async def test_finalize_recording_uploads_transcript_and_stops_egress() -> None:
     import recording_db
     import recording_runtime
-    import recording_store
 
     mock_pool = AsyncMock()
     mock_pool.execute = AsyncMock()
@@ -490,7 +493,11 @@ async def test_finalize_recording_uploads_transcript_and_stops_egress() -> None:
 
     report = _sample_report_dict()
 
-    with patch.object(recording_store, "upload_transcript_json", return_value="https://test-bucket.s3.us-east-1.amazonaws.com/transcript.json"):
+    with (
+        patch("recording_runtime.upload_transcript_json", return_value="https://test-bucket.s3.us-east-1.amazonaws.com/transcript.json"),
+        patch("recording_runtime.upload_metrics_json", return_value="https://metrics"),
+        patch("recording_runtime._post_completion_webhook", new_callable=AsyncMock) as webhook_mock,
+    ):
         try:
             await recording_runtime.finalize_recording(
                 config=config,
@@ -500,6 +507,8 @@ async def test_finalize_recording_uploads_transcript_and_stops_egress() -> None:
                 agent_type="job-agent",
                 agent_name="job-finder-agent",
                 room_name="test-room",
+                audio_url="https://audio",
+                audio_s3_key="agents/job-agent/test-room/audio.mp3",
                 report_dict=report,
                 resolved_user_id="user_+919999999999",
             )
@@ -509,6 +518,7 @@ async def test_finalize_recording_uploads_transcript_and_stops_egress() -> None:
 
             # Should have called execute twice: finalizing + completed
             assert mock_pool.execute.call_count == 2
+            webhook_mock.assert_awaited_once()
         finally:
             recording_db._pool = None
 
@@ -517,7 +527,6 @@ async def test_finalize_recording_uploads_transcript_and_stops_egress() -> None:
 async def test_finalize_recording_handles_egress_failure() -> None:
     import recording_db
     import recording_runtime
-    import recording_store
 
     mock_pool = AsyncMock()
     mock_pool.execute = AsyncMock()
@@ -543,7 +552,11 @@ async def test_finalize_recording_handles_egress_failure() -> None:
         egress_poll_timeout_seconds=2,
     )
 
-    with patch.object(recording_store, "upload_transcript_json", return_value="https://url"):
+    with (
+        patch("recording_runtime.upload_transcript_json", return_value="https://url"),
+        patch("recording_runtime.upload_metrics_json", return_value="https://metrics"),
+        patch("recording_runtime._post_completion_webhook", new_callable=AsyncMock) as webhook_mock,
+    ):
         try:
             await recording_runtime.finalize_recording(
                 config=config_short,
@@ -553,6 +566,8 @@ async def test_finalize_recording_handles_egress_failure() -> None:
                 agent_type="job-agent",
                 agent_name="job-finder-agent",
                 room_name="test-room",
+                audio_url="https://audio",
+                audio_s3_key="agents/job-agent/test-room/audio.mp3",
                 report_dict=_sample_report_dict(),
             )
 
@@ -563,5 +578,6 @@ async def test_finalize_recording_handles_egress_failure() -> None:
             assert any(
                 arg == "EGRESS_FAILED" for arg in all_args if isinstance(arg, str)
             )
+            webhook_mock.assert_not_awaited()
         finally:
             recording_db._pool = None

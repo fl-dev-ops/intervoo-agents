@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any
+from urllib import error, request
 
 from livekit import api
 from livekit.protocol.egress import (
@@ -68,33 +70,28 @@ async def start_recording(
     participant_identity: str | None = None,
     phone_number: str | None = None,
     metadata: dict[str, Any] | None = None,
-) -> tuple[str | None, str | None]:
-    """Start egress recording and insert a placeholder DB row.
-
-    Returns (session_id, egress_id).
-    """
+) -> tuple[str | None, str, str, str | None]:
+    """Start egress recording and optionally insert a DB session row."""
     now = datetime.now(timezone.utc)
-    audio_s3_key = build_audio_s3_key(
-        agent_type, room_name, config.s3_base_prefix, now
-    )
+    audio_s3_key = build_audio_s3_key(agent_type, room_name, config.s3_base_prefix, now)
     audio_url = build_s3_url(
         config.s3_bucket, audio_s3_key, config.s3_region, config.s3_endpoint
     )
 
     egress_id: str | None = None
     try:
-        s3_upload = _build_s3_upload(config)
         file_output = EncodedFileOutput(
             file_type=EncodedFileType.MP3,
             filepath=audio_s3_key,
-            s3=s3_upload,
+            s3=_build_s3_upload(config),
         )
-        request = RoomCompositeEgressRequest(
-            room_name=room_name,
-            audio_only=True,
-            file=file_output,
+        egress_info = await lk_api.egress.start_room_composite_egress(
+            RoomCompositeEgressRequest(
+                room_name=room_name,
+                audio_only=True,
+                file=file_output,
+            )
         )
-        egress_info = await lk_api.egress.start_room_composite_egress(request)
         egress_id = egress_info.egress_id
         logger.info(f"Started egress {egress_id} for room {room_name}")
     except Exception as e:
@@ -120,18 +117,98 @@ async def start_recording(
         except Exception as e:
             logger.error(f"Failed to insert session row: {e}")
 
-    return session_id, egress_id
+    return session_id, audio_url, audio_s3_key, egress_id
+
+
+def _build_webhook_payload(
+    *,
+    agent_type: str,
+    agent_name: str,
+    room_name: str,
+    egress_id: str | None,
+    egress_status: str | None,
+    final_status: str,
+    audio_url: str,
+    audio_s3_key: str,
+    transcript_url: str | None,
+    transcript_s3_key: str | None,
+    metrics_url: str | None,
+    metrics_s3_key: str | None,
+    duration_ms: int | None,
+    report_dict: dict[str, Any],
+    transcript_data: dict[str, Any] | None,
+    resolved_user_id: str | None,
+    participant_identity: str | None,
+    phone_number: str | None,
+) -> dict[str, Any]:
+    return {
+        "agent_type": agent_type,
+        "agent_name": agent_name,
+        "room_name": room_name,
+        "room_id": report_dict.get("room_id"),
+        "job_id": report_dict.get("job_id"),
+        "status": final_status,
+        "egress_id": egress_id,
+        "egress_status": egress_status,
+        "audio_url": audio_url,
+        "audio_s3_key": audio_s3_key,
+        "transcript_url": transcript_url,
+        "transcript_s3_key": transcript_s3_key,
+        "metrics_url": metrics_url,
+        "metrics_s3_key": metrics_s3_key,
+        "duration_ms": duration_ms,
+        "started_at": transcript_data.get("session", {}).get("started_at")
+        if transcript_data
+        else None,
+        "ended_at": transcript_data.get("session", {}).get("ended_at")
+        if transcript_data
+        else None,
+        "resolved_user_id": resolved_user_id,
+        "participant_identity": participant_identity,
+        "phone_number": phone_number,
+        "transcript": transcript_data,
+    }
+
+
+async def _post_completion_webhook(
+    config: RecordingConfig, payload: dict[str, Any]
+) -> None:
+    if not config.webhook_url:
+        return
+
+    def _send() -> None:
+        body = json.dumps(payload, default=str).encode("utf-8")
+        webhook_request = request.Request(
+            config.webhook_url,
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with request.urlopen(webhook_request, timeout=10) as response:
+            status_code = getattr(response, "status", response.getcode())
+            if status_code >= 400:
+                raise RuntimeError(f"Webhook returned status {status_code}")
+
+    try:
+        await asyncio.to_thread(_send)
+        logger.info("Recording webhook delivered to %s", config.webhook_url)
+    except error.HTTPError as e:
+        logger.error("Recording webhook failed with HTTP %s: %s", e.code, e.reason)
+    except Exception as e:
+        logger.error(f"Recording webhook delivery failed: {e}")
 
 
 async def finalize_recording(
     *,
     config: RecordingConfig,
     lk_api: api.LiveKitAPI,
-    session_id: str | None,
+    session_id: str | None = None,
     egress_id: str | None,
     agent_type: str,
     agent_name: str,
     room_name: str,
+    audio_url: str,
+    audio_s3_key: str,
     report_dict: dict[str, Any],
     resolved_user_id: str | None = None,
     participant_identity: str | None = None,
@@ -139,17 +216,60 @@ async def finalize_recording(
     metrics_events: list[dict[str, Any]] | None = None,
     usage_summary: dict[str, Any] | None = None,
 ) -> None:
-    """Finalize recording: upload transcript, stop egress, update DB."""
+    """Finalize recording: stop egress, upload transcript + metrics, update DB, send webhook."""
     now = datetime.now(timezone.utc)
 
-    # 1. Mark finalizing
     if session_id:
         try:
             await update_session_finalizing(session_id)
         except Exception as e:
             logger.warning(f"Failed to mark session finalizing: {e}")
 
-    # 2. Normalize and upload transcript
+    egress_status_str: str | None = None
+    final_status = "COMPLETED"
+
+    if egress_id:
+        try:
+            await lk_api.egress.stop_egress(StopEgressRequest(egress_id=egress_id))
+            logger.info(f"Sent stop_egress for {egress_id}")
+        except Exception as e:
+            logger.warning(f"Failed to stop egress {egress_id}: {e}")
+
+        timeout = config.egress_poll_timeout_seconds
+        poll_interval = 2
+        elapsed = 0
+        while elapsed < timeout:
+            try:
+                resp = await lk_api.egress.list_egress(
+                    ListEgressRequest(egress_id=egress_id)
+                )
+                if resp.items:
+                    info = resp.items[0]
+                    egress_status_str = EgressStatus.Name(info.status)
+                    if info.status in TERMINAL_STATUSES:
+                        if info.status in (
+                            EgressStatus.EGRESS_FAILED,
+                            EgressStatus.EGRESS_ABORTED,
+                        ):
+                            final_status = "EGRESS_FAILED"
+                        break
+            except Exception as e:
+                logger.warning(f"Error polling egress {egress_id}: {e}")
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+        else:
+            final_status = "FINALIZE_TIMEOUT"
+            logger.warning(
+                f"Egress {egress_id} did not reach terminal state within {timeout}s"
+            )
+
+    duration_ms: int | None = None
+    started_at = report_dict.get("started_at")
+    if started_at:
+        duration = report_dict.get("duration")
+        duration_ms = int(duration * 1000) if duration else int((now.timestamp() - started_at) * 1000)
+
+    transcript_data: dict[str, Any] | None = None
     transcript_url: str | None = None
     transcript_s3_key: str | None = None
     try:
@@ -158,6 +278,7 @@ async def finalize_recording(
             agent_type=agent_type,
             agent_name=agent_name,
             egress_id=egress_id,
+            egress_status=egress_status_str,
             resolved_user_id=resolved_user_id,
             participant_identity=participant_identity,
             phone_number=phone_number,
@@ -171,52 +292,10 @@ async def finalize_recording(
     except Exception as e:
         logger.error(f"Failed to upload transcript: {e}")
 
-    # 3. Stop egress and poll for completion
-    egress_status_str: str | None = None
-    egress_error: str | None = None
-    final_status = "COMPLETED"
-
-    if egress_id:
-        try:
-            await lk_api.egress.stop_egress(StopEgressRequest(egress_id=egress_id))
-            logger.info(f"Sent stop_egress for {egress_id}")
-        except Exception as e:
-            logger.warning(f"Failed to stop egress {egress_id}: {e}")
-
-        # Poll for terminal status
-        timeout = config.egress_poll_timeout_seconds
-        poll_interval = 2
-        elapsed = 0
-        while elapsed < timeout:
-            try:
-                resp = await lk_api.egress.list_egress(
-                    ListEgressRequest(egress_id=egress_id)
-                )
-                if resp.items:
-                    info = resp.items[0]
-                    egress_status_str = EgressStatus.Name(info.status)
-                    if info.status in TERMINAL_STATUSES:
-                        if info.status == EgressStatus.EGRESS_FAILED:
-                            egress_error = info.error or "Unknown egress failure"
-                            final_status = "EGRESS_FAILED"
-                        elif info.status == EgressStatus.EGRESS_ABORTED:
-                            egress_error = "Egress aborted"
-                            final_status = "EGRESS_FAILED"
-                        break
-            except Exception as e:
-                logger.warning(f"Error polling egress {egress_id}: {e}")
-            await asyncio.sleep(poll_interval)
-            elapsed += poll_interval
-        else:
-            final_status = "FINALIZE_TIMEOUT"
-            logger.warning(
-                f"Egress {egress_id} did not reach terminal state within {timeout}s"
-            )
-
     metrics_url: str | None = None
     metrics_s3_key: str | None = None
     try:
-        metrics_data = normalize_metrics_payload(
+        metrics_payload = normalize_metrics_payload(
             report_dict,
             agent_type=agent_type,
             agent_name=agent_name,
@@ -231,21 +310,10 @@ async def finalize_recording(
         metrics_s3_key = build_metrics_s3_key(
             agent_type, room_name, config.s3_base_prefix, now
         )
-        metrics_url = upload_metrics_json(config, metrics_s3_key, metrics_data)
+        metrics_url = upload_metrics_json(config, metrics_s3_key, metrics_payload)
     except Exception as e:
         logger.error(f"Failed to upload metrics: {e}")
 
-    # 4. Compute duration
-    duration_ms: int | None = None
-    started_at = report_dict.get("started_at")
-    if started_at:
-        duration = report_dict.get("duration")
-        if duration:
-            duration_ms = int(duration * 1000)
-        else:
-            duration_ms = int((now.timestamp() - started_at) * 1000)
-
-    # 5. Final DB update
     if session_id:
         try:
             await update_session_completed(
@@ -257,11 +325,35 @@ async def finalize_recording(
                 metrics_url=metrics_url,
                 metrics_s3_key=metrics_s3_key,
                 egress_status=egress_status_str,
-                egress_error=egress_error,
                 status=final_status,
             )
         except Exception as e:
             logger.error(f"Failed to update session to {final_status}: {e}")
+
+    if final_status == "COMPLETED" and transcript_url:
+        await _post_completion_webhook(
+            config,
+            _build_webhook_payload(
+                agent_type=agent_type,
+                agent_name=agent_name,
+                room_name=room_name,
+                egress_id=egress_id,
+                egress_status=egress_status_str,
+                final_status=final_status,
+                audio_url=audio_url,
+                audio_s3_key=audio_s3_key,
+                transcript_url=transcript_url,
+                transcript_s3_key=transcript_s3_key,
+                metrics_url=metrics_url,
+                metrics_s3_key=metrics_s3_key,
+                duration_ms=duration_ms,
+                report_dict=report_dict,
+                transcript_data=transcript_data,
+                resolved_user_id=resolved_user_id,
+                participant_identity=participant_identity,
+                phone_number=phone_number,
+            ),
+        )
 
     logger.info(
         f"Recording finalized for room {room_name}: status={final_status}, "

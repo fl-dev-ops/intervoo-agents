@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -73,13 +74,6 @@ async def init_pool(database_url: str) -> asyncpg.Pool:
     return _pool
 
 
-async def close_pool() -> None:
-    global _pool
-    if _pool is not None:
-        await _pool.close()
-        _pool = None
-
-
 async def insert_session(
     *,
     agent_type: str,
@@ -97,8 +91,6 @@ async def insert_session(
 ) -> str:
     if _pool is None:
         raise RuntimeError("Recording DB pool not initialized")
-
-    import json
 
     row = await _pool.fetchrow(
         """
@@ -133,9 +125,7 @@ async def insert_session(
         audio_s3_key,
         json.dumps(metadata or {}),
     )
-    session_id = row["id"]
-    logger.info(f"Inserted session {session_id} for room {livekit_room_name}")
-    return session_id
+    return row["id"]
 
 
 async def update_session_finalizing(session_id: str) -> None:
@@ -163,8 +153,6 @@ async def update_session_completed(
 ) -> None:
     if _pool is None:
         return
-
-    import json
 
     await _pool.execute(
         """
@@ -195,4 +183,3 @@ async def update_session_completed(
         status,
         json.dumps(metadata) if metadata else None,
     )
-    logger.info(f"Updated session {session_id} to {status}")

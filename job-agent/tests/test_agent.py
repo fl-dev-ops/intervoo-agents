@@ -17,18 +17,19 @@ from agent import (
     DEFAULT_SARVAM_TTS_MODEL,
     DEFAULT_SARVAM_TTS_SPEAKER,
     PROMPT_PATH,
+    InteractionMode,
     JobFinderAgent,
     SessionConfig,
-    SessionMode,
     build_agent_session,
     build_runtime_config,
     extract_session_config,
     load_prompt,
     parse_room_metadata,
+    resolve_interaction_mode,
     resolve_session_mode,
 )
+from identity import resolve_user_id_from_room_metadata
 from language import resolve_language_config
-from memory import resolve_user_id_from_room_metadata
 
 
 def test_load_prompt_reads_prompt_file() -> None:
@@ -71,7 +72,7 @@ def test_build_runtime_config_honors_overrides() -> None:
 
 def test_extract_session_config_reads_voice_and_speed() -> None:
     config = extract_session_config(
-        {"sessionConfig": {"voice": "rahul", "speakingSpeed": "0.8"}}
+        {"config": {"voice": "rahul", "speakingSpeed": "0.8"}}
     )
 
     assert config.voice == "rahul"
@@ -88,17 +89,24 @@ def test_parse_room_metadata_returns_empty_dict_for_invalid_json() -> None:
     assert parse_room_metadata("not-json") == {}
 
 
-def test_resolve_session_mode_defaults_to_practice() -> None:
-    assert resolve_session_mode({}) is SessionMode.PRACTICE
+def test_resolve_interaction_mode_defaults_to_auto() -> None:
+    assert resolve_interaction_mode({}) is InteractionMode.AUTO
+    assert resolve_session_mode({}) is InteractionMode.AUTO
 
 
-def test_resolve_session_mode_reads_diagnostics_flag() -> None:
+def test_resolve_interaction_mode_reads_ptt_flag() -> None:
+    metadata = parse_room_metadata('{"interactionMode":"ptt"}')
+
+    assert resolve_interaction_mode(metadata) is InteractionMode.PTT
+
+
+def test_resolve_interaction_mode_ignores_legacy_session_mode() -> None:
     metadata = parse_room_metadata('{"sessionMode":"diagnostics"}')
 
-    assert resolve_session_mode(metadata) is SessionMode.DIAGNOSTICS
+    assert resolve_interaction_mode(metadata) is InteractionMode.AUTO
 
 
-def test_build_agent_session_uses_manual_turn_detection_in_diagnostics() -> None:
+def test_build_agent_session_uses_manual_turn_detection_in_ptt() -> None:
     with (
         patch("agent.sarvam.STT") as stt_mock,
         patch("agent.sarvam.TTS") as tts_mock,
@@ -107,7 +115,7 @@ def test_build_agent_session_uses_manual_turn_detection_in_diagnostics() -> None
         stt_mock.return_value = MagicMock()
         tts_mock.return_value = MagicMock()
         llm_mock.return_value = MagicMock()
-        session = build_agent_session(build_runtime_config({}), SessionMode.DIAGNOSTICS)
+        session = build_agent_session(build_runtime_config({}), InteractionMode.PTT)
 
     assert session.turn_detection == "manual"
 
@@ -124,7 +132,7 @@ def test_build_agent_session_uses_sarvam_language_and_tts_options() -> None:
 
         build_agent_session(
             build_runtime_config({}),
-            SessionMode.DIAGNOSTICS,
+            InteractionMode.PTT,
             SessionConfig(voice="rahul", speaking_speed=0.7),
             resolve_language_config("hindi"),
         )

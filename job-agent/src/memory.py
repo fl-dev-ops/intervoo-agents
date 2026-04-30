@@ -331,8 +331,8 @@ __all__ = [
     "MemoryCategory",
     "ensure_user_entity",
     "extract_and_store_memory",
-    "resolve_user_id_from_call_context",
     "resolve_phone_number_from_call_context",
+    "resolve_user_id_from_call_context",
     "resolve_user_id_from_room_metadata",
     "search_memories",
 ]

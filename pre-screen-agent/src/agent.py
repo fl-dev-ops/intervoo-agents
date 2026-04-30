@@ -332,6 +332,12 @@ def _register_push_to_talk_rpcs(
         session.input.set_audio_enabled(False)
         return "ok"
 
+    @ctx.room.local_participant.register_rpc_method("resume_session")
+    async def resume_session(data: rtc.RpcInvocationData) -> str:
+        logger.info(f"resume_session RPC called by {data.caller_identity}")
+        session.input.set_audio_enabled(True)
+        return "ok"
+
 
 async def _start_auto_session(
     ctx: agents.JobContext,
@@ -441,7 +447,7 @@ async def on_session_end(ctx: agents.JobContext) -> None:
             lk_api=ctx.api,
             egress_id=state.egress_id,
             session_id=state.session_id,
-            agent_type="interview-agent",
+            agent_type=REGISTERED_AGENT_NAME,
             agent_name=REGISTERED_AGENT_NAME,
             room_name=state.room_name,
             audio_url=state.audio_url,
@@ -517,7 +523,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             session_id, audio_url, audio_s3_key, egress_id = await start_recording(
                 config=rec_cfg,
                 lk_api=ctx.api,
-                agent_type="interview-agent",
+                agent_type=REGISTERED_AGENT_NAME,
                 agent_name=config.agent_name,
                 room_name=ctx.room.name,
                 resolved_user_id=resolved_user_id,

@@ -44,10 +44,12 @@ from identity import (
     resolve_user_id_from_call_context,
     resolve_user_id_from_room_metadata,
 )
+from language import resolve_language_config, resolve_stt_mode
 from prompt import build_prompt_context, render_prompt
 from recording_config import RecordingConfig, build_recording_config
 from recording_db import init_pool
 from recording_runtime import finalize_recording, start_recording
+from tracing import flush_langfuse, setup_langfuse
 from watchdog import cancel_idle_room_watchdog, register_idle_room_watchdog
 
 logger = logging.getLogger("interview_coaching_agent")
@@ -235,6 +237,7 @@ class RuntimeConfig:
     sarvam_tts_language: str = DEFAULT_SARVAM_TTS_LANGUAGE
     sarvam_tts_model: str = DEFAULT_SARVAM_TTS_MODEL
     sarvam_tts_speaker: str = DEFAULT_SARVAM_TTS_SPEAKER
+    sarvam_tts_dict_id: str | None = DEFAULT_SARVAM_TTS_DICT_ID
     initial_reply: str = INITIAL_REPLY
 
 
@@ -257,7 +260,7 @@ _recording_sessions: dict[str, RecordingSessionState] = {}
 @dataclass(frozen=True)
 class SessionConfig:
     voice: str | None = None
-    speaking_speed: float | None = 0.8
+    speaking_speed: float | None = None
 
 
 def build_runtime_config(env: Mapping[str, str] | None = None) -> RuntimeConfig:
@@ -274,6 +277,9 @@ def build_runtime_config(env: Mapping[str, str] | None = None) -> RuntimeConfig:
         ),
         sarvam_tts_model=values.get("SARVAM_TTS_MODEL", DEFAULT_SARVAM_TTS_MODEL),
         sarvam_tts_speaker=values.get("SARVAM_TTS_SPEAKER", DEFAULT_SARVAM_TTS_SPEAKER),
+        sarvam_tts_dict_id=(
+            values.get("SARVAM_TTS_DICT_ID", DEFAULT_SARVAM_TTS_DICT_ID).strip() or None
+        ),
         initial_reply=INITIAL_REPLY,
     )
 
@@ -376,18 +382,22 @@ def build_agent_session(
     config: RuntimeConfig,
     mode: InteractionMode = InteractionMode.AUTO,
     session_config: SessionConfig | None = None,
+    language_info: Mapping[str, str] | None = None,
 ) -> AgentSession:
     effective_session_config = session_config or SessionConfig()
+    effective_language = language_info or resolve_language_config(None)
+    stt_language = effective_language.get("stt_language", "en-IN")
+    tts_language = effective_language.get("tts_language", config.sarvam_tts_language)
     stt = sarvam.STT(
-        language="en-IN",
+        language=stt_language,
         model="saaras:v3",
-        mode="transcribe",
+        mode=resolve_stt_mode(stt_language),
     )
 
     llm = openai.LLM.with_openrouter(model=config.openrouter_model)
 
     tts = sarvam.TTS(
-        target_language_code=config.sarvam_tts_language,
+        target_language_code=tts_language,
         model=config.sarvam_tts_model,
         speaker=effective_session_config.voice or config.sarvam_tts_speaker,
         pace=effective_session_config.speaking_speed or 1.0,
@@ -395,7 +405,7 @@ def build_agent_session(
         output_audio_bitrate="128k",
         min_buffer_size=50,
         max_chunk_length=150,
-        dict_id=DEFAULT_SARVAM_TTS_DICT_ID,
+        dict_id=config.sarvam_tts_dict_id,
     )
 
     if hasattr(tts, "prewarm"):
@@ -590,6 +600,7 @@ async def on_session_end(ctx: agents.JobContext) -> None:
 
     state = _recording_sessions.pop(ctx.room.name, None)
     if state is None or not state.config.enabled:
+        flush_langfuse()
         return
 
     report_dict: dict = {}
@@ -607,7 +618,7 @@ async def on_session_end(ctx: agents.JobContext) -> None:
             lk_api=ctx.api,
             egress_id=state.egress_id,
             session_id=state.session_id,
-            agent_type="interview-agent",
+            agent_type=REGISTERED_AGENT_NAME,
             agent_name=REGISTERED_AGENT_NAME,
             room_name=state.room_name,
             audio_url=state.audio_url,
@@ -619,6 +630,8 @@ async def on_session_end(ctx: agents.JobContext) -> None:
         )
     except Exception as e:
         logger.error(f"Recording finalization failed: {e}")
+
+    flush_langfuse()
 
 
 @server.rtc_session(agent_name=REGISTERED_AGENT_NAME, on_session_end=on_session_end)
@@ -637,11 +650,32 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         ctx, initial_user_id
     )
 
+    try:
+        setup_langfuse(
+            metadata={
+                "langfuse.session.id": ctx.room.name,
+                "langfuse.user.id": resolved_user_id or "anonymous",
+                "agent_name": REGISTERED_AGENT_NAME,
+                "job_id": ctx.job.id,
+                "mode": mode.value,
+            }
+        )
+    except Exception as e:
+        logger.warning(f"Langfuse setup failed: {e}")
+
     prompt_context = build_prompt_context(metadata)
     agent_instructions = render_prompt(context=prompt_context)
     agent = VoiceAssistantAgent(instructions=agent_instructions)
 
-    session = build_agent_session(config, mode, session_config)
+    comfortable_language: str | None = None
+    raw_prompt_context = metadata.get("prompt_context") or metadata.get("promptContext")
+    if isinstance(raw_prompt_context, Mapping):
+        candidate = raw_prompt_context.get("comfortableLanguage")
+        if isinstance(candidate, str) and candidate.strip():
+            comfortable_language = candidate.strip()
+    language_info = resolve_language_config(comfortable_language)
+
+    session = build_agent_session(config, mode, session_config, language_info)
     _attach_metrics_logging(session)
 
     rec_cfg = build_recording_config()
@@ -655,7 +689,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             session_id, audio_url, audio_s3_key, egress_id = await start_recording(
                 config=rec_cfg,
                 lk_api=ctx.api,
-                agent_type="interview-agent",
+                agent_type=REGISTERED_AGENT_NAME,
                 agent_name=config.agent_name,
                 room_name=ctx.room.name,
                 resolved_user_id=resolved_user_id,
