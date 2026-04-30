@@ -14,43 +14,46 @@ from constants import (
 
 logger = logging.getLogger("interview_coaching_agent")
 
+KNOWLEDGE_BASE_ENABLED_INSTRUCTIONS = """
+## 8B. KNOWLEDGE BASE QUESTION RETRIEVAL
 
-def _format_questions_for_prompt(questions: list[dict[str, object]]) -> str:
-    """Format questions from room metadata into a structured prompt section.
+The full question bank is not loaded into your context. Use retrieve_knowledge to retrieve assessment-question records when you have useful stage and conversation context.
 
-    Groups questions by category (opening, domain, behavioral, closing) so the
-    LLM can follow the assessment structure defined in PROMPT_DIAGNOSTIC.md.
-    """
-    if not questions:
-        return ""
+Retrieved records contain:
+  - id: unique record identifier; use this as question_id
+  - text: the question text to ask
+  - metadata: structured fields for routing and sequencing
 
-    grouped: dict[str, list[dict[str, object]]] = {}
-    for q in questions:
-        cat = str(q.get("category", "domain")).lower()
-        grouped.setdefault(cat, []).append(q)
+Expected metadata:
+  - category: one of "opening" | "domain" | "behavioral" | "closing"
+  - difficulty_level: one of "easy" | "medium" | "hard"
+  - topic: optional subject area
+  - band: assessment band
+  - question_type: optional list of dimensions such as "Thinking", "Language", "Confidence"
 
-    category_order = ["opening", "domain", "behavioral", "closing"]
-    lines: list[str] = ["## ASSESSMENT QUESTIONS", ""]
+Tool rules:
+  - Call retrieve_knowledge before asking questions from a new assessment state.
+  - Use a query that includes the current state and useful conversation context.
+  - Use filters for known hard constraints such as content_type, domain, category, difficulty_level, and band.
+  - Always include content_type = "diagnostic_question" and domain = "computer_science" in filters.
+  - Keep track of asked record ids and pass them as exclude_ids.
+  - If retrieve_knowledge returns status = "unavailable" or "empty", explain that the assessment cannot continue reliably right now and call end_call.
+  - Only ask questions returned by retrieve_knowledge. Do not generate or substitute questions from memory.
 
-    question_number = 1
-    for cat in category_order:
-        cat_questions = grouped.get(cat, [])
-        if not cat_questions:
-            continue
+Stage retrieval:
+  - Opening: retrieve category = "opening"; choose exactly 3 records: 1 easy, 1 medium, 1 hard; ask easy first and hard last.
+  - Domain: after project discovery, retrieve category = "domain" using the student's stated stack, project, and domain in the query. If answers are vague, use OOP Principles, Database and SQL, REST API Concepts, OS Fundamentals, and Data Structures as query context.
+  - Behavioral: retrieve category = "behavioral" and ask returned records in order.
+  - Closing: retrieve category = "closing" and ask returned records in order before the final fixed question.
+""".strip()
 
-        lines.append(f"### {cat.capitalize()} Questions")
-        for q in cat_questions:
-            text = q.get("text", "")
-            difficulty = q.get("difficulty_level", "")
-            q_id = q.get("id", "")
-            lines.append(
-                f"{question_number}. [{difficulty}] {text} (id: {q_id})"
-            )
-            question_number += 1
-        lines.append("")
+KNOWLEDGE_BASE_DISABLED_INSTRUCTIONS = """
+## 8B. KNOWLEDGE BASE DISABLED
 
-    lines.append(f"**Total questions: {question_number - 1}**")
-    return "\n".join(lines)
+Knowledge base retrieval is disabled for this runtime. You do not have access to external assessment-question records, and you must not call any retrieval tool.
+
+Do not invent assessment questions. If the assessment reaches a point where external question records are required, explain that the assessment cannot continue reliably right now and call end_call.
+""".strip()
 
 
 class _SafePromptContext(UserDict[str, object]):
@@ -82,21 +85,21 @@ def build_prompt_context(
     metadata: Mapping[str, object] | None,
     *,
     user_name: str | None = None,
+    knowledge_base_enabled: bool = True,
 ) -> dict[str, str]:
     prompt_context: dict[str, str] = {
         "agentName": DEFAULT_PROMPT_AGENT_NAME,
         "additionalContext": "",
+        "knowledgeBaseInstructions": (
+            KNOWLEDGE_BASE_ENABLED_INSTRUCTIONS
+            if knowledge_base_enabled
+            else KNOWLEDGE_BASE_DISABLED_INSTRUCTIONS
+        ),
         "userName": (user_name or "").strip() or DEFAULT_PROMPT_USER_NAME,
     }
 
     if not metadata:
         return prompt_context
-
-    raw_questions = metadata.get("questions") or []
-    if isinstance(raw_questions, list) and raw_questions:
-        prompt_context["questions"] = _format_questions_for_prompt(raw_questions)
-    else:
-        prompt_context["questions"] = ""
 
     metadata_user_name = metadata.get("userName") or metadata.get("user_name")
     if isinstance(metadata_user_name, str) and metadata_user_name.strip():

@@ -10,11 +10,13 @@ Standalone Python template for building a LiveKit voice agent with configurable 
 - LLM: OpenAI plugin with OpenRouter
 - TTS: Sarvam TTS
 - VAD: Silero
+- Knowledge base: Chroma Cloud
 
 ## Project Structure
 
 - `src/agent.py`: LiveKit worker entrypoint
 - `src/constants.py`: runtime defaults and environment-backed settings
+- `src/knowledge_base.py`: Chroma-backed knowledge-base retrieval
 - `src/prompt.py`: prompt loading and prompt-context rendering
 - `src/recording.py`: optional S3 recording, transcript upload, and webhook delivery
 - `PROMPT.md`: system prompt template loaded at runtime
@@ -86,6 +88,19 @@ Rules:
 - `config.voice` overrides the default TTS speaker for the session
 - `config.speakingSpeed` overrides the default TTS pace for the session
 
+## Knowledge Base Retrieval
+
+The diagnostic agent does not load the full question bank into prompt context. It uses the `retrieve_knowledge` tool to fetch relevant assessment-question records from Chroma Cloud during the conversation.
+
+Required Chroma environment variables:
+
+- `ENABLE_KNOWLEDGE_BASE`
+- `CHROMA_API_KEY`
+- `CHROMA_TENANT`
+- `CHROMA_DATABASE`
+- `CHROMA_COLLECTION`
+- `KNOWLEDGE_BASE_DEFAULT_LIMIT`
+
 ## Recording And Webhooks
 
 Recording is optional.
@@ -114,6 +129,7 @@ See `.env.example` for the full list. Common variables:
 - `OPENROUTER_API_KEY`
 - `OPENROUTER_MODEL`
 - `SARVAM_API_KEY`
+- `CHROMA_API_KEY`
 - `ENABLE_RECORDING`
 - `WEBHOOK_URL`
 

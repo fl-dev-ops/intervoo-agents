@@ -17,6 +17,7 @@ from livekit.agents import (
     AgentServer,
     AgentSession,
     MetricsCollectedEvent,
+    function_tool,
     metrics,
     room_io,
 )
@@ -44,6 +45,11 @@ from identity import (
     resolve_user_id_from_call_context,
     resolve_user_id_from_room_metadata,
 )
+from knowledge_base import (
+    ChromaKnowledgeBase,
+    build_knowledge_base_config,
+    retrieve_knowledge_from_base,
+)
 from language import resolve_language_config, resolve_stt_mode
 from prompt import build_prompt_context, render_prompt
 from recording_config import RecordingConfig, build_recording_config
@@ -54,6 +60,8 @@ from watchdog import cancel_idle_room_watchdog, register_idle_room_watchdog
 
 logger = logging.getLogger("interview_coaching_agent")
 MAX_CONCURRENT_SESSIONS = 10
+_knowledge_base_config = build_knowledge_base_config()
+_knowledge_base = ChromaKnowledgeBase(_knowledge_base_config)
 
 
 def _patch_sarvam_tts_compatibility() -> None:
@@ -370,11 +378,44 @@ def build_end_call_tool() -> EndCallTool:
     )
 
 
+@function_tool(
+    name="retrieve_knowledge",
+    description=(
+        "Retrieve relevant records from the configured knowledge base. For this "
+        "diagnostic agent, records are assessment questions. Use filters for "
+        "stage, domain, difficulty, band, and content_type when known. Only ask "
+        "questions returned by this tool."
+    ),
+)
+async def retrieve_knowledge(
+    query: str,
+    filters: dict[str, object] | None = None,
+    exclude_ids: list[str] | None = None,
+    limit: int | None = None,
+) -> dict[str, object]:
+    return await retrieve_knowledge_from_base(
+        _knowledge_base,
+        query=query,
+        filters=filters,
+        exclude_ids=exclude_ids,
+        limit=limit,
+    )
+
+
 class VoiceAssistantAgent(Agent):
-    def __init__(self, instructions: str | None = None) -> None:
+    def __init__(
+        self,
+        instructions: str | None = None,
+        *,
+        knowledge_base_enabled: bool = True,
+    ) -> None:
+        tools = [build_end_call_tool()]
+        if knowledge_base_enabled:
+            tools.insert(0, retrieve_knowledge)
+
         super().__init__(
             instructions=instructions or render_prompt(),
-            tools=[build_end_call_tool()],
+            tools=tools,
         )
 
 
@@ -663,9 +704,16 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     except Exception as e:
         logger.warning(f"Langfuse setup failed: {e}")
 
-    prompt_context = build_prompt_context(metadata)
+    kb_cfg = _knowledge_base_config
+    prompt_context = build_prompt_context(
+        metadata,
+        knowledge_base_enabled=kb_cfg.enabled,
+    )
     agent_instructions = render_prompt(context=prompt_context)
-    agent = VoiceAssistantAgent(instructions=agent_instructions)
+    agent = VoiceAssistantAgent(
+        instructions=agent_instructions,
+        knowledge_base_enabled=kb_cfg.enabled,
+    )
 
     comfortable_language: str | None = None
     raw_prompt_context = metadata.get("prompt_context") or metadata.get("promptContext")

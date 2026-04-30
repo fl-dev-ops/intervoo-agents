@@ -170,11 +170,10 @@ def test_resolve_interaction_mode_reads_auto_flag() -> None:
 def test_build_prompt_context_uses_defaults() -> None:
     context = build_prompt_context({})
 
-    assert context == {
-        "agentName": DEFAULT_PROMPT_AGENT_NAME,
-        "additionalContext": "",
-        "userName": DEFAULT_PROMPT_USER_NAME,
-    }
+    assert context["agentName"] == DEFAULT_PROMPT_AGENT_NAME
+    assert context["additionalContext"] == ""
+    assert context["userName"] == DEFAULT_PROMPT_USER_NAME
+    assert "retrieve_knowledge" in context["knowledgeBaseInstructions"]
 
 
 def test_build_prompt_context_merges_prompt_context_values() -> None:
@@ -193,11 +192,46 @@ def test_build_prompt_context_merges_prompt_context_values() -> None:
     assert context == {
         "agentName": "Maya",
         "additionalContext": '{"jobRole": "Backend Developer", "nativeLanguage": "Tamil"}',
-        "questions": "",
+        "knowledgeBaseInstructions": context["knowledgeBaseInstructions"],
         "userName": "Asha",
         "jobRole": "Backend Developer",
         "nativeLanguage": "Tamil",
     }
+
+
+def test_build_prompt_context_does_not_embed_full_questions() -> None:
+    context = build_prompt_context(
+        {
+            "questions": [
+                {
+                    "id": "q001",
+                    "text": "What is a class?",
+                    "category": "domain",
+                }
+            ]
+        }
+    )
+
+    assert "questions" not in context
+
+
+def test_build_prompt_context_can_disable_knowledge_base_instructions() -> None:
+    context = build_prompt_context({}, knowledge_base_enabled=False)
+
+    assert "retrieve_knowledge" not in context["knowledgeBaseInstructions"]
+    assert "Knowledge base retrieval is disabled" in context[
+        "knowledgeBaseInstructions"
+    ]
+
+
+def test_render_prompt_omits_retrieve_tool_when_knowledge_base_disabled() -> None:
+    rendered = render_prompt(
+        "Tool instructions: {knowledgeBaseInstructions}",
+        context=build_prompt_context({}, knowledge_base_enabled=False),
+    )
+
+    assert "retrieve_knowledge" not in rendered
+    assert "Knowledge base retrieval is disabled" in rendered
 
 
 def test_extract_session_config_reads_config_values() -> None:
@@ -264,6 +298,12 @@ def test_build_agent_session_uses_tts_overrides_from_session_config() -> None:
 
 def test_voice_assistant_agent_exposes_end_call_tool() -> None:
     agent = VoiceAssistantAgent()
+
+    assert [tool.id for tool in agent.tools] == ["retrieve_knowledge", "end_call"]
+
+
+def test_voice_assistant_agent_can_disable_knowledge_base_tool() -> None:
+    agent = VoiceAssistantAgent(knowledge_base_enabled=False)
 
     assert [tool.id for tool in agent.tools] == ["end_call"]
 
