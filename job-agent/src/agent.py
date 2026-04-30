@@ -43,6 +43,11 @@ from identity import (
     resolve_user_id_from_call_context,
     resolve_user_id_from_room_metadata,
 )
+from knowledge_base import (
+    ChromaKnowledgeBase,
+    build_knowledge_base_config,
+    retrieve_knowledge_from_base,
+)
 from language import resolve_language_config, resolve_stt_mode
 from memory import (
     AsyncMemoryClient,
@@ -62,6 +67,8 @@ logger = logging.getLogger("job_finder_agent")
 MAX_CONCURRENT_SESSIONS = 10
 RAG_USER_ID = "livekit-mem0"
 MIN_WORDS_FOR_RETRIEVAL = 3
+_knowledge_base_config = build_knowledge_base_config()
+_knowledge_base = ChromaKnowledgeBase(_knowledge_base_config)
 
 __all__ = [
     "AGENT_NAME",
@@ -217,6 +224,25 @@ def build_recording_metadata(
     return metadata
 
 
+@function_tool(
+    name="retrieve_knowledge",
+    description="Retrieve relevant records from the configured knowledge base.",
+)
+async def retrieve_knowledge(
+    query: str,
+    filters: dict[str, object] | None = None,
+    exclude_ids: list[str] | None = None,
+    limit: int | None = None,
+) -> dict[str, object]:
+    return await retrieve_knowledge_from_base(
+        _knowledge_base,
+        query=query,
+        filters=filters,
+        exclude_ids=exclude_ids,
+        limit=limit,
+    )
+
+
 class JobFinderAgent(Agent):
     def __init__(
         self,
@@ -227,7 +253,11 @@ class JobFinderAgent(Agent):
         participant_attributes: dict[str, str] | None = None,
         room_name: str | None = None,
         initial_reply: str = INITIAL_REPLY,
+        *,
+        knowledge_base_enabled: bool | None = None,
     ) -> None:
+        if knowledge_base_enabled is None:
+            knowledge_base_enabled = _knowledge_base_config.enabled
         self.memory_client = memory_client
         self.user_id = user_id
         self.participant_identity = participant_identity
@@ -235,7 +265,13 @@ class JobFinderAgent(Agent):
         self.room_name = room_name
         self.initial_reply = initial_reply
         self._memory_tasks: set[asyncio.Task[None]] = set()
-        super().__init__(instructions=instructions or render_prompt())
+        tools = []
+        if knowledge_base_enabled:
+            tools.append(retrieve_knowledge)
+        super().__init__(
+            instructions=instructions or render_prompt(),
+            tools=tools,
+        )
 
     @function_tool
     async def recall_memory(
@@ -767,6 +803,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         participant_attributes=participant_attributes,
         room_name=ctx.room.name,
         initial_reply=config.initial_reply,
+        knowledge_base_enabled=_knowledge_base_config.enabled,
     )
 
     if mode is InteractionMode.PTT:

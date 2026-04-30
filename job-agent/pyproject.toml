@@ -18,6 +18,7 @@ dependencies = [
     "boto3>=1.35.0",
     "av==16.1.0",
     "langfuse>=3.0",
+    "chromadb>=1.5.6",
 ]
 
 [dependency-groups]

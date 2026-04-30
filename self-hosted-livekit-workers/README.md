@@ -48,6 +48,10 @@ Agent registration name resolves in this order:
 For `CS-diagnostic-agent`, the intended default worker name is `diagnostic-agent-dev`.
 If a VM already has an older `self-hosted-livekit-workers/.env`, it can still override that value. When deploying onto a VM, make sure the VM copy of `self-hosted-livekit-workers/.env` is either updated or removed if you want code defaults to win.
 
+## Knowledge Base (ChromaDB)
+
+All four agents use a ChromaDB knowledge base. The Chroma credentials are read from each agent's own `.env` file. The compose-level `.env` can optionally set shared `CHROMA_API_KEY`, `CHROMA_TENANT`, and `CHROMA_DATABASE` values, but per-agent `.env` files take precedence for their own agent.
+
 ## Start Workers
 
 The default replica counts are:
@@ -99,6 +103,73 @@ Then pull and start:
 ./manage.sh pull
 ./manage.sh up
 ```
+
+## Environment Variables
+
+See `.env.example` for the full list. These are compose-level overrides.
+
+### LiveKit
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LIVEKIT_URL` | `wss://livekit.yourdomain.com` | LiveKit server URL |
+| `LIVEKIT_API_KEY` | | LiveKit API key |
+| `LIVEKIT_API_SECRET` | | LiveKit API secret |
+
+### Model Providers
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENROUTER_API_KEY` | | OpenRouter API key |
+| `OPENAI_API_KEY` | | OpenAI API key (fallback) |
+| `SARVAM_API_KEY` | | Sarvam API key |
+| `DEEPGRAM_API_KEY` | | Deepgram API key |
+
+### Observability
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LANGFUSE_PUBLIC_KEY` | | Langfuse public key |
+| `LANGFUSE_SECRET_KEY` | | Langfuse secret key |
+| `LANGFUSE_HOST` | `https://us.cloud.langfuse.com` | Langfuse host URL |
+
+### Recording And Storage
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ENABLE_RECORDING` | `false` | Enable/disable recording |
+| `AWS_ACCESS_KEY_ID` | | AWS access key |
+| `AWS_SECRET_ACCESS_KEY` | | AWS secret key |
+| `AWS_DEFAULT_REGION` | | AWS region |
+| `S3_BUCKET_NAME` | | S3 bucket name |
+| `S3_RECORDING_PREFIX` | | S3 prefix for recordings |
+| `S3_TRANSCRIPT_PREFIX` | | S3 prefix for transcripts |
+| `WEBHOOK_URL` | | Webhook URL for post-recording notification |
+
+### Knowledge Base (ChromaDB)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CHROMA_API_KEY` | | Chroma Cloud API key |
+| `CHROMA_TENANT` | | Chroma Cloud tenant ID |
+| `CHROMA_DATABASE` | | Chroma Cloud database name |
+
+### Agent Overrides
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CS_DIAGNOSTIC_AGENT_NAME` | `diagnostic-agent` | CS diagnostic agent worker name |
+| `CS_DIAGNOSTIC_AGENT_IMAGE` | `intervoo/cs-diagnostic-agent:latest` | CS diagnostic agent Docker image |
+| `CS_DIAGNOSTIC_AGENT_REPLICAS` | `6` | CS diagnostic agent replica count |
+| `PRE_SCREEN_AGENT_NAME` | `pre-screen-agent` | Pre-screen agent worker name |
+| `PRE_SCREEN_AGENT_IMAGE` | `intervoo/pre-screen-agent:latest` | Pre-screen agent Docker image |
+| `PRE_SCREEN_AGENT_REPLICAS` | `6` | Pre-screen agent replica count |
+| `INTERVIEW_AGENT_NAME` | `interview-coaching-agent` | Interview agent worker name |
+| `INTERVIEW_AGENT_IMAGE` | `intervoo/interview-agent:latest` | Interview agent Docker image |
+| `INTERVIEW_AGENT_REPLICAS` | `1` | Interview agent replica count |
+| `JOB_AGENT_NAME` | `job-finder-agent` | Job agent worker name |
+| `JOB_AGENT_IMAGE` | `intervoo/job-agent:latest` | Job agent Docker image |
+| `JOB_AGENT_REPLICAS` | `1` | Job agent replica count |
 
 ## Useful Commands
 

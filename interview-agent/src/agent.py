@@ -14,6 +14,7 @@ from livekit.agents import (
     AgentServer,
     AgentSession,
     MetricsCollectedEvent,
+    function_tool,
     metrics,
     room_io,
 )
@@ -39,6 +40,11 @@ from identity import (
     resolve_user_id_from_call_context,
     resolve_user_id_from_room_metadata,
 )
+from knowledge_base import (
+    ChromaKnowledgeBase,
+    build_knowledge_base_config,
+    retrieve_knowledge_from_base,
+)
 from language import resolve_language_config, resolve_stt_mode
 from prompt import build_prompt_context, load_prompt, render_prompt
 from recording_config import RecordingConfig, build_recording_config
@@ -49,6 +55,8 @@ from watchdog import cancel_idle_room_watchdog, register_idle_room_watchdog
 
 logger = logging.getLogger("interview_coaching_agent")
 MAX_CONCURRENT_SESSIONS = 10
+_knowledge_base_config = build_knowledge_base_config()
+_knowledge_base = ChromaKnowledgeBase(_knowledge_base_config)
 
 __all__ = [
     "AGENT_NAME",
@@ -202,9 +210,41 @@ def build_recording_metadata(
     return metadata
 
 
+@function_tool(
+    name="retrieve_knowledge",
+    description="Retrieve relevant records from the configured knowledge base.",
+)
+async def retrieve_knowledge(
+    query: str,
+    filters: dict[str, object] | None = None,
+    exclude_ids: list[str] | None = None,
+    limit: int | None = None,
+) -> dict[str, object]:
+    return await retrieve_knowledge_from_base(
+        _knowledge_base,
+        query=query,
+        filters=filters,
+        exclude_ids=exclude_ids,
+        limit=limit,
+    )
+
+
 class InterviewCoachingAgent(Agent):
-    def __init__(self, instructions: str | None = None) -> None:
-        super().__init__(instructions=instructions or render_prompt())
+    def __init__(
+        self,
+        instructions: str | None = None,
+        *,
+        knowledge_base_enabled: bool | None = None,
+    ) -> None:
+        if knowledge_base_enabled is None:
+            knowledge_base_enabled = _knowledge_base_config.enabled
+        tools = []
+        if knowledge_base_enabled:
+            tools.append(retrieve_knowledge)
+        super().__init__(
+            instructions=instructions or render_prompt(),
+            tools=tools,
+        )
 
 
 def build_agent_session(
@@ -499,7 +539,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             comfortable_language = candidate.strip()
     language_info = resolve_language_config(comfortable_language)
 
-    agent = InterviewCoachingAgent(instructions=agent_instructions)
+    agent = InterviewCoachingAgent(
+        instructions=agent_instructions,
+        knowledge_base_enabled=_knowledge_base_config.enabled,
+    )
 
     session = build_agent_session(config, mode, session_config, language_info)
     _attach_metrics_logging(session)

@@ -19,7 +19,7 @@ class KnowledgeBaseConfig:
     api_key: str = ""
     tenant: str = ""
     database: str = ""
-    collection: str = "diagnostic_questions"
+    collection: str = ""
     default_limit: int = 10
 
     @property
@@ -65,7 +65,7 @@ def build_knowledge_base_config(
         api_key=values.get("CHROMA_API_KEY", ""),
         tenant=values.get("CHROMA_TENANT", ""),
         database=values.get("CHROMA_DATABASE", ""),
-        collection=values.get("CHROMA_COLLECTION", "diagnostic_questions"),
+        collection=values.get("CHROMA_COLLECTION", ""),
         default_limit=max(default_limit, 1),
     )
 

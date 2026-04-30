@@ -11,3 +11,4 @@ Requires-Dist: asyncpg>=0.30.0
 Requires-Dist: boto3>=1.35.0
 Requires-Dist: av==16.1.0
 Requires-Dist: langfuse>=3.0
+Requires-Dist: chromadb>=1.5.6
