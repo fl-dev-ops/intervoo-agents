@@ -407,8 +407,10 @@ class VoiceAssistantAgent(Agent):
         self,
         instructions: str | None = None,
         *,
-        knowledge_base_enabled: bool = True,
+        knowledge_base_enabled: bool | None = None,
     ) -> None:
+        if knowledge_base_enabled is None:
+            knowledge_base_enabled = _knowledge_base_config.enabled
         tools = [build_end_call_tool()]
         if knowledge_base_enabled:
             tools.insert(0, retrieve_knowledge)
@@ -705,10 +707,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         logger.warning(f"Langfuse setup failed: {e}")
 
     kb_cfg = _knowledge_base_config
-    prompt_context = build_prompt_context(
-        metadata,
-        knowledge_base_enabled=kb_cfg.enabled,
-    )
+    prompt_context = build_prompt_context(metadata)
     agent_instructions = render_prompt(context=prompt_context)
     agent = VoiceAssistantAgent(
         instructions=agent_instructions,
