@@ -63,174 +63,6 @@ MAX_CONCURRENT_SESSIONS = 10
 _knowledge_base_config = build_knowledge_base_config()
 _knowledge_base = ChromaKnowledgeBase(_knowledge_base_config)
 
-
-def _patch_sarvam_tts_compatibility() -> None:
-    if getattr(sarvam_tts_module, "_intervoo_compat_patch_applied", False):
-        return
-
-    def _patch_output_emitter_mime_type(output_emitter):
-        original_initialize = output_emitter.initialize
-
-        def _patched_initialize(*args, **kwargs):
-            if kwargs.get("mime_type") == "audio/wav":
-                kwargs = {**kwargs, "mime_type": "audio/mpeg"}
-            return original_initialize(*args, **kwargs)
-
-        output_emitter.initialize = _patched_initialize
-        return original_initialize
-
-    def _add_kwonly_signature(fn, original_fn, parameter_name: str):
-        original_signature = inspect.signature(original_fn)
-        parameters = list(original_signature.parameters.values())
-        parameters.append(
-            inspect.Parameter(
-                parameter_name,
-                kind=inspect.Parameter.KEYWORD_ONLY,
-                default=None,
-                annotation=str | None,
-            )
-        )
-        fn.__signature__ = original_signature.replace(parameters=parameters)
-
-    original_tts_init = sarvam_tts_module.TTS.__init__
-    original_update_options = sarvam_tts_module.TTS.update_options
-    original_chunked_init = sarvam_tts_module.ChunkedStream.__init__
-    original_chunked_run = sarvam_tts_module.ChunkedStream._run
-    original_synthesize_run = sarvam_tts_module.SynthesizeStream._run
-    original_synthesize_init = sarvam_tts_module.SynthesizeStream.__init__
-    original_run_ws = sarvam_tts_module.SynthesizeStream._run_ws
-
-    @wraps(original_tts_init)
-    def _patched_tts_init(self, *args, dict_id: str | None = None, **kwargs):
-        original_tts_init(self, *args, **kwargs)
-        self._dict_id = dict_id
-    _add_kwonly_signature(_patched_tts_init, original_tts_init, "dict_id")
-
-    @wraps(original_update_options)
-    def _patched_update_options(self, *args, dict_id: str | None = None, **kwargs):
-        original_update_options(self, *args, **kwargs)
-        if dict_id is not None:
-            self._dict_id = dict_id
-    _add_kwonly_signature(_patched_update_options, original_update_options, "dict_id")
-
-    @wraps(original_chunked_init)
-    def _patched_chunked_init(self, *, tts, input_text, conn_options):
-        original_chunked_init(self, tts=tts, input_text=input_text, conn_options=conn_options)
-        self._dict_id = getattr(tts, "_dict_id", None)
-
-    @wraps(original_chunked_run)
-    async def _patched_chunked_run(self, output_emitter, *args, **kwargs):
-        original_initialize = _patch_output_emitter_mime_type(output_emitter)
-        dict_id = getattr(self, "_dict_id", None)
-        try:
-            if not dict_id or self._opts.model != "bulbul:v3":
-                return await original_chunked_run(self, output_emitter, *args, **kwargs)
-
-            original_ensure_session = self._tts._ensure_session
-            base_session = original_ensure_session()
-
-            class _SessionProxy:
-                def __init__(self, session):
-                    self._session = session
-
-                def post(self, *post_args, **post_kwargs):
-                    payload = post_kwargs.get("json")
-                    if isinstance(payload, dict):
-                        post_kwargs = {**post_kwargs, "json": {**payload, "dict_id": dict_id}}
-                    return self._session.post(*post_args, **post_kwargs)
-
-                def __getattr__(self, name):
-                    return getattr(self._session, name)
-
-            self._tts._ensure_session = lambda: _SessionProxy(base_session)
-            try:
-                return await original_chunked_run(self, output_emitter, *args, **kwargs)
-            finally:
-                self._tts._ensure_session = original_ensure_session
-        finally:
-            output_emitter.initialize = original_initialize
-
-    @wraps(original_synthesize_init)
-    def _patched_synthesize_init(self, *, tts, conn_options):
-        original_synthesize_init(self, tts=tts, conn_options=conn_options)
-        self._dict_id = getattr(tts, "_dict_id", None)
-
-    @wraps(original_synthesize_run)
-    async def _patched_synthesize_run(self, output_emitter, *args, **kwargs):
-        original_initialize = _patch_output_emitter_mime_type(output_emitter)
-        try:
-            return await original_synthesize_run(self, output_emitter, *args, **kwargs)
-        finally:
-            output_emitter.initialize = original_initialize
-
-    @wraps(original_run_ws)
-    async def _patched_run_ws(self, word_stream, output_emitter):
-        dict_id = getattr(self, "_dict_id", None)
-        if not dict_id or self._opts.model != "bulbul:v3":
-            return await original_run_ws(self, word_stream, output_emitter)
-
-        original_pool = self._tts._pool
-
-        class _ConnectionContext:
-            def __init__(self, inner_context):
-                self._inner_context = inner_context
-                self._ws = None
-
-            async def __aenter__(self):
-                ws = await self._inner_context.__aenter__()
-                original_send_str = ws.send_str
-
-                async def _patched_send_str(message, *send_args, **send_kwargs):
-                    try:
-                        payload = json.loads(message)
-                    except json.JSONDecodeError:
-                        return await original_send_str(message, *send_args, **send_kwargs)
-
-                    if payload.get("type") == "config" and isinstance(payload.get("data"), dict):
-                        payload = {
-                            **payload,
-                            "data": {**payload["data"], "dict_id": dict_id},
-                        }
-                        message = json.dumps(payload)
-
-                    return await original_send_str(message, *send_args, **send_kwargs)
-
-                ws.send_str = _patched_send_str
-                self._ws = ws
-                return ws
-
-            async def __aexit__(self, exc_type, exc, tb):
-                return await self._inner_context.__aexit__(exc_type, exc, tb)
-
-        class _PoolProxy:
-            def __init__(self, pool):
-                self._pool = pool
-
-            def connection(self, *pool_args, **pool_kwargs):
-                return _ConnectionContext(self._pool.connection(*pool_args, **pool_kwargs))
-
-            def __getattr__(self, name):
-                return getattr(self._pool, name)
-
-        self._tts._pool = _PoolProxy(original_pool)
-        try:
-            return await original_run_ws(self, word_stream, output_emitter)
-        finally:
-            self._tts._pool = original_pool
-
-    sarvam_tts_module.TTS.__init__ = _patched_tts_init
-    sarvam_tts_module.TTS.update_options = _patched_update_options
-    sarvam_tts_module.ChunkedStream.__init__ = _patched_chunked_init
-    sarvam_tts_module.ChunkedStream._run = _patched_chunked_run
-    sarvam_tts_module.SynthesizeStream.__init__ = _patched_synthesize_init
-    sarvam_tts_module.SynthesizeStream._run = _patched_synthesize_run
-    sarvam_tts_module.SynthesizeStream._run_ws = _patched_run_ws
-    sarvam_tts_module._intervoo_compat_patch_applied = True
-
-
-_patch_sarvam_tts_compatibility()
-
-
 class InteractionMode(str, Enum):
     AUTO = "auto"
     PTT = "ptt"
@@ -389,14 +221,29 @@ def build_end_call_tool() -> EndCallTool:
 )
 async def retrieve_knowledge(
     query: str,
-    filters: dict[str, object] | None = None,
+    content_type: str | None = None,
+    domain: str | None = None,
+    category: str | None = None,
+    difficulty_level: str | list[str] | None = None,
+    band: int | None = None,
     exclude_ids: list[str] | None = None,
     limit: int | None = None,
 ) -> dict[str, object]:
+    filters = {
+        key: value
+        for key, value in {
+            "content_type": content_type,
+            "domain": domain,
+            "category": category,
+            "difficulty_level": difficulty_level,
+            "band": band,
+        }.items()
+        if value is not None
+    }
     return await retrieve_knowledge_from_base(
         _knowledge_base,
         query=query,
-        filters=filters,
+        filters=filters or None,
         exclude_ids=exclude_ids,
         limit=limit,
     )
@@ -631,10 +478,15 @@ def _compute_worker_load(current_server: AgentServer) -> float:
     return 1.0 if len(current_server.active_jobs) >= MAX_CONCURRENT_SESSIONS else 0.0
 
 
+def _prewarm(proc: agents.JobProcess) -> None:
+    _knowledge_base.prewarm()
+
+
 server = AgentServer(
     shutdown_process_timeout=60,
+    setup_fnc=_prewarm,
     load_fnc=_compute_worker_load,
-    load_threshold=0.5,
+    num_idle_processes=1,
 )
 
 

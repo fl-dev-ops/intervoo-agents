@@ -142,6 +142,17 @@ class ChromaKnowledgeBase:
         self._collection = self._client.get_collection(self._config.collection)
         return self._collection
 
+    def prewarm(self) -> None:
+        if not self._config.available:
+            return
+        try:
+            collection = self._get_collection()
+            # Run a dummy query to load the ONNX embedding model into memory.
+            collection.query(query_texts=["prewarm"], n_results=1)
+            logger.info("Knowledge base prewarmed successfully")
+        except Exception as e:
+            logger.warning(f"Knowledge base prewarm failed (non-fatal): {e}")
+
     def retrieve(
         self,
         *,
