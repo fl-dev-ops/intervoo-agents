@@ -23,10 +23,13 @@ from agent import (
     _start_ptt_session,
     build_agent_session,
     build_end_call_tool,
+    build_initial_round_reply,
+    build_round_question_context,
     build_runtime_config,
     extract_session_config,
     on_session_end,
     parse_room_metadata,
+    resolve_diagnostic_round_config,
     resolve_interaction_mode,
 )
 from constants import (
@@ -165,6 +168,96 @@ def test_resolve_interaction_mode_reads_auto_flag() -> None:
     metadata = parse_room_metadata('{"interaction_mode":"auto"}')
 
     assert resolve_interaction_mode(metadata) is InteractionMode.AUTO
+
+
+def test_resolve_diagnostic_round_config_reads_question_filters() -> None:
+    metadata = {
+        "questionFilters": {"category": "closing", "band": 2},
+        "roundNumber": 4,
+        "roundDurationSeconds": 600,
+    }
+
+    round_config = resolve_diagnostic_round_config(metadata)
+
+    assert round_config is not None
+    assert round_config.category == "closing"
+    assert round_config.band == 2
+    assert round_config.round_number == 4
+    assert round_config.duration_seconds == 600
+
+
+def test_resolve_diagnostic_round_config_reads_nested_context() -> None:
+    metadata = {
+        "context": {
+            "selectedRoundCategory": "domain",
+            "selectedBand": "3",
+            "roundNumber": "3",
+        }
+    }
+
+    round_config = resolve_diagnostic_round_config(metadata)
+
+    assert round_config is not None
+    assert round_config.category == "domain"
+    assert round_config.band == 3
+    assert round_config.round_number == 3
+
+
+def test_resolve_diagnostic_round_config_rejects_invalid_category() -> None:
+    assert (
+        resolve_diagnostic_round_config(
+            {"questionFilters": {"category": "general", "band": 1}}
+        )
+        is None
+    )
+
+
+def test_build_initial_round_reply_is_round_scoped() -> None:
+    round_config = resolve_diagnostic_round_config(
+        {"questionFilters": {"category": "behavioral", "band": 1}, "roundNumber": 2}
+    )
+
+    reply = build_initial_round_reply(round_config)
+
+    assert "Round 2" in reply
+    assert "behavioral" in reply
+    assert "Band 1" in reply
+    assert "Do not restart the full diagnostic interview" in reply
+
+
+@pytest.mark.asyncio
+async def test_build_round_question_context_filters_chroma_by_round_and_band() -> None:
+    round_config = resolve_diagnostic_round_config(
+        {"questionFilters": {"category": "opening", "band": 2}, "roundNumber": 1}
+    )
+
+    with patch(
+        "agent.retrieve_knowledge_from_base",
+        new=AsyncMock(
+            return_value={
+                "status": "ok",
+                "records": [
+                    {
+                        "id": "q1",
+                        "text": "Opening Band 2 question",
+                        "metadata": {"category": "opening", "band": 2},
+                    }
+                ],
+            }
+        ),
+    ) as retrieve:
+        context = await build_round_question_context(round_config)
+
+    retrieve.assert_awaited_once()
+    _, kwargs = retrieve.await_args
+    assert kwargs["filters"] == {
+        "content_type": "diagnostic_question",
+        "domain": "computer_science",
+        "category": "opening",
+        "band": 2,
+    }
+    assert "ACTIVE ROUND OVERRIDE" in context
+    assert "Opening Band 2 question" in context
 
 
 def test_build_prompt_context_uses_defaults() -> None:

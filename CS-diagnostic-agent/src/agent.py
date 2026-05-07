@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 import json
 import logging
 import math
@@ -9,7 +8,6 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
-from functools import wraps
 
 from livekit import agents, rtc
 from livekit.agents import (
@@ -23,7 +21,6 @@ from livekit.agents import (
 )
 from livekit.agents.beta.tools import EndCallTool
 from livekit.plugins import noise_cancellation, openai, sarvam, silero
-from livekit.plugins.sarvam import tts as sarvam_tts_module
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from constants import (
@@ -63,6 +60,7 @@ logger = logging.getLogger("interview_coaching_agent")
 MAX_CONCURRENT_SESSIONS = 10
 _knowledge_base_config = build_knowledge_base_config()
 _knowledge_base = ChromaKnowledgeBase(_knowledge_base_config)
+VALID_DIAGNOSTIC_ROUND_CATEGORIES = {"opening", "behavioral", "domain", "closing"}
 
 class InteractionMode(str, Enum):
     AUTO = "auto"
@@ -102,6 +100,189 @@ _recording_sessions: dict[str, RecordingSessionState] = {}
 class SessionConfig:
     voice: str | None = None
     speaking_speed: float | None = None
+
+
+@dataclass(frozen=True)
+class DiagnosticRoundConfig:
+    category: str
+    band: int
+    round_number: int | None = None
+    duration_seconds: int | None = None
+
+
+def _get_mapping_value(
+    source: Mapping[str, object] | None,
+    *keys: str,
+) -> object | None:
+    if not source:
+        return None
+
+    for key in keys:
+        value = source.get(key)
+        if value is not None:
+            return value
+    return None
+
+
+def resolve_diagnostic_round_config(
+    metadata: Mapping[str, object] | None,
+) -> DiagnosticRoundConfig | None:
+    if not metadata:
+        return None
+
+    context = metadata.get("context")
+    context_mapping = context if isinstance(context, Mapping) else None
+    question_filters = _get_mapping_value(
+        metadata,
+        "questionFilters",
+        "question_filters",
+    )
+    if not isinstance(question_filters, Mapping):
+        question_filters = _get_mapping_value(
+            context_mapping,
+            "questionFilters",
+            "question_filters",
+        )
+    question_filters_mapping = (
+        question_filters if isinstance(question_filters, Mapping) else None
+    )
+
+    raw_category = (
+        _get_mapping_value(
+            question_filters_mapping,
+            "category",
+            "round_category",
+        )
+        or _get_mapping_value(
+            metadata,
+            "selectedRoundCategory",
+            "activeCategory",
+            "active_category",
+            "round_category",
+            "question_category",
+        )
+        or _get_mapping_value(
+            context_mapping,
+            "selectedRoundCategory",
+            "activeCategory",
+            "active_category",
+            "round_category",
+            "question_category",
+        )
+    )
+    category = raw_category.strip().lower() if isinstance(raw_category, str) else ""
+    if category not in VALID_DIAGNOSTIC_ROUND_CATEGORIES:
+        return None
+
+    raw_band = (
+        _get_mapping_value(question_filters_mapping, "band", "selectedBand")
+        or _get_mapping_value(metadata, "selectedBand", "selected_band", "band")
+        or _get_mapping_value(context_mapping, "selectedBand", "selected_band", "band")
+    )
+    try:
+        band = int(raw_band) if raw_band is not None else 0
+    except (TypeError, ValueError):
+        band = 0
+    if band not in {1, 2, 3}:
+        return None
+
+    raw_round_number = _get_mapping_value(
+        metadata,
+        "roundNumber",
+        "round_number",
+    ) or _get_mapping_value(context_mapping, "roundNumber", "round_number")
+    raw_duration = _get_mapping_value(
+        metadata,
+        "roundDurationSeconds",
+        "round_duration_seconds",
+    ) or _get_mapping_value(
+        context_mapping,
+        "roundDurationSeconds",
+        "round_duration_seconds",
+    )
+
+    def _optional_int(value: object | None) -> int | None:
+        try:
+            return int(value) if value is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    return DiagnosticRoundConfig(
+        category=category,
+        band=band,
+        round_number=_optional_int(raw_round_number),
+        duration_seconds=_optional_int(raw_duration),
+    )
+
+
+async def build_round_question_context(
+    round_config: DiagnosticRoundConfig | None,
+) -> str:
+    if round_config is None:
+        return ""
+
+    filters = {
+        "content_type": "diagnostic_question",
+        "domain": "computer_science",
+        "category": round_config.category,
+        "band": round_config.band,
+    }
+    query = (
+        f"computer science diagnostic {round_config.category} questions "
+        f"for band {round_config.band}"
+    )
+    result = await retrieve_knowledge_from_base(
+        _knowledge_base,
+        query=query,
+        filters=filters,
+        limit=12,
+    )
+    records = result.get("records") if isinstance(result, Mapping) else None
+    if not isinstance(records, list) or not records:
+        return (
+            "ACTIVE ROUND OVERRIDE:\n"
+            f"- Current round category: {round_config.category}\n"
+            f"- Selected band: {round_config.band}\n"
+            "- No matching question records were retrieved before session start. "
+            "Call retrieve_knowledge with content_type='diagnostic_question', "
+            "domain='computer_science', this exact category, and this exact band "
+            "before asking any question."
+        )
+
+    serialized_records = json.dumps(records, ensure_ascii=True, sort_keys=True)
+    return (
+        "ACTIVE ROUND OVERRIDE:\n"
+        "This LiveKit room is one round only, not the full diagnostic interview.\n"
+        f"- Current round category: {round_config.category}\n"
+        f"- Selected band: {round_config.band}\n"
+        f"- Round number: {round_config.round_number or ''}\n"
+        f"- Round duration seconds: {round_config.duration_seconds or ''}\n"
+        "Before asking anything, use only the retrieved records below. "
+        "Do not run the full state machine and do not ask opening/background "
+        "questions unless the current category is opening. "
+        "Do not generate questions from memory.\n"
+        "Retrieved round question records JSON:\n"
+        f"{serialized_records}"
+    )
+
+
+def build_initial_round_reply(round_config: DiagnosticRoundConfig | None) -> str:
+    if round_config is None:
+        return INITIAL_REPLY
+
+    round_label = (
+        f"Round {round_config.round_number}"
+        if round_config.round_number is not None
+        else f"{round_config.category} round"
+    )
+    return (
+        f"Start {round_label} now. This room is only for the "
+        f"{round_config.category} diagnostic category and Band {round_config.band}. "
+        "Use the ACTIVE ROUND OVERRIDE question records already included in your "
+        "instructions. Ask exactly one question from that category and band. "
+        "Do not restart the full diagnostic interview and do not ask opening or "
+        "background questions unless the active category is opening."
+    )
 
 
 def build_runtime_config(env: Mapping[str, str] | None = None) -> RuntimeConfig:
@@ -241,13 +422,15 @@ async def retrieve_knowledge(
         }.items()
         if value is not None
     }
-    return await retrieve_knowledge_from_base(
+    res = await retrieve_knowledge_from_base(
         _knowledge_base,
         query=query,
         filters=filters or None,
         exclude_ids=exclude_ids,
         limit=limit,
     )
+    print('knowledge_base_enabled', res)
+    return res
 
 
 class VoiceAssistantAgent(Agent):
@@ -405,6 +588,7 @@ async def _start_auto_session(
     session: AgentSession,
     config: RuntimeConfig,
     agent: VoiceAssistantAgent,
+    initial_reply: str | None = None,
 ) -> None:
     await session.start(
         room=ctx.room,
@@ -412,7 +596,7 @@ async def _start_auto_session(
         room_options=_build_room_options(),
     )
     logger.info("Interview coaching auto session started")
-    await session.generate_reply(instructions=config.initial_reply)
+    await session.generate_reply(instructions=initial_reply or config.initial_reply)
 
 
 async def _start_ptt_session(
@@ -420,6 +604,7 @@ async def _start_ptt_session(
     session: AgentSession,
     config: RuntimeConfig,
     agent: VoiceAssistantAgent,
+    initial_reply: str | None = None,
 ) -> None:
     await session.start(
         room=ctx.room,
@@ -430,7 +615,7 @@ async def _start_ptt_session(
     session.input.set_audio_enabled(False)
     _register_push_to_talk_rpcs(ctx, session)
     logger.info("Interview coaching PTT session started")
-    await session.generate_reply(instructions=config.initial_reply)
+    await session.generate_reply(instructions=initial_reply or config.initial_reply)
 
 
 def _pick_call_participant(ctx: agents.JobContext) -> rtc.RemoteParticipant | None:
@@ -561,8 +746,31 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         logger.warning(f"Langfuse setup failed: {e}")
 
     kb_cfg = _knowledge_base_config
+    round_config = resolve_diagnostic_round_config(metadata)
+    round_question_context = await build_round_question_context(round_config)
     prompt_context = build_prompt_context(metadata)
+    if round_question_context:
+        existing_context = prompt_context.get("additionalContext", "")
+        prompt_context["additionalContext"] = (
+            f"{existing_context}\n\n{round_question_context}".strip()
+        )
+        if round_config is not None:
+            prompt_context["activeRoundCategory"] = round_config.category
+            prompt_context["selectedBand"] = str(round_config.band)
+            if round_config.round_number is not None:
+                prompt_context["roundNumber"] = str(round_config.round_number)
+            if round_config.duration_seconds is not None:
+                prompt_context["roundDurationSeconds"] = str(
+                    round_config.duration_seconds
+                )
+        logger.info(
+            "Diagnostic round context injected: category=%s band=%s round=%s",
+            round_config.category if round_config else None,
+            round_config.band if round_config else None,
+            round_config.round_number if round_config else None,
+        )
     agent_instructions = render_prompt(context=prompt_context)
+    initial_reply = build_initial_round_reply(round_config)
     agent = VoiceAssistantAgent(
         instructions=agent_instructions,
         knowledge_base_enabled=kb_cfg.enabled,
@@ -613,9 +821,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             logger.error(f"Failed to initialize recording: {e}")
 
     if mode is InteractionMode.PTT:
-        await _start_ptt_session(ctx, session, config, agent)
+        await _start_ptt_session(ctx, session, config, agent, initial_reply)
     else:
-        await _start_auto_session(ctx, session, config, agent)
+        await _start_auto_session(ctx, session, config, agent, initial_reply)
 
 
 if __name__ == "__main__":
