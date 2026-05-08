@@ -7,80 +7,81 @@ import math
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import Enum
+from pathlib import Path
+from profile import (
+    AgentProfile,
+    ProfileError,
+    load_profile_catalog,
+    pick_profile,
+)
 from typing import Any
 
+from dotenv import load_dotenv
 from livekit import agents, rtc
 from livekit.agents import (
-    Agent,
     AgentServer,
     AgentSession,
     MetricsCollectedEvent,
-    function_tool,
     metrics,
     room_io,
 )
 from livekit.agents.beta.tools import EndCallTool
-from livekit.plugins import noise_cancellation, openai, sarvam, silero
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.plugins import noise_cancellation
 
-from constants import (
-    CALLER_LOOKUP_TIMEOUT_SECONDS,
-    DEFAULT_OPENROUTER_MODEL,
-    DEFAULT_SARVAM_TTS_DICT_ID,
-    DEFAULT_SARVAM_TTS_LANGUAGE,
-    DEFAULT_SARVAM_TTS_MODEL,
-    DEFAULT_SARVAM_TTS_SPEAKER,
-    END_CALL_EXTRA_DESCRIPTION,
-    END_CALL_INSTRUCTIONS,
-    INITIAL_REPLY,
-    REGISTERED_AGENT_NAME,
-)
 from identity import (
     resolve_phone_number_from_call_context,
     resolve_user_id_from_call_context,
     resolve_user_id_from_room_metadata,
 )
+from kb_tools import build_kb_tool
 from knowledge_base import (
     ChromaKnowledgeBase,
     build_knowledge_base_config,
-    retrieve_knowledge_from_base,
+    with_collection,
 )
-from language import (
-    resolve_language_config,
-    resolve_stt_mode,
-)
-from prompt import build_prompt_context, render_prompt
+from language import resolve_language_config
+from prompt import build_prompt_context, load_prompt, render_prompt
 from recording_config import RecordingConfig, build_recording_config
 from recording_db import init_pool
 from recording_runtime import finalize_recording, start_recording
+from session import InteractionMode, SessionConfig, build_agent_session
 from tracing import flush_langfuse, setup_langfuse
+from unified_agent import UnifiedAgent
 from watchdog import cancel_idle_room_watchdog, register_idle_room_watchdog
 
-logger = logging.getLogger("interview_coaching_agent")
+logger = logging.getLogger("intervoo_agent")
+
+CALLER_LOOKUP_TIMEOUT_SECONDS = 5
+DEFAULT_AGENT_NAME = "intervoo-agent"
 MAX_CONCURRENT_SESSIONS = 10
-_knowledge_base_config = build_knowledge_base_config()
-_knowledge_base = ChromaKnowledgeBase(_knowledge_base_config)
+
+END_CALL_EXTRA_DESCRIPTION = (
+    "Only end the call when the user clearly indicates the conversation is complete."
+)
+END_CALL_INSTRUCTIONS = "Thanks for practicing with me today. Goodbye."
+
+APP_DIR = Path(__file__).resolve().parents[1]
+DEFAULT_PROFILE_CONFIG_PATH = APP_DIR / "config" / "agents.json"
+
+load_dotenv(str(APP_DIR / ".env.local"))
+load_dotenv(str(APP_DIR / ".env"))
 
 
-class InteractionMode(str, Enum):
-    AUTO = "auto"
-    PTT = "ptt"
+def _resolve_profile_config_path() -> Path:
+    override = os.getenv("AGENT_PROFILE_CONFIG")
+    if override:
+        return Path(override)
+    return DEFAULT_PROFILE_CONFIG_PATH
 
 
-@dataclass(frozen=True)
-class RuntimeConfig:
-    agent_name: str = REGISTERED_AGENT_NAME
-    openrouter_model: str = DEFAULT_OPENROUTER_MODEL
-    sarvam_tts_language: str = DEFAULT_SARVAM_TTS_LANGUAGE
-    sarvam_tts_model: str = DEFAULT_SARVAM_TTS_MODEL
-    sarvam_tts_speaker: str = DEFAULT_SARVAM_TTS_SPEAKER
-    sarvam_tts_dict_id: str | None = DEFAULT_SARVAM_TTS_DICT_ID
-    initial_reply: str = INITIAL_REPLY
+_profile_catalog = load_profile_catalog(_resolve_profile_config_path())
+_kb_base_config = build_knowledge_base_config()
+REGISTERED_AGENT_NAME = os.getenv("AGENT_NAME", DEFAULT_AGENT_NAME)
 
 
 @dataclass(frozen=True)
 class SessionState:
+    profile: AgentProfile
     room_name: str
     resolved_user_id: str | None
     participant_identity: str | None
@@ -96,42 +97,16 @@ class SessionState:
 _sessions: dict[str, SessionState] = {}
 
 
-@dataclass(frozen=True)
-class SessionConfig:
-    voice: str | None = None
-    speaking_speed: float | None = None
-
-
-def build_runtime_config(env: Mapping[str, str] | None = None) -> RuntimeConfig:
-    values = os.environ if env is None else env
-    return RuntimeConfig(
-        agent_name=values.get("AGENT_NAME", REGISTERED_AGENT_NAME),
-        openrouter_model=values.get("OPENROUTER_MODEL", DEFAULT_OPENROUTER_MODEL),
-        sarvam_tts_language=values.get(
-            "SARVAM_TTS_LANGUAGE", DEFAULT_SARVAM_TTS_LANGUAGE
-        ),
-        sarvam_tts_model=values.get("SARVAM_TTS_MODEL", DEFAULT_SARVAM_TTS_MODEL),
-        sarvam_tts_speaker=values.get("SARVAM_TTS_SPEAKER", DEFAULT_SARVAM_TTS_SPEAKER),
-        sarvam_tts_dict_id=(
-            values.get("SARVAM_TTS_DICT_ID", DEFAULT_SARVAM_TTS_DICT_ID).strip() or None
-        ),
-        initial_reply=INITIAL_REPLY,
-    )
-
-
 def parse_room_metadata(metadata: str | None) -> dict[str, object]:
     if not metadata:
         return {}
-
     try:
         payload = json.loads(metadata)
     except json.JSONDecodeError:
         logger.warning("Room metadata is not valid JSON")
         return {}
-
     if isinstance(payload, dict):
         return payload
-
     logger.warning("Room metadata is not an object")
     return {}
 
@@ -149,55 +124,57 @@ def extract_session_config(metadata: Mapping[str, object] | None) -> SessionConf
         voice.strip() if isinstance(voice, str) and voice.strip() else None
     )
 
+    dict_id = raw_config.get("dict_id") or raw_config.get("dictId")
+    normalized_dict_id = (
+        dict_id.strip() if isinstance(dict_id, str) and dict_id.strip() else None
+    )
+
     speaking_speed = raw_config.get("speakingSpeed")
     normalized_speaking_speed: float | None = None
     if isinstance(speaking_speed, (int, float)) and math.isfinite(speaking_speed):
         normalized_speaking_speed = float(speaking_speed)
     elif isinstance(speaking_speed, str):
         try:
-            parsed_speaking_speed = float(speaking_speed)
+            parsed = float(speaking_speed)
         except ValueError:
-            parsed_speaking_speed = None
-        if parsed_speaking_speed is not None and math.isfinite(parsed_speaking_speed):
-            normalized_speaking_speed = parsed_speaking_speed
+            parsed = None
+        if parsed is not None and math.isfinite(parsed):
+            normalized_speaking_speed = parsed
 
     return SessionConfig(
         voice=normalized_voice,
         speaking_speed=normalized_speaking_speed,
+        dict_id=normalized_dict_id,
     )
 
 
 def resolve_interaction_mode(metadata: Mapping[str, object] | None) -> InteractionMode:
     if not metadata:
         return InteractionMode.AUTO
-
     interaction_mode = metadata.get("interaction_mode") or metadata.get(
         "interactionMode"
     )
     if isinstance(interaction_mode, str):
-        normalized_interaction_mode = interaction_mode.strip().lower()
-        if normalized_interaction_mode == "ptt":
+        normalized = interaction_mode.strip().lower()
+        if normalized == "ptt":
             return InteractionMode.PTT
-        if normalized_interaction_mode == "auto":
+        if normalized == "auto":
             return InteractionMode.AUTO
-
     return InteractionMode.AUTO
-
-
-def resolve_session_mode(metadata: Mapping[str, object] | None) -> InteractionMode:
-    return resolve_interaction_mode(metadata)
 
 
 def build_recording_metadata(
     room_metadata: Mapping[str, object] | None,
     mode: InteractionMode,
+    profile: AgentProfile,
 ) -> dict[str, object]:
     metadata = dict(room_metadata) if room_metadata else {}
     metadata["interaction_mode"] = mode.value
+    metadata["agent_id"] = profile.id
     return metadata
 
 
-def build_end_call_tool() -> EndCallTool:
+def _build_end_call_tool() -> EndCallTool:
     return EndCallTool(
         extra_description=END_CALL_EXTRA_DESCRIPTION,
         delete_room=True,
@@ -205,107 +182,11 @@ def build_end_call_tool() -> EndCallTool:
     )
 
 
-@function_tool(
-    name="retrieve_knowledge",
-    description="Retrieve relevant records from the configured knowledge base.",
-)
-async def retrieve_knowledge(
-    query: str,
-    filters: dict[str, object] | None = None,
-    exclude_ids: list[str] | None = None,
-    limit: int | None = None,
-) -> dict[str, object]:
-    return await retrieve_knowledge_from_base(
-        _knowledge_base,
-        query=query,
-        filters=filters,
-        exclude_ids=exclude_ids,
-        limit=limit,
-    )
-
-
-class VoiceAssistantAgent(Agent):
-    def __init__(
-        self,
-        instructions: str | None = None,
-        *,
-        knowledge_base_enabled: bool | None = None,
-    ) -> None:
-        if knowledge_base_enabled is None:
-            knowledge_base_enabled = _knowledge_base_config.enabled
-        tools = [build_end_call_tool()]
-        if knowledge_base_enabled:
-            tools.insert(0, retrieve_knowledge)
-        super().__init__(
-            instructions=instructions or render_prompt(),
-            tools=tools,
-        )
-
-
-def build_agent_session(
-    config: RuntimeConfig,
-    mode: InteractionMode = InteractionMode.AUTO,
-    session_config: SessionConfig | None = None,
-    language_info: Mapping[str, str] | None = None,
-) -> AgentSession:
-    effective_session_config = session_config or SessionConfig()
-    effective_language = language_info or resolve_language_config(None)
-    stt_language = effective_language.get("stt_language", "en-IN")
-    tts_language = effective_language.get("tts_language", config.sarvam_tts_language)
-    stt = sarvam.STT(
-        language=stt_language,
-        model="saaras:v3",
-        mode=resolve_stt_mode(stt_language),
-    )
-
-    llm = openai.LLM.with_openrouter(model=config.openrouter_model)
-
-    tts = sarvam.TTS(
-        target_language_code=tts_language,
-        model=config.sarvam_tts_model,
-        speaker=effective_session_config.voice or config.sarvam_tts_speaker,
-        pace=effective_session_config.speaking_speed or 1.0,
-        temperature=0.6,
-        enable_preprocessing=True,
-        output_audio_bitrate="128k",
-        min_buffer_size=50,
-        max_chunk_length=150,
-        dict_id=config.sarvam_tts_dict_id,
-    )
-
-    if hasattr(tts, "prewarm"):
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            pass
-        else:
-            tts.prewarm()
-
-    common_kwargs = {
-        "stt": stt,
-        "llm": llm,
-        "tts": tts,
-        "allow_interruptions": True,
-        "min_interruption_duration": 0.5,
-        "min_endpointing_delay": 0.5,
-        "max_endpointing_delay": 3.0,
-        "min_consecutive_speech_delay": 0.2,
-    }
-
-    if mode is InteractionMode.PTT:
-        return AgentSession(
-            **common_kwargs,
-            turn_detection="manual",
-            resume_false_interruption=True,
-            use_tts_aligned_transcript=True,
-            preemptive_generation=False,
-        )
-
-    return AgentSession(
-        **common_kwargs,
-        vad=silero.VAD.load(),
-        turn_detection=MultilingualModel(),
-    )
+def _build_kb(profile: AgentProfile) -> ChromaKnowledgeBase | None:
+    if not profile.kb_collection or not _kb_base_config.enabled:
+        return None
+    config = with_collection(_kb_base_config, profile.kb_collection)
+    return ChromaKnowledgeBase(config)
 
 
 def _attach_metrics_logging(session: AgentSession) -> None:
@@ -378,34 +259,29 @@ def _register_push_to_talk_rpcs(
 async def _start_auto_session(
     ctx: agents.JobContext,
     session: AgentSession,
-    config: RuntimeConfig,
-    agent: VoiceAssistantAgent,
+    agent: UnifiedAgent,
 ) -> None:
     await session.start(
         room=ctx.room,
         agent=agent,
         room_options=_build_room_options(),
     )
-    logger.info("Interview coaching auto session started")
-    await session.generate_reply(instructions=config.initial_reply)
+    logger.info("Unified agent auto session started")
 
 
 async def _start_ptt_session(
     ctx: agents.JobContext,
     session: AgentSession,
-    config: RuntimeConfig,
-    agent: VoiceAssistantAgent,
+    agent: UnifiedAgent,
 ) -> None:
     await session.start(
         room=ctx.room,
         agent=agent,
         room_options=_build_room_options(),
     )
-
     session.input.set_audio_enabled(False)
     _register_push_to_talk_rpcs(ctx, session)
-    logger.info("Interview coaching PTT session started")
-    await session.generate_reply(instructions=config.initial_reply)
+    logger.info("Unified agent PTT session started")
 
 
 def _pick_call_participant(ctx: agents.JobContext) -> rtc.RemoteParticipant | None:
@@ -419,7 +295,7 @@ def _pick_call_participant(ctx: agents.JobContext) -> rtc.RemoteParticipant | No
 async def _resolve_call_state(
     ctx: agents.JobContext,
     initial_user_id: str,
-) -> tuple[str, str | None, str | None]:
+) -> tuple[str, str | None, str | None, dict[str, str] | None]:
     participant = _pick_call_participant(ctx)
     if participant is None:
         try:
@@ -447,7 +323,7 @@ async def _resolve_call_state(
         participant_attributes=participant_attributes,
         room_name=ctx.room.name,
     )
-    return resolved_user_id, participant_identity, phone_number
+    return resolved_user_id, participant_identity, phone_number, participant_attributes
 
 
 def _compute_worker_load(current_server: AgentServer) -> float:
@@ -465,7 +341,6 @@ async def _post_webhook(
     webhook_url: str,
     payload: dict[str, Any],
 ) -> None:
-    import json
     from urllib import error, request
 
     def _send() -> None:
@@ -508,6 +383,7 @@ async def on_session_end(ctx: agents.JobContext) -> None:
     state = _sessions.pop(ctx.room.name, None)
     if state is None:
         logger.info("No session state found for room %s", ctx.room.name)
+        flush_langfuse()
         return
 
     report_dict: dict = {}
@@ -521,7 +397,6 @@ async def on_session_end(ctx: agents.JobContext) -> None:
 
     recording_result: dict[str, object] | None = None
 
-    # Finalize recording if it was enabled
     if state.recording_config is not None:
         try:
             recording_result = await finalize_recording(
@@ -529,8 +404,8 @@ async def on_session_end(ctx: agents.JobContext) -> None:
                 lk_api=ctx.api,
                 egress_id=state.egress_id,
                 session_id=state.recording_session_id,
-                agent_type=REGISTERED_AGENT_NAME,
-                agent_name=REGISTERED_AGENT_NAME,
+                agent_type=state.profile.agent_type,
+                agent_name=state.profile.agent_type,
                 room_name=state.room_name,
                 audio_url=state.audio_url or "",
                 audio_s3_key=state.audio_s3_key or "",
@@ -544,18 +419,19 @@ async def on_session_end(ctx: agents.JobContext) -> None:
         except Exception as e:
             logger.error(f"Recording finalization failed: {e}")
 
-    # Always fire the application webhook if configured
     if state.webhook_url:
         try:
-            transcript_data = recording_result.get("transcript") if recording_result else None
+            transcript_data = (
+                recording_result.get("transcript") if recording_result else None
+            )
             if transcript_data is None:
                 try:
                     from recording_transcript import normalize_session_report
 
                     transcript_data = normalize_session_report(
                         report_dict,
-                        agent_type=REGISTERED_AGENT_NAME,
-                        agent_name=REGISTERED_AGENT_NAME,
+                        agent_type=state.profile.agent_type,
+                        agent_name=state.profile.agent_type,
                         resolved_user_id=state.resolved_user_id,
                         participant_identity=state.participant_identity,
                         phone_number=state.phone_number,
@@ -564,6 +440,8 @@ async def on_session_end(ctx: agents.JobContext) -> None:
                     pass
 
             payload = {
+                "agent_id": state.profile.id,
+                "agent_type": state.profile.agent_type,
                 "room_name": state.room_name,
                 "audio_url": recording_result.get("audio_url")
                 if recording_result
@@ -589,12 +467,18 @@ async def on_session_end(ctx: agents.JobContext) -> None:
 
 @server.rtc_session(agent_name=REGISTERED_AGENT_NAME, on_session_end=on_session_end)
 async def entrypoint(ctx: agents.JobContext) -> None:
-    config = build_runtime_config()
     room_metadata = ctx.job.room.metadata or ctx.room.metadata
     metadata = parse_room_metadata(room_metadata)
+
+    try:
+        profile = pick_profile(_profile_catalog, metadata)
+    except ProfileError as e:
+        logger.error(f"Cannot resolve agent profile: {e}")
+        return
+
     mode = resolve_interaction_mode(metadata)
     session_config = extract_session_config(metadata)
-    recording_metadata = build_recording_metadata(metadata, mode)
+    recording_metadata = build_recording_metadata(metadata, mode, profile)
     await ctx.connect()
     register_idle_room_watchdog(ctx)
 
@@ -603,16 +487,20 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         logger.info(f"User disconnected: {participant.identity}")
 
     initial_user_id = resolve_user_id_from_room_metadata(room_metadata)
-    resolved_user_id, participant_identity, phone_number = await _resolve_call_state(
-        ctx, initial_user_id
-    )
+    (
+        resolved_user_id,
+        participant_identity,
+        phone_number,
+        participant_attributes,
+    ) = await _resolve_call_state(ctx, initial_user_id)
 
     try:
         setup_langfuse(
             metadata={
                 "langfuse.session.id": ctx.room.name,
                 "langfuse.user.id": resolved_user_id or "anonymous",
-                "agent_name": REGISTERED_AGENT_NAME,
+                "agent_id": profile.id,
+                "agent_name": profile.agent_type,
                 "job_id": ctx.job.id,
                 "mode": mode.value,
             }
@@ -620,8 +508,14 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     except Exception as e:
         logger.warning(f"Langfuse setup failed: {e}")
 
+    try:
+        prompt_template = load_prompt(profile.prompt_url)
+    except Exception as e:
+        logger.error(f"Failed to load prompt for agent_id={profile.id}: {e}")
+        return
+
     prompt_context = build_prompt_context(metadata)
-    agent_instructions = render_prompt(context=prompt_context)
+    agent_instructions = render_prompt(prompt_template, context=prompt_context)
 
     comfortable_language: str | None = None
     raw_prompt_context = metadata.get("prompt_context") or metadata.get("promptContext")
@@ -631,19 +525,49 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             comfortable_language = candidate.strip()
     language_info = resolve_language_config(comfortable_language)
 
-    agent = VoiceAssistantAgent(
+    tools: list[Any] = []
+    if profile.end_call_enabled:
+        tools.append(_build_end_call_tool())
+
+    kb = _build_kb(profile)
+    if kb is not None:
+        tools.append(build_kb_tool(profile.kb_shape, kb))
+
+    memory_client = None
+    if profile.memory_enabled:
+        try:
+            from memory import AsyncMemoryClient
+
+            memory_client = AsyncMemoryClient()
+        except Exception as e:
+            logger.warning(f"Failed to initialize mem0 client: {e}")
+
+    agent = UnifiedAgent(
         instructions=agent_instructions,
-        knowledge_base_enabled=_knowledge_base_config.enabled,
+        tools=tools,
+        initial_reply=profile.initial_reply,
+        memory_client=memory_client,
+        user_id=resolved_user_id,
+        participant_identity=participant_identity,
+        participant_attributes=participant_attributes,
+        room_name=ctx.room.name,
     )
 
-    session = build_agent_session(config, mode, session_config, language_info)
+    session = build_agent_session(
+        tts_speaker=profile.voice_speaker,
+        tts_dict_id=profile.voice_dict_id,
+        mode=mode,
+        session_config=session_config,
+        language_info=language_info,
+    )
     _attach_metrics_logging(session)
 
-    webhook_url = metadata.get("webhook_url")
-    if isinstance(webhook_url, str) and webhook_url.strip():
-        webhook_url = webhook_url.strip()
-    else:
-        webhook_url = None
+    webhook_url_raw = metadata.get("webhook_url") or metadata.get("webhookUrl")
+    webhook_url = (
+        webhook_url_raw.strip()
+        if isinstance(webhook_url_raw, str) and webhook_url_raw.strip()
+        else None
+    )
 
     rec_cfg = build_recording_config()
     recording_session_id: str | None = None
@@ -658,11 +582,16 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                     await init_pool(rec_cfg.database_url)
                 except Exception as e:
                     logger.error(f"Failed to initialize recording DB: {e}")
-            recording_session_id, audio_url, audio_s3_key, egress_id = await start_recording(
+            (
+                recording_session_id,
+                audio_url,
+                audio_s3_key,
+                egress_id,
+            ) = await start_recording(
                 config=rec_cfg,
                 lk_api=ctx.api,
-                agent_type=REGISTERED_AGENT_NAME,
-                agent_name=config.agent_name,
+                agent_type=profile.agent_type,
+                agent_name=profile.agent_type,
                 room_name=ctx.room.name,
                 resolved_user_id=resolved_user_id,
                 participant_identity=participant_identity,
@@ -673,6 +602,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             logger.error(f"Failed to initialize recording: {e}")
 
     _sessions[ctx.room.name] = SessionState(
+        profile=profile,
         room_name=ctx.room.name,
         resolved_user_id=resolved_user_id,
         participant_identity=participant_identity,
@@ -686,10 +616,14 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     )
 
     if mode is InteractionMode.PTT:
-        await _start_ptt_session(ctx, session, config, agent)
+        await _start_ptt_session(ctx, session, agent)
     else:
-        await _start_auto_session(ctx, session, config, agent)
+        await _start_auto_session(ctx, session, agent)
+
+
+def main() -> None:
+    agents.cli.run_app(server)
 
 
 if __name__ == "__main__":
-    agents.cli.run_app(server)
+    main()

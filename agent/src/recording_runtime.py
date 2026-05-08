@@ -71,7 +71,6 @@ async def start_recording(
     phone_number: str | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> tuple[str | None, str, str, str | None]:
-    """Start egress recording and optionally insert a DB session row."""
     now = datetime.now(timezone.utc)
     audio_s3_key = build_audio_s3_key(agent_type, room_name, config.s3_base_prefix, now)
     audio_url = build_s3_url(
@@ -221,7 +220,6 @@ async def finalize_recording(
     webhook_url: str | None = None,
     send_webhook: bool = True,
 ) -> dict[str, Any]:
-    """Finalize recording: stop egress, upload transcript + metrics, update DB, send webhook."""
     now = datetime.now(timezone.utc)
 
     if session_id:
@@ -272,7 +270,11 @@ async def finalize_recording(
     started_at = report_dict.get("started_at")
     if started_at:
         duration = report_dict.get("duration")
-        duration_ms = int(duration * 1000) if duration else int((now.timestamp() - started_at) * 1000)
+        duration_ms = (
+            int(duration * 1000)
+            if duration
+            else int((now.timestamp() - started_at) * 1000)
+        )
 
     transcript_data: dict[str, Any] | None = None
     transcript_url: str | None = None
