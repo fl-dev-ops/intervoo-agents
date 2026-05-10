@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 import json
 import logging
 import math
@@ -9,7 +8,6 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
-from functools import wraps
 
 from livekit import agents, rtc
 from livekit.agents import (
@@ -23,7 +21,6 @@ from livekit.agents import (
 )
 from livekit.agents.beta.tools import EndCallTool
 from livekit.plugins import noise_cancellation, openai, sarvam, silero
-from livekit.plugins.sarvam import tts as sarvam_tts_module
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 from constants import (
@@ -62,6 +59,7 @@ logger = logging.getLogger("interview_coaching_agent")
 MAX_CONCURRENT_SESSIONS = 10
 _knowledge_base_config = build_knowledge_base_config()
 _knowledge_base = ChromaKnowledgeBase(_knowledge_base_config)
+
 
 class InteractionMode(str, Enum):
     AUTO = "auto"
@@ -154,7 +152,7 @@ def extract_session_config(metadata: Mapping[str, object] | None) -> SessionConf
         voice.strip() if isinstance(voice, str) and voice.strip() else None
     )
 
-    speaking_speed = raw_config.get("speakingSpeed")
+    speaking_speed = raw_config.get("speakingSpeed") or raw_config.get("speaking_speed")
     normalized_speaking_speed: float | None = None
     if isinstance(speaking_speed, (int, float)) and math.isfinite(speaking_speed):
         normalized_speaking_speed = float(speaking_speed)
@@ -569,7 +567,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     comfortable_language: str | None = None
     raw_prompt_context = metadata.get("prompt_context") or metadata.get("promptContext")
     if isinstance(raw_prompt_context, Mapping):
-        candidate = raw_prompt_context.get("comfortableLanguage")
+        candidate = raw_prompt_context.get(
+            "comfortable_language"
+        ) or raw_prompt_context.get("comfortableLanguage")
         if isinstance(candidate, str) and candidate.strip():
             comfortable_language = candidate.strip()
     language_info = resolve_language_config(comfortable_language)

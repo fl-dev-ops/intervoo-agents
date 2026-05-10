@@ -171,32 +171,48 @@ def test_build_prompt_context_uses_defaults() -> None:
     context = build_prompt_context({})
 
     assert context == {
-        "agentName": DEFAULT_PROMPT_AGENT_NAME,
-        "additionalContext": "",
-        "userName": DEFAULT_PROMPT_USER_NAME,
+        "agent_name": DEFAULT_PROMPT_AGENT_NAME,
+        "additional_context": "",
+        "user_name": DEFAULT_PROMPT_USER_NAME,
     }
 
 
 def test_build_prompt_context_merges_prompt_context_values() -> None:
     context = build_prompt_context(
         {
-            "userName": "Top Level",
+            "user_name": "Top Level",
             "prompt_context": {
-                "agentName": "Maya",
-                "userName": "Asha",
-                "jobRole": "Backend Developer",
-                "nativeLanguage": "Tamil",
+                "agent_name": "Maya",
+                "user_name": "Asha",
+                "job_role": "Backend Developer",
+                "native_language": "Tamil",
             },
         }
     )
 
     assert context == {
-        "agentName": "Maya",
-        "additionalContext": '{"jobRole": "Backend Developer", "nativeLanguage": "Tamil"}',
-        "userName": "Asha",
-        "jobRole": "Backend Developer",
-        "nativeLanguage": "Tamil",
+        "agent_name": "Maya",
+        "additional_context": '{"job_role": "Backend Developer", "native_language": "Tamil"}',
+        "user_name": "Asha",
+        "job_role": "Backend Developer",
+        "native_language": "Tamil",
     }
+
+
+def test_build_prompt_context_preserves_explicit_additional_context() -> None:
+    context = build_prompt_context(
+        {
+            "prompt_context": {
+                "agent_name": "Arjun",
+                "user_name": "Ravi",
+                "additional_context": "Focus on backend system design.",
+                "current_round": "technical-thinking",
+            },
+        }
+    )
+
+    assert context["additional_context"] == "Focus on backend system design."
+    assert context["current_round"] == "technical-thinking"
 
 
 def test_build_prompt_context_does_not_embed_full_questions() -> None:
@@ -217,7 +233,7 @@ def test_build_prompt_context_does_not_embed_full_questions() -> None:
 
 def test_extract_session_config_reads_config_values() -> None:
     session_config = extract_session_config(
-        {"config": {"voice": "ishita", "speakingSpeed": "0.7"}}
+        {"config": {"voice": "ishita", "speaking_speed": "0.7"}}
     )
 
     assert session_config == SessionConfig(voice="ishita", speaking_speed=0.7)
@@ -233,8 +249,8 @@ def test_extract_session_config_ignores_invalid_values() -> None:
 
 def test_render_prompt_injects_context_and_blanks_missing_values() -> None:
     rendered = render_prompt(
-        "Hello {agentName}. User: {userName}. Role: {jobRole}. Missing: {companyName}",
-        context={"agentName": "Sara", "userName": "Ravi", "jobRole": "Analyst"},
+        "Hello {agent_name}. User: {user_name}. Role: {job_role}. Missing: {company_name}",
+        context={"agent_name": "Sara", "user_name": "Ravi", "job_role": "Analyst"},
     )
 
     assert rendered == "Hello Sara. User: Ravi. Role: Analyst. Missing:"
