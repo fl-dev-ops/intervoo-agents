@@ -39,7 +39,6 @@ from knowledge_base import (
     build_knowledge_base_config,
     with_collection,
 )
-from language import resolve_language_config
 from prompt import build_prompt_context, load_prompt, render_prompt
 from recording_config import RecordingConfig, build_recording_config
 from recording_db import init_pool
@@ -124,12 +123,12 @@ def extract_session_config(metadata: Mapping[str, object] | None) -> SessionConf
         voice.strip() if isinstance(voice, str) and voice.strip() else None
     )
 
-    dict_id = raw_config.get("dict_id") or raw_config.get("dictId")
+    dict_id = raw_config.get("dict_id")
     normalized_dict_id = (
         dict_id.strip() if isinstance(dict_id, str) and dict_id.strip() else None
     )
 
-    speaking_speed = raw_config.get("speakingSpeed")
+    speaking_speed = raw_config.get("speaking_speed")
     normalized_speaking_speed: float | None = None
     if isinstance(speaking_speed, (int, float)) and math.isfinite(speaking_speed):
         normalized_speaking_speed = float(speaking_speed)
@@ -151,9 +150,7 @@ def extract_session_config(metadata: Mapping[str, object] | None) -> SessionConf
 def resolve_interaction_mode(metadata: Mapping[str, object] | None) -> InteractionMode:
     if not metadata:
         return InteractionMode.AUTO
-    interaction_mode = metadata.get("interaction_mode") or metadata.get(
-        "interactionMode"
-    )
+    interaction_mode = metadata.get("interaction_mode")
     if isinstance(interaction_mode, str):
         normalized = interaction_mode.strip().lower()
         if normalized == "ptt":
@@ -517,14 +514,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     prompt_context = build_prompt_context(metadata)
     agent_instructions = render_prompt(prompt_template, context=prompt_context)
 
-    comfortable_language: str | None = None
-    raw_prompt_context = metadata.get("prompt_context") or metadata.get("promptContext")
-    if isinstance(raw_prompt_context, Mapping):
-        candidate = raw_prompt_context.get("comfortableLanguage")
-        if isinstance(candidate, str) and candidate.strip():
-            comfortable_language = candidate.strip()
-    language_info = resolve_language_config(comfortable_language)
-
     tools: list[Any] = []
     if profile.end_call_enabled:
         tools.append(_build_end_call_tool())
@@ -558,11 +547,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         tts_dict_id=profile.voice_dict_id,
         mode=mode,
         session_config=session_config,
-        language_info=language_info,
     )
     _attach_metrics_logging(session)
 
-    webhook_url_raw = metadata.get("webhook_url") or metadata.get("webhookUrl")
+    webhook_url_raw = metadata.get("webhook_url")
     webhook_url = (
         webhook_url_raw.strip()
         if isinstance(webhook_url_raw, str) and webhook_url_raw.strip()

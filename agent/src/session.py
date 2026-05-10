@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 
@@ -10,12 +9,10 @@ from livekit.agents import AgentSession
 from livekit.plugins import openai, sarvam, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
-from language import resolve_language_config, resolve_stt_mode
-
 logger = logging.getLogger(__name__)
 
 DEFAULT_OPENROUTER_MODEL = "openai/gpt-5.1"
-DEFAULT_SARVAM_TTS_LANGUAGE = "en-IN"
+DEFAULT_SARVAM_LANGUAGE = "en-IN"
 DEFAULT_SARVAM_TTS_MODEL = "bulbul:v3"
 
 
@@ -36,27 +33,22 @@ def build_agent_session(
     openrouter_model: str = DEFAULT_OPENROUTER_MODEL,
     tts_speaker: str,
     tts_dict_id: str | None,
-    tts_language: str = DEFAULT_SARVAM_TTS_LANGUAGE,
     tts_model: str = DEFAULT_SARVAM_TTS_MODEL,
     mode: InteractionMode = InteractionMode.AUTO,
     session_config: SessionConfig | None = None,
-    language_info: Mapping[str, str] | None = None,
 ) -> AgentSession:
     effective_session_config = session_config or SessionConfig()
-    effective_language = language_info or resolve_language_config(None)
-    stt_language = effective_language.get("stt_language", "en-IN")
-    effective_tts_language = effective_language.get("tts_language", tts_language)
 
     stt = sarvam.STT(
-        language=stt_language,
+        language=DEFAULT_SARVAM_LANGUAGE,
         model="saaras:v3",
-        mode=resolve_stt_mode(stt_language),
+        mode="transcribe",
     )
 
     llm = openai.LLM.with_openrouter(model=openrouter_model)
 
     tts = sarvam.TTS(
-        target_language_code=effective_tts_language,
+        target_language_code=DEFAULT_SARVAM_LANGUAGE,
         model=tts_model,
         speaker=effective_session_config.voice or tts_speaker,
         pace=effective_session_config.speaking_speed or 1.0,

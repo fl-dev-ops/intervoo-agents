@@ -24,47 +24,47 @@ def test_build_prompt_context_uses_defaults_when_metadata_missing() -> None:
     context = build_prompt_context(None)
 
     assert context == {
-        "agentName": "Sara",
-        "additionalContext": "",
-        "userName": "the student",
+        "agent_name": "Sara",
+        "additional_context": "",
+        "user_name": "the student",
     }
 
 
 def test_build_prompt_context_overrides_user_name_from_metadata() -> None:
-    context = build_prompt_context({"userName": "Ravi"})
+    context = build_prompt_context({"user_name": "Ravi"})
 
-    assert context["userName"] == "Ravi"
+    assert context["user_name"] == "Ravi"
 
 
 def test_build_prompt_context_packages_extra_keys_into_additional_context() -> None:
     context = build_prompt_context(
         {
-            "userName": "Ravi",
+            "user_name": "Ravi",
             "prompt_context": {
-                "comfortableLanguage": "hindi",
+                "comfortable_language": "hindi",
                 "score": 42,
             },
         }
     )
 
-    assert context["userName"] == "Ravi"
-    assert context["comfortableLanguage"] == "hindi"
+    assert context["user_name"] == "Ravi"
+    assert context["comfortable_language"] == "hindi"
     assert context["score"] == "42"
-    assert context["additionalContext"] == (
-        '{"comfortableLanguage": "hindi", "score": "42"}'
+    assert context["additional_context"] == (
+        '{"comfortable_language": "hindi", "score": "42"}'
     )
 
 
 def test_render_prompt_substitutes_known_keys_and_warns_on_missing() -> None:
-    template = "Hello {userName}, I am {agentName}. Note: {missingKey}"
+    template = "Hello {user_name}, I am {agent_name}. Note: {missing_key}"
 
     rendered = render_prompt(
         template,
-        context={"userName": "Ravi", "agentName": "Sara"},
+        context={"user_name": "Ravi", "agent_name": "Sara"},
     )
 
     assert rendered.startswith("Hello Ravi, I am Sara.")
-    assert "{missingKey}" not in rendered
+    assert "{missing_key}" not in rendered
 
 
 def _fake_response(body: bytes, status: int = 200):
@@ -75,7 +75,7 @@ def _fake_response(body: bytes, status: int = 200):
 
 
 def test_load_prompt_fetches_url_and_caches() -> None:
-    body = b"You are {agentName}. Talk to {userName}."
+    body = b"You are {agent_name}. Talk to {user_name}."
 
     class _Manager:
         def __init__(self, payload):
@@ -93,7 +93,7 @@ def test_load_prompt_fetches_url_and_caches() -> None:
         first = load_prompt("https://example.com/p.md")
         second = load_prompt("https://example.com/p.md")
 
-    assert first == "You are {agentName}. Talk to {userName}."
+    assert first == "You are {agent_name}. Talk to {user_name}."
     assert first == second
     assert mock_urlopen.call_count == 1
 

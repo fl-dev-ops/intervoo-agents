@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-
-import pytest
-
 from profile import (
     ProfileError,
     load_profile_catalog,
     parse_profile_catalog,
     pick_profile,
 )
+
+import pytest
 
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "config" / "agents.json"
 
@@ -68,12 +67,11 @@ def test_pick_profile_resolves_by_metadata_agent_id() -> None:
     assert profile.id == "diagnostic"
 
 
-def test_pick_profile_accepts_camel_case_agent_id() -> None:
+def test_pick_profile_rejects_camel_case_agent_id() -> None:
     catalog = load_profile_catalog(CONFIG_PATH)
 
-    profile = pick_profile(catalog, {"agentId": "job"})
-
-    assert profile.id == "job"
+    with pytest.raises(ProfileError, match="agent_id"):
+        pick_profile(catalog, {"agentId": "job"})
 
 
 def test_pick_profile_rejects_missing_agent_id() -> None:
@@ -91,7 +89,7 @@ def test_pick_profile_rejects_unknown_agent_id() -> None:
 
 
 def test_parse_catalog_rejects_missing_kb_collection() -> None:
-    with pytest.raises(ProfileError, match="knowledge_base.collection"):
+    with pytest.raises(ProfileError, match=r"knowledge_base\.collection"):
         parse_profile_catalog(
             {
                 "agents": {
@@ -108,7 +106,7 @@ def test_parse_catalog_rejects_missing_kb_collection() -> None:
 
 
 def test_parse_catalog_rejects_unknown_kb_shape() -> None:
-    with pytest.raises(ProfileError, match="knowledge_base.shape"):
+    with pytest.raises(ProfileError, match=r"knowledge_base\.shape"):
         parse_profile_catalog(
             {
                 "agents": {

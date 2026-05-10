@@ -120,7 +120,7 @@ def pick_profile(
     if metadata is None:
         raise ProfileError("Room metadata is missing; cannot select agent profile")
 
-    agent_id_raw = metadata.get("agent_id") or metadata.get("agentId")
+    agent_id_raw = metadata.get("agent_id")
     agent_id = _optional_str(agent_id_raw)
     if agent_id is None:
         raise ProfileError("Room metadata must include 'agent_id'")

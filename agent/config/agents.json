@@ -1,5 +1,22 @@
 {
   "agents": {
+    "job": {
+      "agent_type": "job-finder-agent",
+      "prompt_url": "https://raw.githubusercontent.com/fl-dev-ops/Prompts/main/Job/v0.md",
+      "initial_reply": "Greet the user, introduce yourself as their job search agent, and ask what kind of role they are trying to land.",
+      "voice": {
+        "speaker": "ritu",
+        "dict_id": "p_fcfdd23b"
+      },
+      "tools": {
+        "end_call": false,
+        "knowledge_base": {
+          "collection": "job_questions",
+          "shape": "simple"
+        },
+        "memory": true
+      }
+    },
     "interview": {
       "agent_type": "interview-coaching-agent",
       "prompt_url": "https://raw.githubusercontent.com/fl-dev-ops/Prompts/main/Interview/v0.md",
@@ -49,23 +66,6 @@
           "shape": "diagnostic"
         },
         "memory": false
-      }
-    },
-    "job": {
-      "agent_type": "job-finder-agent",
-      "prompt_url": "https://raw.githubusercontent.com/fl-dev-ops/Prompts/main/Job/v0.md",
-      "initial_reply": "Greet the user, introduce yourself as their job search agent, and ask what kind of role they are trying to land.",
-      "voice": {
-        "speaker": "ritu",
-        "dict_id": "p_fcfdd23b"
-      },
-      "tools": {
-        "end_call": false,
-        "knowledge_base": {
-          "collection": "job_questions",
-          "shape": "simple"
-        },
-        "memory": true
       }
     }
   }
