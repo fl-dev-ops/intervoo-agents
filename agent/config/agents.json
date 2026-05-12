@@ -10,10 +10,7 @@
       },
       "tools": {
         "end_call": false,
-        "knowledge_base": {
-          "collection": "job_questions",
-          "shape": "simple"
-        },
+        "knowledge_base": false,
         "memory": true
       }
     },
@@ -27,10 +24,7 @@
       },
       "tools": {
         "end_call": false,
-        "knowledge_base": {
-          "collection": "interview_questions",
-          "shape": "simple"
-        },
+        "knowledge_base": false,
         "memory": false
       }
     },
@@ -44,16 +38,13 @@
       },
       "tools": {
         "end_call": true,
-        "knowledge_base": {
-          "collection": "pre_screen_questions",
-          "shape": "simple"
-        },
+        "knowledge_base": false,
         "memory": false
       }
     },
     "diagnostic": {
       "agent_type": "diagnostic-agent",
-      "prompt_url": "https://raw.githubusercontent.com/fl-dev-ops/Prompts/main/Diagnostic/v0.md",
+      "prompt_url": "https://raw.githubusercontent.com/fl-dev-ops/Prompts/main/Diagnostic/v1.md",
       "initial_reply": "Greet the user, introduce yourself as interviewer.",
       "voice": {
         "speaker": "ishita",
@@ -62,7 +53,7 @@
       "tools": {
         "end_call": true,
         "knowledge_base": {
-          "collection": "diagnostic_questions",
+          "collection": "CS_Diagnostics_Agent",
           "shape": "diagnostic"
         },
         "memory": false

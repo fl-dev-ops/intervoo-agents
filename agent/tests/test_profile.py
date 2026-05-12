@@ -19,7 +19,7 @@ def test_catalog_loads_all_four_personas() -> None:
     assert set(catalog.keys()) == {"interview", "pre_screen", "diagnostic", "job"}
 
 
-def test_pre_screen_profile_has_end_call_and_simple_kb() -> None:
+def test_pre_screen_profile_has_end_call_and_no_kb() -> None:
     catalog = load_profile_catalog(CONFIG_PATH)
     profile = catalog["pre_screen"]
 
@@ -27,7 +27,7 @@ def test_pre_screen_profile_has_end_call_and_simple_kb() -> None:
     assert profile.voice_speaker == "ishita"
     assert profile.voice_dict_id == "p_fcfdd23b"
     assert profile.end_call_enabled is True
-    assert profile.kb_collection == "pre_screen_questions"
+    assert profile.kb_collection is None
     assert profile.kb_shape == "simple"
     assert profile.memory_enabled is False
 
@@ -56,6 +56,7 @@ def test_interview_profile_has_no_end_call_no_memory() -> None:
 
     assert profile.voice_speaker == "kavya"
     assert profile.end_call_enabled is False
+    assert profile.kb_collection is None
     assert profile.memory_enabled is False
 
 
