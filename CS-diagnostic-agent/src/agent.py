@@ -5,6 +5,7 @@ import json
 import logging
 import math
 import os
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -671,10 +672,17 @@ def _compute_worker_load(current_server: AgentServer) -> float:
 
 
 def _prewarm(proc: agents.JobProcess) -> None:
+    started_at = time.monotonic()
+    logger.info("Starting knowledge base prewarm")
     _knowledge_base.prewarm()
+    logger.info(
+        "Knowledge base prewarm finished in %.2fs",
+        time.monotonic() - started_at,
+    )
 
 
 server = AgentServer(
+    initialize_process_timeout=60,
     shutdown_process_timeout=60,
     setup_fnc=_prewarm,
     load_fnc=_compute_worker_load,
