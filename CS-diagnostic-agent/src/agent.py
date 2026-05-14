@@ -62,6 +62,8 @@ logger = logging.getLogger("interview_coaching_agent")
 MAX_CONCURRENT_SESSIONS = 10
 _knowledge_base_config = build_knowledge_base_config()
 _knowledge_base = ChromaKnowledgeBase(_knowledge_base_config)
+QUESTION_FILTER_KEYS = ("content_type", "domain", "band")
+
 
 class InteractionMode(str, Enum):
     AUTO = "auto"
@@ -139,6 +141,28 @@ def parse_room_metadata(metadata: str | None) -> dict[str, object]:
 
     logger.warning("Room metadata is not an object")
     return {}
+
+
+def extract_question_filter_defaults(
+    metadata: Mapping[str, object] | None,
+) -> dict[str, object]:
+    if not metadata:
+        return {}
+
+    defaults: dict[str, object] = {}
+    raw_filters = metadata.get("questionFilters") or metadata.get("question_filters")
+    if isinstance(raw_filters, Mapping):
+        for key in QUESTION_FILTER_KEYS:
+            value = raw_filters.get(key)
+            if value is not None:
+                defaults[key] = value
+
+    if "band" not in defaults:
+        band = metadata.get("selectedBand")
+        if band is not None:
+            defaults["band"] = band
+
+    return defaults
 
 
 def extract_session_config(metadata: Mapping[str, object] | None) -> SessionConfig:
@@ -318,9 +342,17 @@ async def _publish_question_started_event(
     logger.info("Published diagnostic_question_started for %s", question["id"])
 
 
-def build_diagnostic_question_tools(room: rtc.Room | None):
+def build_diagnostic_question_tools(
+    room: rtc.Room | None,
+    default_filters: Mapping[str, object] | None = None,
+):
     batch_counter = {"value": 0}
     questions_by_id: dict[str, dict[str, object]] = {}
+    session_filters = {
+        key: value
+        for key, value in (default_filters or {}).items()
+        if key in QUESTION_FILTER_KEYS and value is not None
+    }
 
     @function_tool(
         name="retrieve_knowledge",
@@ -341,7 +373,7 @@ def build_diagnostic_question_tools(room: rtc.Room | None):
         exclude_ids: list[str] | None = None,
         limit: int | None = None,
     ) -> dict[str, object]:
-        filters = {
+        call_filters = {
             key: value
             for key, value in {
                 "content_type": content_type,
@@ -352,6 +384,9 @@ def build_diagnostic_question_tools(room: rtc.Room | None):
             }.items()
             if value is not None
         }
+        logger.info(f"call_filters {call_filters}, session_filters {session_filters}")
+        filters = {**call_filters, **session_filters}
+        logger.info(f"filters {filters}")
         result = await retrieve_knowledge_from_base(
             _knowledge_base,
             query=query,
@@ -736,6 +771,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     metadata = parse_room_metadata(room_metadata)
     mode = resolve_interaction_mode(metadata)
     session_config = extract_session_config(metadata)
+    question_filter_defaults = extract_question_filter_defaults(metadata)
     recording_metadata = build_recording_metadata(metadata, mode)
     recording_metadata["prompt_version"] = PROMPT_VERSION
     await ctx.connect()
@@ -766,7 +802,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     mark_question_started_tool = None
     if kb_cfg.enabled:
         retrieve_tool, mark_question_started_tool = build_diagnostic_question_tools(
-            ctx.room
+            ctx.room,
+            default_filters=question_filter_defaults,
         )
     agent = VoiceAssistantAgent(
         instructions=agent_instructions,

@@ -366,8 +366,8 @@ Expected metadata:
 Tool rules:
   - Call retrieve_knowledge before asking questions from a new assessment state.
   - Use a query that includes the current state and useful conversation context.
-  - Pass known hard constraints as direct retrieve_knowledge arguments: content_type, domain, category, difficulty_level, and band.
-  - Always pass content_type = "diagnostic_question" and domain = "computer_science".
+  - Pass known state-specific constraints as direct retrieve_knowledge arguments: category and difficulty_level.
+  - The session provides retrieval defaults for content_type, domain, and band. Do not override them unless the session context explicitly provides a different value.
   - Keep track of asked record ids and pass them as exclude_ids.
   - If retrieve_knowledge returns status = "unavailable" or "empty", explain that the assessment cannot continue reliably right now and call end_call.
   - Before asking any retrieved question, call mark_question_started(question_id) with the retrieved record id.
