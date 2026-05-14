@@ -62,7 +62,7 @@ logger = logging.getLogger("interview_coaching_agent")
 MAX_CONCURRENT_SESSIONS = 10
 _knowledge_base_config = build_knowledge_base_config()
 _knowledge_base = ChromaKnowledgeBase(_knowledge_base_config)
-QUESTION_FILTER_KEYS = ("content_type", "domain", "band")
+QUESTION_FILTER_KEYS = ("content_type", "domain", "band", "category")
 
 
 class InteractionMode(str, Enum):
