@@ -21,7 +21,6 @@ class AgentProfile:
     prompt_url: str
     initial_reply: str
     voice_speaker: str
-    voice_dict_id: str | None
     end_call_enabled: bool
     kb_collection: str | None
     kb_shape: str
@@ -80,7 +79,6 @@ def _parse_profile(agent_id: str, value: Any) -> AgentProfile:
             value.get("initial_reply"), f"agents.{agent_id}.initial_reply"
         ),
         voice_speaker=_required_str(voice.get("speaker"), f"agents.{agent_id}.voice.speaker"),
-        voice_dict_id=_optional_str(voice.get("dict_id")),
         end_call_enabled=bool(tools.get("end_call", False)),
         kb_collection=kb_collection,
         kb_shape=kb_shape,

@@ -5,8 +5,7 @@
       "prompt_url": "https://raw.githubusercontent.com/fl-dev-ops/Prompts/main/Job/v0.md",
       "initial_reply": "Greet the user, introduce yourself as their job search agent, and ask what kind of role they are trying to land.",
       "voice": {
-        "speaker": "ritu",
-        "dict_id": "p_fcfdd23b"
+        "speaker": "marin"
       },
       "tools": {
         "end_call": false,
@@ -19,8 +18,7 @@
       "prompt_url": "https://raw.githubusercontent.com/fl-dev-ops/Prompts/main/Interview/v0.md",
       "initial_reply": "Greet the user, introduce yourself as their interview coach, and ask what role or interview they want to prepare for today.",
       "voice": {
-        "speaker": "kavya",
-        "dict_id": "p_fcfdd23b"
+        "speaker": "marin"
       },
       "tools": {
         "end_call": false,
@@ -33,8 +31,7 @@
       "prompt_url": "https://raw.githubusercontent.com/fl-dev-ops/Prompts/main/Pre-diagnostic/v2.md",
       "initial_reply": "Greet the user, introduce yourself as their interview coach, and ask what role or interview they want to prepare for today.",
       "voice": {
-        "speaker": "ishita",
-        "dict_id": "p_fcfdd23b"
+        "speaker": "marin"
       },
       "tools": {
         "end_call": true,
@@ -47,8 +44,7 @@
       "prompt_url": "https://raw.githubusercontent.com/fl-dev-ops/Prompts/main/Diagnostic/v1.md",
       "initial_reply": "Greet the user, introduce yourself as interviewer.",
       "voice": {
-        "speaker": "ishita",
-        "dict_id": "p_fcfdd23b"
+        "speaker": "marin"
       },
       "tools": {
         "end_call": true,

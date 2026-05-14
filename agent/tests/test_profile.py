@@ -24,8 +24,7 @@ def test_pre_screen_profile_has_end_call_and_no_kb() -> None:
     profile = catalog["pre_screen"]
 
     assert profile.agent_type == "pre-screen-agent"
-    assert profile.voice_speaker == "ishita"
-    assert profile.voice_dict_id == "p_fcfdd23b"
+    assert profile.voice_speaker == "marin"
     assert profile.end_call_enabled is True
     assert profile.kb_collection is None
     assert profile.kb_shape == "simple"
@@ -45,7 +44,7 @@ def test_job_profile_has_memory_and_no_end_call() -> None:
     catalog = load_profile_catalog(CONFIG_PATH)
     profile = catalog["job"]
 
-    assert profile.voice_speaker == "ritu"
+    assert profile.voice_speaker == "marin"
     assert profile.end_call_enabled is False
     assert profile.memory_enabled is True
 
@@ -54,7 +53,7 @@ def test_interview_profile_has_no_end_call_no_memory() -> None:
     catalog = load_profile_catalog(CONFIG_PATH)
     profile = catalog["interview"]
 
-    assert profile.voice_speaker == "kavya"
+    assert profile.voice_speaker == "marin"
     assert profile.end_call_enabled is False
     assert profile.kb_collection is None
     assert profile.memory_enabled is False
@@ -98,7 +97,7 @@ def test_parse_catalog_rejects_missing_kb_collection() -> None:
                         "agent_type": "bad-agent",
                         "prompt_url": "https://example.com/p.md",
                         "initial_reply": "hi",
-                        "voice": {"speaker": "ishita"},
+                        "voice": {"speaker": "marin"},
                         "tools": {"knowledge_base": {}},
                     }
                 }
@@ -115,7 +114,7 @@ def test_parse_catalog_rejects_unknown_kb_shape() -> None:
                         "agent_type": "bad-agent",
                         "prompt_url": "https://example.com/p.md",
                         "initial_reply": "hi",
-                        "voice": {"speaker": "ishita"},
+                        "voice": {"speaker": "marin"},
                         "tools": {
                             "knowledge_base": {
                                 "collection": "x",
@@ -136,7 +135,7 @@ def test_parse_catalog_disables_kb_when_tools_omits_it() -> None:
                     "agent_type": "x",
                     "prompt_url": "https://example.com/p.md",
                     "initial_reply": "hi",
-                    "voice": {"speaker": "ishita"},
+                    "voice": {"speaker": "marin"},
                     "tools": {},
                 }
             }

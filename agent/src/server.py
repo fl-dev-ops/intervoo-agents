@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import math
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -123,28 +122,7 @@ def extract_session_config(metadata: Mapping[str, object] | None) -> SessionConf
         voice.strip() if isinstance(voice, str) and voice.strip() else None
     )
 
-    dict_id = raw_config.get("dict_id")
-    normalized_dict_id = (
-        dict_id.strip() if isinstance(dict_id, str) and dict_id.strip() else None
-    )
-
-    speaking_speed = raw_config.get("speaking_speed")
-    normalized_speaking_speed: float | None = None
-    if isinstance(speaking_speed, (int, float)) and math.isfinite(speaking_speed):
-        normalized_speaking_speed = float(speaking_speed)
-    elif isinstance(speaking_speed, str):
-        try:
-            parsed = float(speaking_speed)
-        except ValueError:
-            parsed = None
-        if parsed is not None and math.isfinite(parsed):
-            normalized_speaking_speed = parsed
-
-    return SessionConfig(
-        voice=normalized_voice,
-        speaking_speed=normalized_speaking_speed,
-        dict_id=normalized_dict_id,
-    )
+    return SessionConfig(voice=normalized_voice)
 
 
 def resolve_interaction_mode(metadata: Mapping[str, object] | None) -> InteractionMode:
@@ -543,8 +521,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     )
 
     session = build_agent_session(
-        tts_speaker=profile.voice_speaker,
-        tts_dict_id=profile.voice_dict_id,
+        voice=profile.voice_speaker,
         mode=mode,
         session_config=session_config,
     )
