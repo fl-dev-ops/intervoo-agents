@@ -7,7 +7,7 @@ from livekit import agents, rtc
 
 logger = logging.getLogger(__name__)
 
-IDLE_ROOM_TIMEOUT_SECONDS = 5 * 60
+IDLE_ROOM_TIMEOUT_SECONDS = 1 * 60
 USER_PARTICIPANT_KINDS = frozenset(
     {
         rtc.ParticipantKind.PARTICIPANT_KIND_STANDARD,
