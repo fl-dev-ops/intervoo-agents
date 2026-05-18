@@ -24,6 +24,7 @@ def test_pre_screen_profile_has_end_call_and_no_kb() -> None:
     profile = catalog["pre_screen"]
 
     assert profile.agent_type == "pre-screen-agent"
+    assert profile.prompt_url == "prompts/pre-screen/v1.md"
     assert profile.voice_speaker == "ishita"
     assert profile.voice_dict_id == "p_fcfdd23b"
     assert profile.end_call_enabled is True
@@ -36,6 +37,7 @@ def test_diagnostic_profile_has_diagnostic_kb_shape() -> None:
     catalog = load_profile_catalog(CONFIG_PATH)
     profile = catalog["diagnostic"]
 
+    assert profile.prompt_url == "prompts/diagnostic/v1.md"
     assert profile.kb_shape == "diagnostic"
     assert profile.end_call_enabled is True
     assert profile.memory_enabled is False
@@ -45,6 +47,7 @@ def test_job_profile_has_memory_and_no_end_call() -> None:
     catalog = load_profile_catalog(CONFIG_PATH)
     profile = catalog["job"]
 
+    assert profile.prompt_url == "prompts/job/v1.md"
     assert profile.voice_speaker == "ritu"
     assert profile.end_call_enabled is False
     assert profile.memory_enabled is True
@@ -54,6 +57,7 @@ def test_interview_profile_has_no_end_call_no_memory() -> None:
     catalog = load_profile_catalog(CONFIG_PATH)
     profile = catalog["interview"]
 
+    assert profile.prompt_url == "prompts/interview/v1.md"
     assert profile.voice_speaker == "kavya"
     assert profile.end_call_enabled is False
     assert profile.kb_collection is None

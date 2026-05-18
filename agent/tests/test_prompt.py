@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import io
+from pathlib import Path
+from profile import load_profile_catalog
 from unittest.mock import patch
 
 import pytest
@@ -11,6 +13,8 @@ from prompt import (
     load_prompt,
     render_prompt,
 )
+
+CONFIG_PATH = Path(__file__).resolve().parents[1] / "config" / "agents.json"
 
 
 @pytest.fixture(autouse=True)
@@ -26,6 +30,7 @@ def test_build_prompt_context_uses_defaults_when_metadata_missing() -> None:
     assert context == {
         "agent_name": "Sara",
         "additional_context": "",
+        "prompt": "",
         "user_name": "the student",
     }
 
@@ -96,6 +101,27 @@ def test_load_prompt_fetches_url_and_caches() -> None:
     assert first == "You are {agent_name}. Talk to {user_name}."
     assert first == second
     assert mock_urlopen.call_count == 1
+
+
+def test_load_prompt_reads_local_prompt_relative_to_agent_root() -> None:
+    prompt = load_prompt("prompts/diagnostic/v1.md")
+
+    assert "structured technical diagnostic interview" in prompt
+
+
+def test_configured_profile_prompts_load_from_local_files() -> None:
+    catalog = load_profile_catalog(CONFIG_PATH)
+
+    prompts = {
+        agent_id: load_prompt(profile.prompt_url)
+        for agent_id, profile in catalog.items()
+    }
+
+    assert set(prompts) == {"interview", "pre_screen", "diagnostic", "job"}
+    assert "Job Interview Voice Agent" in prompts["job"]
+    assert "Interview Practice Voice Agent" in prompts["interview"]
+    assert "Role And Objective" in prompts["pre_screen"]
+    assert "Diagnostic Interview Agent Prompt" in prompts["diagnostic"]
 
 
 def test_load_prompt_raises_on_empty_body() -> None:

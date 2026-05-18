@@ -4,13 +4,16 @@ import json
 import logging
 from collections import UserDict
 from collections.abc import Mapping
+from pathlib import Path
 from urllib import error, request
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_PROMPT_AGENT_NAME = "Sara"
 DEFAULT_PROMPT_USER_NAME = "the student"
 DEFAULT_PROMPT_FETCH_TIMEOUT_SECONDS = 10
+AGENT_ROOT = Path(__file__).resolve().parents[1]
 
 _prompt_cache: dict[str, str] = {}
 
@@ -25,27 +28,41 @@ def load_prompt(url: str, *, timeout: float = DEFAULT_PROMPT_FETCH_TIMEOUT_SECON
     if not isinstance(url, str) or not url.strip():
         raise ValueError("prompt_url must be a non-empty string")
 
-    cached = _prompt_cache.get(url)
+    prompt_source = url.strip()
+    cached = _prompt_cache.get(prompt_source)
     if cached is not None:
         return cached
 
-    logger.info(f"Fetching prompt from {url}")
-    try:
-        with request.urlopen(url, timeout=timeout) as response:
-            status = getattr(response, "status", response.getcode())
-            if status >= 400:
-                raise RuntimeError(f"Prompt fetch returned HTTP {status}")
-            body = response.read().decode("utf-8")
-    except error.HTTPError as e:
-        raise RuntimeError(f"Prompt fetch failed for {url}: HTTP {e.code} {e.reason}") from e
-    except Exception as e:
-        raise RuntimeError(f"Prompt fetch failed for {url}: {e}") from e
+    parsed = urlparse(prompt_source)
+    if parsed.scheme in {"http", "https"}:
+        logger.info(f"Fetching prompt from {prompt_source}")
+        try:
+            with request.urlopen(prompt_source, timeout=timeout) as response:
+                status = getattr(response, "status", response.getcode())
+                if status >= 400:
+                    raise RuntimeError(f"Prompt fetch returned HTTP {status}")
+                body = response.read().decode("utf-8")
+        except error.HTTPError as e:
+            raise RuntimeError(
+                f"Prompt fetch failed for {prompt_source}: HTTP {e.code} {e.reason}"
+            ) from e
+        except Exception as e:
+            raise RuntimeError(f"Prompt fetch failed for {prompt_source}: {e}") from e
+    else:
+        prompt_path = Path(prompt_source)
+        if not prompt_path.is_absolute():
+            prompt_path = AGENT_ROOT / prompt_path
+        logger.info(f"Loading prompt from {prompt_path}")
+        try:
+            body = prompt_path.read_text(encoding="utf-8")
+        except Exception as e:
+            raise RuntimeError(f"Prompt load failed for {prompt_source}: {e}") from e
 
     text = body.strip()
     if not text:
-        raise ValueError(f"Fetched prompt is empty: {url}")
+        raise ValueError(f"Prompt is empty: {prompt_source}")
 
-    _prompt_cache[url] = text
+    _prompt_cache[prompt_source] = text
     return text
 
 
@@ -69,6 +86,7 @@ def build_prompt_context(
     prompt_context: dict[str, str] = {
         "agent_name": DEFAULT_PROMPT_AGENT_NAME,
         "additional_context": "",
+        "prompt": "",
         "user_name": (user_name or "").strip() or DEFAULT_PROMPT_USER_NAME,
     }
 
