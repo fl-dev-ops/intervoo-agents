@@ -58,11 +58,11 @@ def build_prompt_context(
     if isinstance(metadata_user_name, str) and metadata_user_name.strip():
         prompt_context["user_name"] = metadata_user_name.strip()
 
+    additional_context: dict[str, str] = {}
     metadata_prompt_context = metadata.get("prompt_context") or metadata.get(
         "promptContext"
     )
     if isinstance(metadata_prompt_context, Mapping):
-        additional_context: dict[str, str] = {}
         for key, value in metadata_prompt_context.items():
             if isinstance(key, str) and key:
                 string_value = _stringify_prompt_value(value)

@@ -36,6 +36,7 @@ from constants import (
     DEFAULT_SARVAM_TTS_SPEAKER,
     INITIAL_REPLY,
     PROMPT_PATH,
+    PROMPT_VERSION,
     REGISTERED_AGENT_NAME,
 )
 from identity import (
@@ -715,6 +716,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     mode = resolve_interaction_mode(metadata)
     session_config = extract_session_config(metadata)
     recording_metadata = build_recording_metadata(metadata, mode)
+    recording_metadata["prompt_version"] = PROMPT_VERSION
     await ctx.connect()
     register_idle_room_watchdog(ctx)
 

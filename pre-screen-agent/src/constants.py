@@ -10,7 +10,8 @@ APP_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(str(APP_DIR / ".env.local"))
 load_dotenv(str(APP_DIR / ".env"))
 
-PROMPT_PATH = APP_DIR / "PROMPT-v2.md"
+PROMPT_PATH = APP_DIR / "prompts" / "PROMPT_20250421_1510.md"
+PROMPT_VERSION = "PROMPT_20250421_1510"
 AGENT_NAME = "pre-screen-agent"
 DEFAULT_PROMPT_AGENT_NAME = "Sara"
 DEFAULT_PROMPT_USER_NAME = "the student"

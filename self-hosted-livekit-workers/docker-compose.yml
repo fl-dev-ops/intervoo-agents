@@ -21,7 +21,7 @@ services:
       - path: ../CS-diagnostic-agent/.env
         required: false
     environment:
-      AGENT_NAME: ${CS_DIAGNOSTIC_AGENT_NAME:-diagnostic-agent-dev}
+      AGENT_NAME: ${CS_DIAGNOSTIC_AGENT_NAME:-diagnostic-agent}
 
   pre-screen-agent:
     <<: *agent-service
