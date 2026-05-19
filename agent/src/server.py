@@ -194,6 +194,18 @@ def _attach_metrics_logging(session: AgentSession) -> None:
         metrics.log_metrics(ev.metrics)
         usage_collector.collect(ev.metrics)
 
+    @session.on("function_tools_executed")
+    def _on_tools_executed(ev: Any) -> None:
+        for function_call, output in ev.zipped():
+            logger.info(
+                "Tool call executed: name=%s call_id=%s arguments=%s output=%s is_error=%s",
+                function_call.name,
+                function_call.call_id,
+                function_call.arguments,
+                output.output if output is not None else None,
+                output.is_error if output is not None else None,
+            )
+
 
 def _build_room_options() -> room_io.RoomOptions:
     return room_io.RoomOptions(
@@ -446,6 +458,9 @@ async def on_session_end(ctx: agents.JobContext) -> None:
                 "transcript_url": recording_result.get("transcript_url")
                 if recording_result
                 else None,
+                "verbose_url": recording_result.get("verbose_url")
+                if recording_result
+                else None,
                 "video_url": None,
                 "transcript": transcript_data,
                 "duration_ms": recording_result.get("duration_ms")
@@ -455,6 +470,16 @@ async def on_session_end(ctx: agents.JobContext) -> None:
                 if recording_result
                 else "COMPLETED",
             }
+            if recording_result:
+                for url_key in (
+                    "audio_url",
+                    "transcript_url",
+                    "metrics_url",
+                    "verbose_url",
+                ):
+                    url = recording_result.get(url_key)
+                    if isinstance(url, str) and url:
+                        logger.info("%s", url)
             await _post_webhook(state.webhook_url, payload)
         except Exception as e:
             logger.error(f"Failed to post completion webhook: {e}")

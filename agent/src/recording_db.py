@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS agent_sessions (
     transcript_s3_key TEXT,
     metrics_url     TEXT,
     metrics_s3_key  TEXT,
+    verbose_url     TEXT,
+    verbose_s3_key  TEXT,
 
     metadata        JSONB DEFAULT '{}'::jsonb,
 
@@ -68,6 +70,10 @@ async def init_pool(database_url: str) -> asyncpg.Pool:
             ADD COLUMN IF NOT EXISTS metrics_url TEXT;
             ALTER TABLE agent_sessions
             ADD COLUMN IF NOT EXISTS metrics_s3_key TEXT;
+            ALTER TABLE agent_sessions
+            ADD COLUMN IF NOT EXISTS verbose_url TEXT;
+            ALTER TABLE agent_sessions
+            ADD COLUMN IF NOT EXISTS verbose_s3_key TEXT;
             """
         )
     logger.info("Recording DB pool initialized and schema bootstrapped")
@@ -146,6 +152,8 @@ async def update_session_completed(
     transcript_s3_key: str | None = None,
     metrics_url: str | None = None,
     metrics_s3_key: str | None = None,
+    verbose_url: str | None = None,
+    verbose_s3_key: str | None = None,
     egress_status: str | None = None,
     egress_error: str | None = None,
     status: str = "COMPLETED",
@@ -163,11 +171,13 @@ async def update_session_completed(
             transcript_s3_key = COALESCE($5, transcript_s3_key),
             metrics_url = COALESCE($6, metrics_url),
             metrics_s3_key = COALESCE($7, metrics_s3_key),
-            egress_status = COALESCE($8, egress_status),
-            egress_error = COALESCE($9, egress_error),
-            status = $10,
-            metadata = CASE WHEN $11::jsonb IS NOT NULL
-                THEN metadata || $11::jsonb ELSE metadata END,
+            verbose_url = COALESCE($8, verbose_url),
+            verbose_s3_key = COALESCE($9, verbose_s3_key),
+            egress_status = COALESCE($10, egress_status),
+            egress_error = COALESCE($11, egress_error),
+            status = $12,
+            metadata = CASE WHEN $13::jsonb IS NOT NULL
+                THEN metadata || $13::jsonb ELSE metadata END,
             updated_at = now()
         WHERE id = $1
         """,
@@ -178,6 +188,8 @@ async def update_session_completed(
         transcript_s3_key,
         metrics_url,
         metrics_s3_key,
+        verbose_url,
+        verbose_s3_key,
         egress_status,
         egress_error,
         status,

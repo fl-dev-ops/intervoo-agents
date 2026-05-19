@@ -29,10 +29,16 @@ from recording_store import (
     build_metrics_s3_key,
     build_s3_url,
     build_transcript_s3_key,
+    build_verbose_s3_key,
     upload_metrics_json,
     upload_transcript_json,
+    upload_verbose_json,
 )
-from recording_transcript import normalize_metrics_payload, normalize_session_report
+from recording_transcript import (
+    normalize_metrics_payload,
+    normalize_session_report,
+    normalize_verbose_payload,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +139,8 @@ def _build_webhook_payload(
     transcript_s3_key: str | None,
     metrics_url: str | None,
     metrics_s3_key: str | None,
+    verbose_url: str | None,
+    verbose_s3_key: str | None,
     duration_ms: int | None,
     report_dict: dict[str, Any],
     transcript_data: dict[str, Any] | None,
@@ -155,6 +163,8 @@ def _build_webhook_payload(
         "transcript_s3_key": transcript_s3_key,
         "metrics_url": metrics_url,
         "metrics_s3_key": metrics_s3_key,
+        "verbose_url": verbose_url,
+        "verbose_s3_key": verbose_s3_key,
         "duration_ms": duration_ms,
         "started_at": transcript_data.get("session", {}).get("started_at")
         if transcript_data
@@ -321,6 +331,26 @@ async def finalize_recording(
     except Exception as e:
         logger.error(f"Failed to upload metrics: {e}")
 
+    verbose_url: str | None = None
+    verbose_s3_key: str | None = None
+    try:
+        verbose_payload = normalize_verbose_payload(
+            report_dict,
+            agent_type=agent_type,
+            agent_name=agent_name,
+            egress_id=egress_id,
+            egress_status=egress_status_str,
+            resolved_user_id=resolved_user_id,
+            participant_identity=participant_identity,
+            phone_number=phone_number,
+        )
+        verbose_s3_key = build_verbose_s3_key(
+            agent_type, room_name, config.s3_base_prefix, now
+        )
+        verbose_url = upload_verbose_json(config, verbose_s3_key, verbose_payload)
+    except Exception as e:
+        logger.error(f"Failed to upload verbose report: {e}")
+
     if session_id:
         try:
             await update_session_completed(
@@ -331,6 +361,8 @@ async def finalize_recording(
                 transcript_s3_key=transcript_s3_key,
                 metrics_url=metrics_url,
                 metrics_s3_key=metrics_s3_key,
+                verbose_url=verbose_url,
+                verbose_s3_key=verbose_s3_key,
                 egress_status=egress_status_str,
                 status=final_status,
             )
@@ -353,6 +385,8 @@ async def finalize_recording(
                 transcript_s3_key=transcript_s3_key,
                 metrics_url=metrics_url,
                 metrics_s3_key=metrics_s3_key,
+                verbose_url=verbose_url,
+                verbose_s3_key=verbose_s3_key,
                 duration_ms=duration_ms,
                 report_dict=report_dict,
                 transcript_data=transcript_data,
@@ -366,7 +400,8 @@ async def finalize_recording(
     logger.info(
         f"Recording finalized for room {room_name}: status={final_status}, "
         f"egress={egress_status_str}, transcript={'yes' if transcript_url else 'no'}, "
-        f"metrics={'yes' if metrics_url else 'no'}"
+        f"metrics={'yes' if metrics_url else 'no'}, "
+        f"verbose={'yes' if verbose_url else 'no'}"
     )
 
     return {
@@ -378,6 +413,8 @@ async def finalize_recording(
         "transcript_s3_key": transcript_s3_key,
         "metrics_url": metrics_url,
         "metrics_s3_key": metrics_s3_key,
+        "verbose_url": verbose_url,
+        "verbose_s3_key": verbose_s3_key,
         "duration_ms": duration_ms,
         "transcript": transcript_data,
     }
