@@ -31,6 +31,7 @@ def test_build_prompt_context_uses_defaults_when_metadata_missing() -> None:
         "agent_name": "Sara",
         "additional_context": "",
         "prompt": "",
+        "question_filters": "{}",
         "user_name": "the student",
     }
 
@@ -57,6 +58,24 @@ def test_build_prompt_context_packages_extra_keys_into_additional_context() -> N
     assert context["score"] == "42"
     assert context["additional_context"] == (
         '{"comfortable_language": "hindi", "score": "42"}'
+    )
+
+
+def test_build_prompt_context_includes_question_filters_from_metadata() -> None:
+    context = build_prompt_context(
+        {
+            "question_filters": {
+                "content_type": "diagnostic_question",
+                "domain": "computer_science",
+                "category": "domain",
+                "band": 3,
+            },
+        }
+    )
+
+    assert context["question_filters"] == (
+        '{"band": 3, "category": "domain", '
+        '"content_type": "diagnostic_question", "domain": "computer_science"}'
     )
 
 

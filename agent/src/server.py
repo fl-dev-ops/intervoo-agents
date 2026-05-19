@@ -171,24 +171,6 @@ def build_recording_metadata(
     return metadata
 
 
-def extract_question_filters(
-    metadata: Mapping[str, object] | None,
-) -> dict[str, object] | None:
-    if not metadata:
-        return None
-
-    raw_filters = metadata.get("question_filters")
-    if not isinstance(raw_filters, Mapping):
-        return None
-
-    filters = {
-        key: value
-        for key, value in raw_filters.items()
-        if isinstance(key, str) and value is not None
-    }
-    return filters or None
-
-
 def _build_end_call_tool() -> EndCallTool:
     return EndCallTool(
         extra_description=END_CALL_EXTRA_DESCRIPTION,
@@ -536,10 +518,17 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     if profile.end_call_enabled:
         tools.append(_build_end_call_tool())
 
-    question_filters = extract_question_filters(metadata)
     kb = _build_kb(profile)
     if kb is not None:
-        tools.append(build_kb_tool(profile.kb_shape, kb, question_filters))
+        kb_tools = build_kb_tool(
+            profile.kb_shape,
+            kb,
+            room=ctx.room if profile.kb_shape == "diagnostic" else None,
+        )
+        if isinstance(kb_tools, tuple):
+            tools.extend(kb_tools)
+        else:
+            tools.append(kb_tools)
 
     memory_client = None
     if profile.memory_enabled:

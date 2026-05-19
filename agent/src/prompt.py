@@ -87,6 +87,7 @@ def build_prompt_context(
         "agent_name": DEFAULT_PROMPT_AGENT_NAME,
         "additional_context": "",
         "prompt": "",
+        "question_filters": "{}",
         "user_name": (user_name or "").strip() or DEFAULT_PROMPT_USER_NAME,
     }
 
@@ -96,6 +97,18 @@ def build_prompt_context(
     metadata_user_name = metadata.get("user_name")
     if isinstance(metadata_user_name, str) and metadata_user_name.strip():
         prompt_context["user_name"] = metadata_user_name.strip()
+
+    question_filters = metadata.get("question_filters")
+    if isinstance(question_filters, Mapping):
+        prompt_context["question_filters"] = json.dumps(
+            {
+                key: value
+                for key, value in question_filters.items()
+                if isinstance(key, str) and value is not None
+            },
+            ensure_ascii=True,
+            sort_keys=True,
+        )
 
     metadata_prompt_context = metadata.get("prompt_context")
     if isinstance(metadata_prompt_context, Mapping):

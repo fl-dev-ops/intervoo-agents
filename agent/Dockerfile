@@ -11,12 +11,6 @@ ENV PYTHONUNBUFFERED=1 \
 
 FROM base AS build
 
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    python3-dev \
-  && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
