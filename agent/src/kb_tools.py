@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from livekit.agents import function_tool
 import logging
+
+from livekit.agents import function_tool
 
 from knowledge_base import ChromaKnowledgeBase, retrieve_knowledge_from_base
 

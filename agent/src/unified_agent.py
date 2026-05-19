@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from typing import Any
 
@@ -18,6 +19,8 @@ from memory import (
 logger = logging.getLogger(__name__)
 
 MIN_WORDS_FOR_RETRIEVAL = 3
+SESSION_TIMER_INTERVAL_SECONDS = 60
+SESSION_TIMER_ROLE = "developer"
 
 
 class UnifiedAgent(Agent):
@@ -40,12 +43,64 @@ class UnifiedAgent(Agent):
         self.participant_attributes = participant_attributes
         self.room_name = room_name
         self._memory_tasks: set[asyncio.Task[None]] = set()
+        self._session_timer_task: asyncio.Task[None] | None = None
 
         effective_tools = list(tools)
         if memory_client is not None:
             effective_tools.append(self.recall_memory)
 
         super().__init__(instructions=instructions, tools=effective_tools)
+
+    def _build_elapsed_time_context(self, elapsed_minutes: int) -> str:
+        return (
+            f"[Internal timing context: {elapsed_minutes} minute"
+            f"{'s' if elapsed_minutes != 1 else ''} elapsed since this session started. "
+            "Use this only for pacing. Do not mention this timing message to the candidate "
+            "unless explicitly relevant.]"
+        )
+
+    async def _inject_elapsed_time_context(self, elapsed_minutes: int) -> None:
+        chat_ctx = self.chat_ctx.copy()
+        chat_ctx.add_message(
+            role=SESSION_TIMER_ROLE,
+            content=self._build_elapsed_time_context(elapsed_minutes),
+            extra={
+                "internal_timer": True,
+                "elapsed_minutes": elapsed_minutes,
+            },
+        )
+        await self.update_chat_ctx(chat_ctx)
+        logger.info(
+            "Injected session timing context: elapsed_minutes=%s, role=%s",
+            elapsed_minutes,
+            SESSION_TIMER_ROLE,
+        )
+
+    async def _run_session_timer(self) -> None:
+        elapsed_minutes = 0
+        while True:
+            await asyncio.sleep(SESSION_TIMER_INTERVAL_SECONDS)
+            elapsed_minutes += 1
+            try:
+                await self._inject_elapsed_time_context(elapsed_minutes)
+            except Exception as e:
+                logger.warning(f"Failed to inject session timing context: {e}")
+
+    def _start_session_timer(self) -> None:
+        if self._session_timer_task is not None and not self._session_timer_task.done():
+            return
+        self._session_timer_task = asyncio.create_task(
+            self._run_session_timer(),
+            name=f"session-timer:{self.room_name or self.participant_identity or 'agent'}",
+        )
+
+    async def _stop_session_timer(self) -> None:
+        if self._session_timer_task is None:
+            return
+        self._session_timer_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await self._session_timer_task
+        self._session_timer_task = None
 
     @function_tool
     async def recall_memory(
@@ -82,6 +137,8 @@ class UnifiedAgent(Agent):
         return history
 
     async def on_enter(self) -> None:
+        self._start_session_timer()
+
         if self.memory_client is None:
             await self.session.generate_reply(instructions=self.initial_reply)
             return
@@ -170,6 +227,10 @@ class UnifiedAgent(Agent):
             )
         else:
             await self.session.generate_reply(instructions=self.initial_reply)
+
+    async def on_exit(self) -> None:
+        await self._stop_session_timer()
+        await super().on_exit()
 
     async def on_user_turn_completed(
         self,
