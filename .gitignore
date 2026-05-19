@@ -4,5 +4,5 @@
 .ruff_cache/
 __pycache__/
 agent_template.egg-info
-
+*.egg-info
 .env

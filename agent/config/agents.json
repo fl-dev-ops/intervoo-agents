@@ -1,0 +1,63 @@
+{
+  "agents": {
+    "job": {
+      "agent_type": "job-finder-agent",
+      "prompt_url": "prompts/job/v1.md",
+      "initial_reply": "Greet the user, introduce yourself as their job search agent, and ask what kind of role they are trying to land.",
+      "voice": {
+        "speaker": "ritu",
+        "dict_id": "p_fcfdd23b"
+      },
+      "tools": {
+        "end_call": false,
+        "knowledge_base": false,
+        "memory": true
+      }
+    },
+    "interview": {
+      "agent_type": "interview-coaching-agent",
+      "prompt_url": "prompts/interview/v1.md",
+      "initial_reply": "Greet the user, introduce yourself as their interview coach, and ask what role or interview they want to prepare for today.",
+      "voice": {
+        "speaker": "kavya",
+        "dict_id": "p_fcfdd23b"
+      },
+      "tools": {
+        "end_call": false,
+        "knowledge_base": false,
+        "memory": false
+      }
+    },
+    "pre_screen": {
+      "agent_type": "pre-screen-agent",
+      "prompt_url": "prompts/pre-screen/v1.md",
+      "initial_reply": "Greet the user, introduce yourself as their interview coach, and ask what role or interview they want to prepare for today.",
+      "voice": {
+        "speaker": "ishita",
+        "dict_id": "p_fcfdd23b"
+      },
+      "tools": {
+        "end_call": false,
+        "knowledge_base": false,
+        "memory": false
+      }
+    },
+    "diagnostic": {
+      "agent_type": "diagnostic-agent",
+      "prompt_url": "prompts/diagnostic/v1.md",
+      "initial_reply": "Greet the user, introduce yourself as interviewer.",
+      "voice": {
+        "speaker": "ishita",
+        "dict_id": "p_fcfdd23b"
+      },
+      "tools": {
+        "end_call": false,
+        "knowledge_base": {
+          "collection": "CS_Diagnostics_Agent",
+          "shape": "diagnostic"
+        },
+        "memory": false
+      }
+    }
+  }
+}

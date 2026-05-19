@@ -3,12 +3,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 import chromadb
 
-logger = logging.getLogger("interview_coaching_agent")
+logger = logging.getLogger(__name__)
 
 MetadataValue = str | int | float | bool
 
@@ -19,7 +19,7 @@ class KnowledgeBaseConfig:
     api_key: str = ""
     tenant: str = ""
     database: str = ""
-    collection: str = "diagnostic_questions"
+    collection: str = ""
     default_limit: int = 10
 
     @property
@@ -65,9 +65,13 @@ def build_knowledge_base_config(
         api_key=values.get("CHROMA_API_KEY", ""),
         tenant=values.get("CHROMA_TENANT", ""),
         database=values.get("CHROMA_DATABASE", ""),
-        collection=values.get("CHROMA_COLLECTION", "diagnostic_questions"),
+        collection="",
         default_limit=max(default_limit, 1),
     )
+
+
+def with_collection(config: KnowledgeBaseConfig, collection: str) -> KnowledgeBaseConfig:
+    return replace(config, collection=collection)
 
 
 def _normalize_limit(limit: int | None, default_limit: int) -> int:
@@ -85,7 +89,6 @@ def _normalize_filter_value(value: Any, key: str = "") -> Any:
             for item in value
             if isinstance(item, (str, int, float, bool)) and item is not None
         ]
-        # Coerce known integer fields inside lists too
         if key == "band":
             coerced = []
             for item in scalar_values:
@@ -99,7 +102,6 @@ def _normalize_filter_value(value: Any, key: str = "") -> Any:
             scalar_values = coerced
         return {"$in": scalar_values} if scalar_values else None
     if isinstance(value, str):
-        # Coerce known integer fields from strings
         if key == "band":
             try:
                 return int(value)
@@ -153,7 +155,7 @@ class ChromaKnowledgeBase:
             )
             raise ValueError(
                 "Knowledge base disabled or not configured: CHROMA_API_KEY, "
-                "CHROMA_TENANT, CHROMA_DATABASE, and CHROMA_COLLECTION are required"
+                "CHROMA_TENANT, CHROMA_DATABASE, and a per-persona collection are required"
             )
 
         if self._client is None:
@@ -176,7 +178,6 @@ class ChromaKnowledgeBase:
             return
         try:
             collection = self._get_collection()
-            # Run a dummy query to load the ONNX embedding model into memory.
             collection.query(query_texts=["prewarm"], n_results=1)
             logger.info("Knowledge base prewarmed successfully")
         except Exception as e:

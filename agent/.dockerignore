@@ -1,0 +1,53 @@
+# Tests and local tooling
+tests/
+.pytest_cache/
+.ruff_cache/
+
+# Python bytecode and build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+
+# Logs and temp files
+log
+*.log
+*.gz
+*.tgz
+*.tmp
+.cache/
+
+# Environment variables and local config
+.env
+.env.*
+
+# VCS, editor, OS
+.git/
+.gitignore
+.gitattributes
+.github/
+.idea/
+.vscode/
+.DS_Store
+
+# Docs and agent/editor metadata
+README.md
+CONTRIBUTING.md
+LICENSE
+.claude/
+.codex/
+.cursor/
+.windsurf/
+.gemini/
+.cline/
+.opencode/
+AGENTS.md
+CLAUDE.md
+GEMINI.md

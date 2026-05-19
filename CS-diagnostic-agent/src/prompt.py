@@ -46,17 +46,17 @@ def build_prompt_context(
     user_name: str | None = None,
 ) -> dict[str, str]:
     prompt_context: dict[str, str] = {
-        "agentName": DEFAULT_PROMPT_AGENT_NAME,
-        "additionalContext": "",
-        "userName": (user_name or "").strip() or DEFAULT_PROMPT_USER_NAME,
+        "agent_name": DEFAULT_PROMPT_AGENT_NAME,
+        "additional_context": "",
+        "user_name": (user_name or "").strip() or DEFAULT_PROMPT_USER_NAME,
     }
 
     if not metadata:
         return prompt_context
 
-    metadata_user_name = metadata.get("userName") or metadata.get("user_name")
+    metadata_user_name = metadata.get("user_name") or metadata.get("userName")
     if isinstance(metadata_user_name, str) and metadata_user_name.strip():
-        prompt_context["userName"] = metadata_user_name.strip()
+        prompt_context["user_name"] = metadata_user_name.strip()
 
     additional_context: dict[str, str] = {}
     metadata_prompt_context = metadata.get("prompt_context") or metadata.get(
@@ -67,13 +67,16 @@ def build_prompt_context(
             if isinstance(key, str) and key:
                 string_value = _stringify_prompt_value(value)
                 prompt_context[key] = string_value
-                if key not in {"agentName", "userName"} and string_value:
+                if (
+                    key not in {"agent_name", "additional_context", "user_name"}
+                    and string_value
+                ):
                     additional_context[key] = string_value
 
-    if additional_context:
-        prompt_context["additionalContext"] = json.dumps(
-            additional_context, ensure_ascii=True, sort_keys=True
-        )
+        if not prompt_context["additional_context"] and additional_context:
+            prompt_context["additional_context"] = json.dumps(
+                additional_context, ensure_ascii=True, sort_keys=True
+            )
 
     return prompt_context
 

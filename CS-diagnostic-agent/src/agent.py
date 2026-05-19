@@ -65,6 +65,7 @@ _knowledge_base = ChromaKnowledgeBase(_knowledge_base_config)
 QUESTION_FILTER_KEYS = ("content_type", "domain", "band", "category")
 
 
+
 class InteractionMode(str, Enum):
     AUTO = "auto"
     PTT = "ptt"
@@ -178,7 +179,7 @@ def extract_session_config(metadata: Mapping[str, object] | None) -> SessionConf
         voice.strip() if isinstance(voice, str) and voice.strip() else None
     )
 
-    speaking_speed = raw_config.get("speakingSpeed")
+    speaking_speed = raw_config.get("speakingSpeed") or raw_config.get("speaking_speed")
     normalized_speaking_speed: float | None = None
     if isinstance(speaking_speed, (int, float)) and math.isfinite(speaking_speed):
         normalized_speaking_speed = float(speaking_speed)
@@ -814,7 +815,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     comfortable_language: str | None = None
     raw_prompt_context = metadata.get("prompt_context") or metadata.get("promptContext")
     if isinstance(raw_prompt_context, Mapping):
-        candidate = raw_prompt_context.get("comfortableLanguage")
+        candidate = raw_prompt_context.get(
+            "comfortable_language"
+        ) or raw_prompt_context.get("comfortableLanguage")
         if isinstance(candidate, str) and candidate.strip():
             comfortable_language = candidate.strip()
     language_info = resolve_language_config(comfortable_language)
