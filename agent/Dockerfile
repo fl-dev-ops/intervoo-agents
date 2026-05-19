@@ -3,16 +3,13 @@
 ARG PYTHON_VERSION=3.13
 FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim AS base
 
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1 \
+    UV_COMPILE_BYTECODE=1 \
+    XDG_CACHE_HOME=/app/.cache \
+    HF_HOME=/app/.cache/huggingface \
+    HF_HUB_CACHE=/app/.cache/huggingface/hub
 
-ARG UID=10001
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/app" \
-    --shell "/sbin/nologin" \
-    --uid "${UID}" \
-    appuser
+FROM base AS build
 
 RUN apt-get update && apt-get install -y \
     gcc \
@@ -24,15 +21,27 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
 RUN mkdir -p src
-
-RUN uv sync --frozen --no-dev
+RUN uv sync --locked --no-dev
 
 COPY . .
 
-RUN chown -R appuser:appuser /app
+RUN uv run src/server.py download-files
+
+FROM base
+
+ARG UID=10001
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/app" \
+    --shell "/sbin/nologin" \
+    --uid "${UID}" \
+    appuser
+
+WORKDIR /app
+
+COPY --from=build --chown=appuser:appuser /app /app
 
 USER appuser
-
-RUN uv run src/server.py download-files
 
 CMD ["uv", "run", "src/server.py", "start"]
