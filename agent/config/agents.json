@@ -44,7 +44,7 @@
     },
     "diagnostic": {
       "agent_type": "diagnostic-agent",
-      "prompt_url": "prompts/diagnostic/v1.md",
+      "prompt_url": "prompts/diagnostic/v2.md",
       "initial_reply": "Greet the user, introduce yourself as interviewer.",
       "voice": {
         "speaker": "ishita",
