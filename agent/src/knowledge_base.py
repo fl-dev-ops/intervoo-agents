@@ -12,6 +12,86 @@ logger = logging.getLogger(__name__)
 
 MetadataValue = str | int | float | bool
 
+_DIFFICULTY_LEVELS = ("easy", "medium", "hard")
+
+_BACKUP_QUESTION_TYPES = {
+    "opening": "Thinking, Language",
+    "behavioral": "Thinking, Confidence",
+    "closing": "Language, Confidence",
+    "domain": "Thinking, Language",
+}
+
+_BACKUP_QUESTIONS = {
+    "opening": {
+        "easy": [
+            "Tell me about a computer science concept you recently learned and explain it in simple terms.",
+            "What is the difference between data and information?",
+            "Describe one tool or technology you have used and what you used it for.",
+        ],
+        "medium": [
+            "How would you explain the difference between an application and a system?",
+            "Describe a time you debugged a technical issue. What steps did you follow?",
+            "How do you decide whether to solve a problem manually or automate it with code?",
+        ],
+        "hard": [
+            "Pick a technical topic you know well and explain the trade-offs involved in using it.",
+            "Describe how you would break down an unfamiliar technical problem before writing code.",
+            "How would you compare two different solutions when both appear to work?",
+        ],
+    },
+    "behavioral": {
+        "easy": [
+            "Tell me about a time you had to learn something quickly for a task.",
+            "Describe a situation where you worked with someone who had a different opinion.",
+            "Tell me about a time you received feedback and how you responded.",
+        ],
+        "medium": [
+            "Describe a time you had to make progress despite unclear requirements.",
+            "Tell me about a situation where you had to balance quality with a deadline.",
+            "Describe a mistake you made in a project and what you changed afterward.",
+        ],
+        "hard": [
+            "Tell me about a time you challenged a technical decision. How did you handle the discussion?",
+            "Describe a situation where your first approach failed and you had to change direction.",
+            "Tell me about a time you had to communicate a complex problem to a non-technical person.",
+        ],
+    },
+    "closing": {
+        "easy": [
+            "What kind of technical work are you most interested in doing next?",
+            "Which skill would you most like to improve over the next few months?",
+            "What type of project environment helps you do your best work?",
+        ],
+        "medium": [
+            "Looking back at your recent work, what is one area where you have improved?",
+            "What would you want a team lead to know about how you approach learning?",
+            "How do you decide what to focus on when there are many things to improve?",
+        ],
+        "hard": [
+            "What technical weakness are you actively working on, and how are you measuring progress?",
+            "If you joined a team tomorrow, what would you do in your first week to become productive?",
+            "What trade-off are you willing to make in your next role, and what trade-off would you avoid?",
+        ],
+    },
+    "domain": {
+        "easy": [
+            "What is the difference between a process and a thread?",
+            "Explain what a database index is used for.",
+            "What happens when a user enters a URL in a browser and presses Enter?",
+        ],
+        "medium": [
+            "How would you design a REST API endpoint for creating and updating a resource?",
+            "Explain how you would find the cause of a slow database query.",
+            "What are the trade-offs between using an array and a linked list?",
+        ],
+        "hard": [
+            "How would you design a system that handles sudden spikes in traffic?",
+            "Explain how transactions help maintain consistency in a database system.",
+            "How would you reason about concurrency bugs in a multi-threaded program?",
+        ],
+    },
+}
+
 
 @dataclass(frozen=True)
 class KnowledgeBaseConfig:
@@ -130,6 +210,107 @@ def build_where_filter(filters: dict[str, Any] | None) -> dict[str, Any] | None:
     if len(clauses) == 1:
         return clauses[0]
     return {"$and": clauses}
+
+
+def _filter_list(filters: dict[str, Any] | None, key: str) -> list[Any]:
+    if not filters:
+        return []
+    value = filters.get(key)
+    if value is None:
+        return []
+    return value if isinstance(value, list) else [value]
+
+
+def _backup_categories(filters: dict[str, Any] | None) -> list[tuple[str, str]]:
+    values = _filter_list(filters, "category")
+    if not values:
+        return [(category, category) for category in _BACKUP_QUESTIONS]
+
+    categories: list[tuple[str, str]] = []
+    for value in values:
+        if isinstance(value, str) and value in _BACKUP_QUESTIONS:
+            categories.append((value, value))
+    return categories
+
+
+def _backup_difficulties(filters: dict[str, Any] | None) -> list[str]:
+    values = _filter_list(filters, "difficulty_level")
+    if not values:
+        return list(_DIFFICULTY_LEVELS)
+
+    difficulties: list[str] = []
+    for value in values:
+        if isinstance(value, str):
+            difficulty = value.strip().lower()
+            if difficulty in _DIFFICULTY_LEVELS:
+                difficulties.append(difficulty)
+    return difficulties
+
+
+def _static_backup_records(
+    *,
+    filters: dict[str, Any] | None,
+    exclude_ids: list[str] | None,
+    limit: int,
+) -> list[KnowledgeRecord]:
+    excluded = {item for item in (exclude_ids or []) if isinstance(item, str)}
+    content_type = (filters or {}).get("content_type") or "diagnostic_question"
+    domain = (filters or {}).get("domain")
+    band = (filters or {}).get("band")
+    records: list[KnowledgeRecord] = []
+
+    for category, metadata_category in _backup_categories(filters):
+        category_questions = _BACKUP_QUESTIONS[category]
+        for difficulty in _backup_difficulties(filters):
+            for index, question in enumerate(category_questions[difficulty], start=1):
+                record_id = f"backup:{category}:{difficulty}:{index}"
+                if record_id in excluded:
+                    continue
+
+                metadata: dict[str, Any] = {
+                    "content_type": content_type,
+                    "category": metadata_category,
+                    "difficulty_level": difficulty,
+                    "question_type": _BACKUP_QUESTION_TYPES[category],
+                    "source": "static_backup",
+                }
+                if isinstance(domain, str) and domain:
+                    metadata["domain"] = domain
+                if isinstance(band, int):
+                    metadata["band"] = band
+
+                records.append(
+                    KnowledgeRecord(
+                        id=record_id,
+                        text=question,
+                        metadata=metadata,
+                    )
+                )
+                if len(records) >= limit:
+                    return records
+
+    return records
+
+
+def _build_static_backup_response(
+    knowledge_base: Any,
+    *,
+    filters: dict[str, Any] | None,
+    exclude_ids: list[str] | None,
+    limit: int | None,
+) -> dict[str, Any]:
+    config = getattr(knowledge_base, "_config", None)
+    default_limit = getattr(config, "default_limit", 10)
+    records = _static_backup_records(
+        filters=filters,
+        exclude_ids=exclude_ids,
+        limit=_normalize_limit(limit, default_limit),
+    )
+    return build_knowledge_response(
+        status="ok",
+        records=records,
+        message="Retrieved static backup knowledge base records.",
+    )
 
 
 class ChromaKnowledgeBase:
@@ -293,11 +474,13 @@ async def retrieve_knowledge_from_base(
         )
     except Exception as e:
         logger.warning(f"[KB] Knowledge base retrieval failed: {e}", exc_info=True)
-        return build_knowledge_response(
-            status="unavailable",
-            message="Knowledge base retrieval is unavailable right now.",
+        return _build_static_backup_response(
+            knowledge_base,
+            filters=filters,
+            exclude_ids=exclude_ids,
+            limit=limit,
         )
-
+    
     if not records:
         logger.info(f"[KB] No records returned for query={query!r}, filters={filters}")
         return build_knowledge_response(
