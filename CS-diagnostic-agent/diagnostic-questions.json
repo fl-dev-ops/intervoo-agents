@@ -901,7 +901,7 @@
   },
   {
     "id": "q076",
-    "text": "What is an embedded system — can you give two examples of everyday devices that have one?",
+    "text": "What is an algorithm — can you give a simple example of a step-by-step process to solve a problem?",
     "question_type": [
       "Thinking",
       "Language",
@@ -1021,7 +1021,7 @@
   },
   {
     "id": "q086",
-    "text": "What is a CRM system — what kind of business uses one and what problem does it solve?",
+    "text": "What is version control — why do developers use tools like Git instead of just saving copies of files?",
     "question_type": [
       "Thinking",
       "Language",
@@ -1093,7 +1093,7 @@
   },
   {
     "id": "q092",
-    "text": "What is a report in a business application — what kind of questions does it help a manager answer?",
+    "text": "What is recursion — can you describe a simple example where a function calls itself?",
     "question_type": [
       "Thinking",
       "Language",
@@ -1237,7 +1237,7 @@
   },
   {
     "id": "q104",
-    "text": "What is an interrupt in an embedded system — why would a processor stop what it is doing to handle one?",
+    "text": "What is the difference between a stack and a queue — can you give one real-world example of each?",
     "question_type": [
       "Thinking",
       "Language",
@@ -1357,7 +1357,7 @@
   },
   {
     "id": "q114",
-    "text": "If you were modelling a CRM in code, how would you represent the relationship between an Account and its Contacts?",
+    "text": "What is the difference between a compiled language and an interpreted language — can you name one example of each?",
     "question_type": [
       "Thinking",
       "Language",
@@ -1489,7 +1489,7 @@
   },
   {
     "id": "q125",
-    "text": "If you are building a cloud CRM that serves thousands of businesses, how do you make sure one company's data is completely invisible to another?",
+    "text": "How does garbage collection work — why do some languages manage memory automatically while others require the programmer to do it?",
     "question_type": [
       "Thinking",
       "Language",
@@ -1573,7 +1573,7 @@
   },
   {
     "id": "q132",
-    "text": "What is the difference between I2C and SPI as communication protocols, and when would you choose one over the other?",
+    "text": "What is the difference between depth-first search and breadth-first search — when would you pick one over the other?",
     "question_type": [
       "Thinking",
       "Language",
@@ -1693,7 +1693,7 @@
   },
   {
     "id": "q142",
-    "text": "How would you design a CRM system — how do you model Accounts, Contacts, and Opportunities, and how do you enforce business rules?",
+    "text": "How would you design a library management system — what are the core objects, how do they relate, and how would you handle things like due dates and late returns?",
     "question_type": [
       "Thinking",
       "Language",
@@ -1825,7 +1825,7 @@
   },
   {
     "id": "q153",
-    "text": "How would you design a cloud-based CRM platform like Salesforce that serves millions of businesses — how do you isolate data between tenants and keep the platform performant?",
+    "text": "If you needed to process a million records from a file and load them into a database, how would you design the pipeline to handle failures and ensure no data is lost?",
     "question_type": [
       "Thinking",
       "Language",
@@ -1969,7 +1969,7 @@
   },
   {
     "id": "q165",
-    "text": "What is Salesforce and what kind of problems does it help businesses solve?",
+    "text": "What is an IDE — how is it different from a plain text editor?",
     "question_type": [
       "Thinking",
       "Language",
@@ -2101,7 +2101,7 @@
   },
   {
     "id": "q176",
-    "text": "What is a CRM system — what kind of data does a business store in one?",
+    "text": "What is a compiler — what does it do to your code before it can run?",
     "question_type": [
       "Thinking",
       "Language",
@@ -2509,7 +2509,7 @@
   },
   {
     "id": "q210",
-    "text": "If you were modelling a CRM in code, what would be the core objects like Accounts and Contacts?",
+    "text": "What is Big O notation — why do developers use it to describe how fast an algorithm runs?",
     "question_type": [
       "Thinking",
       "Language",
@@ -2785,7 +2785,7 @@
   },
   {
     "id": "q233",
-    "text": "How is Apex different from Java, and what are the governor limits in Salesforce that a developer absolutely must keep in mind when writing triggers?",
+    "text": "How would you detect a cycle in a linked list — can you walk me through your approach and explain its time and space complexity?",
     "question_type": [
       "Thinking",
       "Language",
@@ -2917,7 +2917,7 @@
   },
   {
     "id": "q244",
-    "text": "Walk me through how you would model a CRM system like Salesforce — what are the core objects, how do they relate, and how do you enforce business rules?",
+    "text": "How would you design a URL shortener service — how do you generate short codes, store the mappings, and handle millions of redirects per day?",
     "question_type": [
       "Thinking",
       "Language",
@@ -3125,7 +3125,7 @@
   },
   {
     "id": "q264",
-    "text": "Tell me about your college life — what you studied and what you took away from those years.",
+    "text": "How do you usually go about learning a new technology or tool — can you walk me through your process?",
     "question_type": [
       "Language"
     ],
@@ -3185,7 +3185,7 @@
   },
   {
     "id": "q270",
-    "text": "What drew you to Computer Science — and now that you have lived it, does that reason still hold?",
+    "text": "What is one thing about Computer Science that surprised you — something you did not expect when you started?",
     "question_type": [
       "Language"
     ],
@@ -3195,7 +3195,7 @@
   },
   {
     "id": "q271",
-    "text": "If you had to be honest — what is one thing you are genuinely good at, and one thing you are still figuring out?",
+    "text": "Tell me about a time you got completely stuck on a problem — what did you do to get unstuck?",
     "question_type": [
       "Language"
     ],
@@ -3575,7 +3575,7 @@
   },
   {
     "id": "q303",
-    "text": "Are you okay to relocate to another city for this job?",
+    "text": "What is one thing about your engineering education that you think prepared you well for the real world?",
     "question_type": [
       "Language",
       "Confidence"
@@ -3586,7 +3586,7 @@
   },
   {
     "id": "q305",
-    "text": "Are you applying to other companies right now?",
+    "text": "If you could spend the next six months learning anything in tech, what would you choose and why?",
     "question_type": [
       "Language",
       "Confidence"
@@ -3608,7 +3608,7 @@
   },
   {
     "id": "q307",
-    "text": "Do you have any questions for us?",
+    "text": "What is one thing you learned during your degree that you think will matter most in your career?",
     "question_type": [
       "Language",
       "Confidence"
@@ -3619,7 +3619,7 @@
   },
   {
     "id": "q308",
-    "text": "Where do you see yourself in three years — and does this role fit into that picture?",
+    "text": "Where do you see yourself in three years — and what kind of engineering work do you want to be doing by then?",
     "question_type": [
       "Language",
       "Confidence"
@@ -3630,7 +3630,7 @@
   },
   {
     "id": "q309",
-    "text": "Why this company — what is it about them specifically that interests you?",
+    "text": "What kind of company or team culture do you think would bring out the best in you — and why?",
     "question_type": [
       "Language",
       "Confidence"
@@ -3652,7 +3652,7 @@
   },
   {
     "id": "q311",
-    "text": "What do you know about what this company actually does?",
+    "text": "What is one skill you most want to develop in your first job — and why that one?",
     "question_type": [
       "Language",
       "Confidence"
@@ -3674,7 +3674,7 @@
   },
   {
     "id": "q313",
-    "text": "If we offered you this role today — what would make you say yes, and what would give you pause?",
+    "text": "If you received an offer tomorrow, what would you look for beyond just the salary — what matters most to you in a role?",
     "question_type": [
       "Language",
       "Confidence"
@@ -3685,7 +3685,7 @@
   },
   {
     "id": "q314",
-    "text": "What would your first thirty days here look like — and what would you need from us to make them count?",
+    "text": "What kind of engineering role do you think would stretch you the most right now — and why do you think that is where you need to grow?",
     "question_type": [
       "Language",
       "Confidence"
@@ -3696,7 +3696,7 @@
   },
   {
     "id": "q315",
-    "text": "If you do not get this role — what does that tell you, and what do you do next?",
+    "text": "What is one thing you want to be known for as an engineer — and what are you doing to get there?",
     "question_type": [
       "Language",
       "Confidence"
@@ -3707,7 +3707,7 @@
   },
   {
     "id": "q316",
-    "text": "What is one thing you hope we remember about you after this conversation ends?",
+    "text": "What is one topic or skill you wish your degree had covered but did not — and how are you filling that gap on your own?",
     "question_type": [
       "Language",
       "Confidence"
@@ -3718,7 +3718,7 @@
   },
   {
     "id": "q317",
-    "text": "On a scale of one to ten — how ready do you think you are for this role, and what sits behind that number?",
+    "text": "On a scale of one to ten, how ready do you feel for a software engineering role — and what sits behind that number?",
     "question_type": [
       "Language",
       "Confidence"
@@ -3759,7 +3759,7 @@
   },
   {
     "id": "q324",
-    "text": "Walk me through your academic background and the kind of work you have done alongside it.",
+    "text": "Tell me about a project that did not go as planned — what happened and what did you take away from it?",
     "question_type": [
       "Language"
     ],
@@ -3809,7 +3809,7 @@
   },
   {
     "id": "q329",
-    "text": "Tell me about your academic journey — what genuinely challenged you, and how did that shape the engineer you are becoming?",
+    "text": "What is a technical opinion you hold strongly that not everyone agrees with — and why do you believe it?",
     "question_type": [
       "Language"
     ],
@@ -3819,7 +3819,7 @@
   },
   {
     "id": "q330",
-    "text": "Why Computer Science — and looking back now, what would you have done differently to prepare yourself better?",
+    "text": "If you had unlimited time and resources, what would you build — and why that specifically?",
     "question_type": [
       "Language"
     ],
@@ -4231,7 +4231,7 @@
   },
   {
     "id": "q365",
-    "text": "Are you currently interviewing elsewhere?",
+    "text": "What kind of team environment brings out your best work — and what makes you say that?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4242,7 +4242,7 @@
   },
   {
     "id": "q366",
-    "text": "What do you know about what this company builds?",
+    "text": "What is one area of technology you want to explore more deeply?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4253,7 +4253,7 @@
   },
   {
     "id": "q367",
-    "text": "Do you have any questions for us?",
+    "text": "What do you think is the most important skill for a new engineer to develop early in their career?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4264,7 +4264,7 @@
   },
   {
     "id": "q368",
-    "text": "Where do you see yourself in three to five years — and how does this role specifically fit into that path?",
+    "text": "How do you keep up with new technologies and trends in software engineering — what does that look like for you in practice?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4275,7 +4275,7 @@
   },
   {
     "id": "q369",
-    "text": "What excites you about working at a product company — and what do you think will be hardest about it?",
+    "text": "What excites you most about starting your engineering career — and what do you think will be the hardest part?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4286,7 +4286,7 @@
   },
   {
     "id": "q370",
-    "text": "What would your first month here look like — and what would you need to make it useful?",
+    "text": "What is one thing about the way you work that you think will serve you well in your first engineering role?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4308,7 +4308,7 @@
   },
   {
     "id": "q372",
-    "text": "What is the one thing you want us to remember about you after this conversation?",
+    "text": "Looking back at this conversation, what is one thing you realized about yourself that you had not thought about before?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4319,7 +4319,7 @@
   },
   {
     "id": "q373",
-    "text": "Looking at the role we described — where do you think you are strongest, and where is your real gap?",
+    "text": "What is the biggest misconception you had about software engineering before you started working on real projects — and what changed your mind?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4341,7 +4341,7 @@
   },
   {
     "id": "q375",
-    "text": "What is the hardest thing you think you will face in the first six months here — and how are you going to handle it?",
+    "text": "What do you think will be the biggest challenge in your first engineering role — and how are you preparing for it?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4352,7 +4352,7 @@
   },
   {
     "id": "q376",
-    "text": "What does your ideal manager look like — and what does that tell you about how you work best?",
+    "text": "What kind of manager or mentor helps you do your best work — and what does that tell you about how you learn?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4363,7 +4363,7 @@
   },
   {
     "id": "q377",
-    "text": "Why should we hire you over the other candidates we have seen today — and what would you say to someone who disagreed?",
+    "text": "What kind of engineering problems give you the most energy — and what is it about those problems that keeps you engaged?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4414,7 +4414,7 @@
   },
   {
     "id": "q384",
-    "text": "Tell me about your background — your college, your projects, and what brought you to this point.",
+    "text": "Tell me about a time you worked closely with someone whose approach was very different from yours — how did you make it work?",
     "question_type": [
       "Language"
     ],
@@ -4464,7 +4464,7 @@
   },
   {
     "id": "q389",
-    "text": "Tell me about your journey as an engineer — what you have built, what has tested you, and where you are trying to get to.",
+    "text": "What is a real technical problem you solved recently — walk me through how you approached it from start to finish.",
     "question_type": [
       "Language"
     ],
@@ -4474,7 +4474,7 @@
   },
   {
     "id": "q390",
-    "text": "Why software engineering — and now that you are here, what do you think the field actually demands that most people underestimate?",
+    "text": "Who has had the biggest influence on how you think about engineering — and what specifically did you learn from them?",
     "question_type": [
       "Language"
     ],
@@ -4864,7 +4864,7 @@
   },
   {
     "id": "q423",
-    "text": "Are you open to relocating for this role?",
+    "text": "What is one technical concept you struggled with at first but now feel confident about — what helped it click?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4886,7 +4886,7 @@
   },
   {
     "id": "q425",
-    "text": "Are you currently evaluating other offers?",
+    "text": "If a friend asked you whether they should study computer science, what would you honestly tell them?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4897,7 +4897,7 @@
   },
   {
     "id": "q426",
-    "text": "What do you know about this company's engineering culture and what they are building?",
+    "text": "What kind of feedback helps you grow the most — and how do you usually ask for it?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4908,7 +4908,7 @@
   },
   {
     "id": "q427",
-    "text": "Do you have any questions for us?",
+    "text": "What is one habit or practice that has helped you become a better engineer?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4919,7 +4919,7 @@
   },
   {
     "id": "q428",
-    "text": "Where do you see yourself in five years — and how does this role specifically accelerate getting there?",
+    "text": "What does success look like to you in the first year of your engineering career — how would you know you are on the right track?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4930,7 +4930,7 @@
   },
   {
     "id": "q429",
-    "text": "What is it about this company specifically — beyond the brand and the salary — that makes you want to be here?",
+    "text": "If you had to teach a junior engineer one concept you wish someone had taught you earlier, what would it be?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4963,7 +4963,7 @@
   },
   {
     "id": "q432",
-    "text": "What would make you turn down an offer from us — even if the package was right?",
+    "text": "What would make you turn down a job offer — even if the pay was good?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4974,7 +4974,7 @@
   },
   {
     "id": "q433",
-    "text": "Given everything we have covered today — where do you think you genuinely fit this role, and where is the real gap you would have to close?",
+    "text": "What is something you think you are overconfident about technically — and how would you test whether that confidence is justified?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4985,7 +4985,7 @@
   },
   {
     "id": "q434",
-    "text": "If you could redesign how you prepared for this interview — what would you do differently, and what does that tell you about how you learn?",
+    "text": "What does well-written code look like to you — and how has your definition of good code changed as you have gained more experience?",
     "question_type": [
       "Language",
       "Confidence"
@@ -4996,7 +4996,7 @@
   },
   {
     "id": "q435",
-    "text": "What is the hardest engineering problem you think you will face here in year one — and what is your honest plan for handling it?",
+    "text": "If you could master one area of computer science deeply over the next two years, what would it be — and why that one?",
     "question_type": [
       "Language",
       "Confidence"
@@ -5018,7 +5018,7 @@
   },
   {
     "id": "q437",
-    "text": "Why should we hire you — and two years from now, what does the version of you that made this team better actually look like?",
+    "text": "What makes you a strong candidate for a software engineering role — and two years from now, what does a better version of you look like?",
     "question_type": [
       "Language",
       "Confidence"
