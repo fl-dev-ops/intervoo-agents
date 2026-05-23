@@ -74,7 +74,7 @@ def build_agent_session(
         "tts": tts,
         "allow_interruptions": True,
         "min_interruption_duration": 0.5,
-        "min_endpointing_delay": 0.5,
+        "min_endpointing_delay": 1.5,
         "max_endpointing_delay": 3.0,
         "min_consecutive_speech_delay": 0.2,
     }
