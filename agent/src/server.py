@@ -91,6 +91,9 @@ class SessionState:
     egress_id: str | None = None
     audio_url: str | None = None
     audio_s3_key: str | None = None
+    video_egress_id: str | None = None
+    video_url: str | None = None
+    video_s3_key: str | None = None
 
 
 _sessions: dict[str, SessionState] = {}
@@ -424,6 +427,9 @@ async def on_session_end(ctx: agents.JobContext) -> None:
                 phone_number=state.phone_number,
                 webhook_url=state.webhook_url,
                 send_webhook=False,
+                video_egress_id=state.video_egress_id,
+                video_url=state.video_url,
+                video_s3_key=state.video_s3_key,
             )
         except Exception as e:
             logger.error(f"Recording finalization failed: {e}")
@@ -455,13 +461,15 @@ async def on_session_end(ctx: agents.JobContext) -> None:
                 "audio_url": recording_result.get("audio_url")
                 if recording_result
                 else state.audio_url,
+                "video_url": recording_result.get("video_url")
+                if recording_result
+                else state.video_url,
                 "transcript_url": recording_result.get("transcript_url")
                 if recording_result
                 else None,
                 "verbose_url": recording_result.get("verbose_url")
                 if recording_result
                 else None,
-                "video_url": None,
                 "transcript": transcript_data,
                 "duration_ms": recording_result.get("duration_ms")
                 if recording_result
@@ -595,6 +603,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     audio_url: str | None = None
     audio_s3_key: str | None = None
     egress_id: str | None = None
+    video_url: str | None = None
+    video_s3_key: str | None = None
+    video_egress_id: str | None = None
 
     if rec_cfg.enabled:
         try:
@@ -608,6 +619,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 audio_url,
                 audio_s3_key,
                 egress_id,
+                video_url,
+                video_s3_key,
+                video_egress_id,
             ) = await start_recording(
                 config=rec_cfg,
                 lk_api=ctx.api,
@@ -634,6 +648,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         egress_id=egress_id,
         audio_url=audio_url,
         audio_s3_key=audio_s3_key,
+        video_egress_id=video_egress_id,
+        video_url=video_url,
+        video_s3_key=video_s3_key,
     )
 
     if mode is InteractionMode.PTT:

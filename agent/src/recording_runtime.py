@@ -30,6 +30,7 @@ from recording_store import (
     build_s3_url,
     build_transcript_s3_key,
     build_verbose_s3_key,
+    build_video_s3_key,
     upload_metrics_json,
     upload_transcript_json,
     upload_verbose_json,
@@ -76,31 +77,63 @@ async def start_recording(
     participant_identity: str | None = None,
     phone_number: str | None = None,
     metadata: dict[str, Any] | None = None,
-) -> tuple[str | None, str, str, str | None]:
+) -> tuple[str | None, str, str, str | None, str | None, str, str | None]:
     now = datetime.now(timezone.utc)
     audio_s3_key = build_audio_s3_key(agent_type, room_name, config.s3_base_prefix, now)
     audio_url = build_s3_url(
         config.s3_bucket, audio_s3_key, config.s3_region, config.s3_endpoint
     )
+    video_s3_key = build_video_s3_key(agent_type, room_name, config.s3_base_prefix, now)
+    video_url = build_s3_url(
+        config.s3_bucket, video_s3_key, config.s3_region, config.s3_endpoint
+    )
 
-    egress_id: str | None = None
-    try:
-        file_output = EncodedFileOutput(
-            file_type=EncodedFileType.MP3,
-            filepath=audio_s3_key,
-            s3=_build_s3_upload(config),
-        )
-        egress_info = await lk_api.egress.start_room_composite_egress(
-            RoomCompositeEgressRequest(
-                room_name=room_name,
-                audio_only=True,
-                file=file_output,
+    audio_egress_id: str | None = None
+    video_egress_id: str | None = None
+
+    s3_upload = _build_s3_upload(config)
+
+    async def _start_audio_egress() -> None:
+        nonlocal audio_egress_id
+        try:
+            file_output = EncodedFileOutput(
+                file_type=EncodedFileType.MP3,
+                filepath=audio_s3_key,
+                s3=s3_upload,
             )
-        )
-        egress_id = egress_info.egress_id
-        logger.info(f"Started egress {egress_id} for room {room_name}")
-    except Exception as e:
-        logger.error(f"Failed to start egress for room {room_name}: {e}")
+            egress_info = await lk_api.egress.start_room_composite_egress(
+                RoomCompositeEgressRequest(
+                    room_name=room_name,
+                    audio_only=True,
+                    file=file_output,
+                )
+            )
+            audio_egress_id = egress_info.egress_id
+            logger.info(f"Started audio egress {audio_egress_id} for room {room_name}")
+        except Exception as e:
+            logger.error(f"Failed to start audio egress for room {room_name}: {e}")
+
+    async def _start_video_egress() -> None:
+        nonlocal video_egress_id
+        try:
+            file_output = EncodedFileOutput(
+                file_type=EncodedFileType.MP4,
+                filepath=video_s3_key,
+                s3=s3_upload,
+            )
+            egress_info = await lk_api.egress.start_room_composite_egress(
+                RoomCompositeEgressRequest(
+                    room_name=room_name,
+                    audio_only=False,
+                    file=file_output,
+                )
+            )
+            video_egress_id = egress_info.egress_id
+            logger.info(f"Started video egress {video_egress_id} for room {room_name}")
+        except Exception as e:
+            logger.error(f"Failed to start video egress for room {room_name}: {e}")
+
+    await asyncio.gather(_start_audio_egress(), _start_video_egress())
 
     session_id: str | None = None
     if config.database_url:
@@ -110,19 +143,30 @@ async def start_recording(
                 agent_name=agent_name,
                 livekit_room_name=room_name,
                 livekit_room_sid=room_sid,
-                egress_id=egress_id,
+                egress_id=audio_egress_id,
                 resolved_user_id=resolved_user_id,
                 participant_identity=participant_identity,
                 phone_number=phone_number,
                 started_at=now,
                 audio_url=audio_url,
                 audio_s3_key=audio_s3_key,
+                video_url=video_url,
+                video_s3_key=video_s3_key,
+                video_egress_id=video_egress_id,
                 metadata=metadata,
             )
         except Exception as e:
             logger.error(f"Failed to insert session row: {e}")
 
-    return session_id, audio_url, audio_s3_key, egress_id
+    return (
+        session_id,
+        audio_url,
+        audio_s3_key,
+        audio_egress_id,
+        video_url,
+        video_s3_key,
+        video_egress_id,
+    )
 
 
 def _build_webhook_payload(
@@ -135,6 +179,8 @@ def _build_webhook_payload(
     final_status: str,
     audio_url: str,
     audio_s3_key: str,
+    video_url: str | None,
+    video_s3_key: str | None,
     transcript_url: str | None,
     transcript_s3_key: str | None,
     metrics_url: str | None,
@@ -159,6 +205,8 @@ def _build_webhook_payload(
         "egress_status": egress_status,
         "audio_url": audio_url,
         "audio_s3_key": audio_s3_key,
+        "video_url": video_url,
+        "video_s3_key": video_s3_key,
         "transcript_url": transcript_url,
         "transcript_s3_key": transcript_s3_key,
         "metrics_url": metrics_url,
@@ -229,6 +277,9 @@ async def finalize_recording(
     usage_summary: dict[str, Any] | None = None,
     webhook_url: str | None = None,
     send_webhook: bool = True,
+    video_egress_id: str | None = None,
+    video_url: str | None = None,
+    video_s3_key: str | None = None,
 ) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
 
@@ -274,6 +325,45 @@ async def finalize_recording(
             final_status = "FINALIZE_TIMEOUT"
             logger.warning(
                 f"Egress {egress_id} did not reach terminal state within {timeout}s"
+            )
+
+    if video_egress_id:
+        try:
+            await lk_api.egress.stop_egress(
+                StopEgressRequest(egress_id=video_egress_id)
+            )
+            logger.info(f"Sent stop_egress for video {video_egress_id}")
+        except Exception as e:
+            logger.warning(f"Failed to stop video egress {video_egress_id}: {e}")
+
+        timeout = config.egress_poll_timeout_seconds
+        poll_interval = 2
+        elapsed = 0
+        while elapsed < timeout:
+            try:
+                resp = await lk_api.egress.list_egress(
+                    ListEgressRequest(egress_id=video_egress_id)
+                )
+                if resp.items:
+                    info = resp.items[0]
+                    if info.status in TERMINAL_STATUSES:
+                        if info.status in (
+                            EgressStatus.EGRESS_FAILED,
+                            EgressStatus.EGRESS_ABORTED,
+                        ):
+                            logger.warning(
+                                f"Video egress {video_egress_id} failed/aborted, "
+                                "continuing with audio-only recording"
+                            )
+                        break
+            except Exception as e:
+                logger.warning(f"Error polling video egress {video_egress_id}: {e}")
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+        else:
+            logger.warning(
+                f"Video egress {video_egress_id} did not reach terminal state "
+                f"within {timeout}s"
             )
 
     duration_ms: int | None = None
@@ -363,6 +453,8 @@ async def finalize_recording(
                 metrics_s3_key=metrics_s3_key,
                 verbose_url=verbose_url,
                 verbose_s3_key=verbose_s3_key,
+                video_url=video_url,
+                video_s3_key=video_s3_key,
                 egress_status=egress_status_str,
                 status=final_status,
             )
@@ -381,6 +473,8 @@ async def finalize_recording(
                 final_status=final_status,
                 audio_url=audio_url,
                 audio_s3_key=audio_s3_key,
+                video_url=video_url,
+                video_s3_key=video_s3_key,
                 transcript_url=transcript_url,
                 transcript_s3_key=transcript_s3_key,
                 metrics_url=metrics_url,
@@ -409,6 +503,8 @@ async def finalize_recording(
         "egress_status": egress_status_str,
         "audio_url": audio_url,
         "audio_s3_key": audio_s3_key,
+        "video_url": video_url,
+        "video_s3_key": video_s3_key,
         "transcript_url": transcript_url,
         "transcript_s3_key": transcript_s3_key,
         "metrics_url": metrics_url,

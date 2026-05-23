@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from recording_db import CREATE_TABLE_SQL
-from recording_store import build_verbose_s3_key
+from recording_store import build_verbose_s3_key, build_video_s3_key
 from recording_transcript import normalize_session_report, normalize_verbose_payload
 
 
@@ -18,9 +18,26 @@ def test_build_verbose_s3_key_uses_verbose_filename() -> None:
     assert key == "agents/diagnostic-agent/sessions/2026/05/18/room-1/verbose.json"
 
 
+def test_build_video_s3_key_uses_video_filename() -> None:
+    key = build_video_s3_key(
+        "diagnostic-agent",
+        "room-1",
+        "agents",
+        datetime(2026, 5, 18, tzinfo=timezone.utc),
+    )
+
+    assert key == "agents/diagnostic-agent/sessions/2026/05/18/room-1/video.mp4"
+
+
 def test_recording_db_schema_has_verbose_columns() -> None:
     assert "verbose_url" in CREATE_TABLE_SQL
     assert "verbose_s3_key" in CREATE_TABLE_SQL
+
+
+def test_recording_db_schema_has_video_columns() -> None:
+    assert "video_url" in CREATE_TABLE_SQL
+    assert "video_s3_key" in CREATE_TABLE_SQL
+    assert "video_egress_id" in CREATE_TABLE_SQL
 
 
 def test_normalize_verbose_payload_preserves_tool_calls_and_outputs() -> None:

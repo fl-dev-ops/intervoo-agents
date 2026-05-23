@@ -31,6 +31,9 @@ CREATE TABLE IF NOT EXISTS agent_sessions (
 
     audio_url       TEXT,
     audio_s3_key    TEXT,
+    video_url       TEXT,
+    video_s3_key    TEXT,
+    video_egress_id TEXT,
     transcript_url  TEXT,
     transcript_s3_key TEXT,
     metrics_url     TEXT,
@@ -74,6 +77,12 @@ async def init_pool(database_url: str) -> asyncpg.Pool:
             ADD COLUMN IF NOT EXISTS verbose_url TEXT;
             ALTER TABLE agent_sessions
             ADD COLUMN IF NOT EXISTS verbose_s3_key TEXT;
+            ALTER TABLE agent_sessions
+            ADD COLUMN IF NOT EXISTS video_url TEXT;
+            ALTER TABLE agent_sessions
+            ADD COLUMN IF NOT EXISTS video_s3_key TEXT;
+            ALTER TABLE agent_sessions
+            ADD COLUMN IF NOT EXISTS video_egress_id TEXT;
             """
         )
     logger.info("Recording DB pool initialized and schema bootstrapped")
@@ -93,6 +102,9 @@ async def insert_session(
     started_at: datetime | None = None,
     audio_url: str | None = None,
     audio_s3_key: str | None = None,
+    video_url: str | None = None,
+    video_s3_key: str | None = None,
+    video_egress_id: str | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> str:
     if _pool is None:
@@ -103,8 +115,9 @@ async def insert_session(
         INSERT INTO agent_sessions (
             agent_type, agent_name, livekit_room_name, livekit_room_sid,
             egress_id, resolved_user_id, participant_identity, phone_number,
-            started_at, status, audio_url, audio_s3_key, metadata
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'RECORDING',$10,$11,$12::jsonb)
+            started_at, status, audio_url, audio_s3_key,
+            video_url, video_s3_key, video_egress_id, metadata
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'RECORDING',$10,$11,$12,$13,$14,$15::jsonb)
         ON CONFLICT (agent_type, livekit_room_name) DO UPDATE SET
             egress_id = EXCLUDED.egress_id,
             resolved_user_id = EXCLUDED.resolved_user_id,
@@ -114,6 +127,9 @@ async def insert_session(
             status = 'RECORDING',
             audio_url = EXCLUDED.audio_url,
             audio_s3_key = EXCLUDED.audio_s3_key,
+            video_url = EXCLUDED.video_url,
+            video_s3_key = EXCLUDED.video_s3_key,
+            video_egress_id = EXCLUDED.video_egress_id,
             metadata = EXCLUDED.metadata,
             updated_at = now()
         RETURNING id
@@ -129,6 +145,9 @@ async def insert_session(
         started_at or datetime.now(timezone.utc),
         audio_url,
         audio_s3_key,
+        video_url,
+        video_s3_key,
+        video_egress_id,
         json.dumps(metadata or {}),
     )
     return row["id"]
@@ -154,6 +173,8 @@ async def update_session_completed(
     metrics_s3_key: str | None = None,
     verbose_url: str | None = None,
     verbose_s3_key: str | None = None,
+    video_url: str | None = None,
+    video_s3_key: str | None = None,
     egress_status: str | None = None,
     egress_error: str | None = None,
     status: str = "COMPLETED",
@@ -173,11 +194,13 @@ async def update_session_completed(
             metrics_s3_key = COALESCE($7, metrics_s3_key),
             verbose_url = COALESCE($8, verbose_url),
             verbose_s3_key = COALESCE($9, verbose_s3_key),
-            egress_status = COALESCE($10, egress_status),
-            egress_error = COALESCE($11, egress_error),
-            status = $12,
-            metadata = CASE WHEN $13::jsonb IS NOT NULL
-                THEN metadata || $13::jsonb ELSE metadata END,
+            video_url = COALESCE($10, video_url),
+            video_s3_key = COALESCE($11, video_s3_key),
+            egress_status = COALESCE($12, egress_status),
+            egress_error = COALESCE($13, egress_error),
+            status = $14,
+            metadata = CASE WHEN $15::jsonb IS NOT NULL
+                THEN metadata || $15::jsonb ELSE metadata END,
             updated_at = now()
         WHERE id = $1
         """,
@@ -190,6 +213,8 @@ async def update_session_completed(
         metrics_s3_key,
         verbose_url,
         verbose_s3_key,
+        video_url,
+        video_s3_key,
         egress_status,
         egress_error,
         status,

@@ -64,6 +64,15 @@ def build_audio_s3_key(
     return build_s3_key(agent_type, room_name, "audio.mp3", base_prefix, now)
 
 
+def build_video_s3_key(
+    agent_type: str,
+    room_name: str,
+    base_prefix: str = "agents",
+    now: datetime | None = None,
+) -> str:
+    return build_s3_key(agent_type, room_name, "video.mp4", base_prefix, now)
+
+
 def build_transcript_s3_key(
     agent_type: str,
     room_name: str,
