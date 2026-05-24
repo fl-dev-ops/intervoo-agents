@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum
 
-from livekit.agents import AgentSession
+from livekit.agents import AgentSession, TurnHandlingOptions
 from livekit.plugins import openai, sarvam, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
@@ -68,28 +68,39 @@ def build_agent_session(
         else:
             tts.prewarm()
 
-    common_kwargs = {
-        "stt": stt,
-        "llm": llm,
-        "tts": tts,
-        "allow_interruptions": True,
-        "min_interruption_duration": 0.5,
-        "min_endpointing_delay": 1.5,
-        "max_endpointing_delay": 3.0,
-        "min_consecutive_speech_delay": 0.2,
-    }
-
     if mode is InteractionMode.PTT:
         return AgentSession(
-            **common_kwargs,
-            turn_detection="manual",
-            resume_false_interruption=True,
+            stt=stt,
+            llm=llm,
+            tts=tts,
+            turn_handling=TurnHandlingOptions(
+                turn_detection="manual",
+                interruption={
+                    "mode": "adaptive",
+                    "min_duration": 0.5,
+                    "resume_false_interruption": True,
+                },
+            ),
             use_tts_aligned_transcript=True,
             preemptive_generation=False,
         )
 
     return AgentSession(
-        **common_kwargs,
+        stt=stt,
+        llm=llm,
+        tts=tts,
         vad=silero.VAD.load(),
-        turn_detection=MultilingualModel(),
+        turn_handling=TurnHandlingOptions(
+            turn_detection=MultilingualModel(),
+            endpointing={
+                "mode": "dynamic",
+                "min_delay": 1.5,
+                "max_delay": 3.0,
+            },
+            interruption={
+                "mode": "adaptive",
+                "min_duration": 0.5,
+                "resume_false_interruption": True,
+            },
+        ),
     )
