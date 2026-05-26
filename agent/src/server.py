@@ -346,6 +346,8 @@ server = AgentServer(
     shutdown_process_timeout=60,
     load_fnc=_compute_worker_load,
     load_threshold=0.5,
+    job_memory_warn_mb=2048,
+    job_memory_limit_mb=4096,
 )
 
 
