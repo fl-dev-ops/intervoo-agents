@@ -480,7 +480,7 @@ async def retrieve_knowledge_from_base(
             exclude_ids=exclude_ids,
             limit=limit,
         )
-    
+
     if not records:
         logger.info(f"[KB] No records returned for query={query!r}, filters={filters}")
         return build_knowledge_response(

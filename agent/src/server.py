@@ -5,13 +5,13 @@ import json
 import logging
 import math
 import os
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from profile import (
     AgentProfile,
     ProfileError,
-    load_profile_catalog,
     pick_profile,
 )
 from typing import Any
@@ -34,15 +34,23 @@ from identity import (
     resolve_user_id_from_room_metadata,
 )
 from kb_tools import build_kb_tool
-from knowledge_base import (
-    ChromaKnowledgeBase,
-    build_knowledge_base_config,
-    with_collection,
-)
+from knowledge_base import ChromaKnowledgeBase
+from memory_tools import build_memory_tools
 from prompt import build_prompt_context, load_prompt, render_prompt
-from recording_config import RecordingConfig, build_recording_config
+from recording_config import RecordingConfig
 from recording_db import init_pool
 from recording_runtime import finalize_recording, start_recording
+from runtime_resources import (
+    build_cached_knowledge_base,
+    get_kb_base_config,
+    get_memory_client,
+    get_or_create_turn_detector,
+    get_prewarmed_turn_detector,
+    get_prewarmed_vad,
+    get_profile_catalog,
+    get_recording_config,
+    prewarm_runtime_resources,
+)
 from session import InteractionMode, SessionConfig, build_agent_session
 from tracing import flush_langfuse, setup_langfuse
 from unified_agent import UnifiedAgent
@@ -73,8 +81,6 @@ def _resolve_profile_config_path() -> Path:
     return DEFAULT_PROFILE_CONFIG_PATH
 
 
-_profile_catalog = load_profile_catalog(_resolve_profile_config_path())
-_kb_base_config = build_knowledge_base_config()
 REGISTERED_AGENT_NAME = os.getenv("AGENT_NAME", DEFAULT_AGENT_NAME)
 
 
@@ -97,6 +103,40 @@ class SessionState:
 
 
 _sessions: dict[str, SessionState] = {}
+
+
+@dataclass(frozen=True)
+class RecordingStartState:
+    recording_session_id: str | None = None
+    audio_url: str | None = None
+    audio_s3_key: str | None = None
+    egress_id: str | None = None
+    video_url: str | None = None
+    video_s3_key: str | None = None
+    video_egress_id: str | None = None
+
+
+class StartupTimer:
+    def __init__(self, room_name: str) -> None:
+        self.room_name = room_name
+        self._last = time.perf_counter()
+
+    def mark(self, phase: str) -> None:
+        now = time.perf_counter()
+        logger.info(
+            "startup_phase phase=%s room=%s elapsed_ms=%.2f",
+            phase,
+            self.room_name,
+            (now - self._last) * 1000,
+        )
+        self._last = now
+
+
+def prewarm(proc: agents.JobProcess) -> None:
+    prewarm_runtime_resources(
+        proc,
+        profile_config_path=_resolve_profile_config_path(),
+    )
 
 
 def parse_room_metadata(metadata: str | None) -> dict[str, object]:
@@ -182,11 +222,18 @@ def _build_end_call_tool() -> EndCallTool:
     )
 
 
-def _build_kb(profile: AgentProfile) -> ChromaKnowledgeBase | None:
-    if not profile.kb_collection or not _kb_base_config.enabled:
+def _build_kb(
+    profile: AgentProfile,
+    userdata: dict[str, Any],
+) -> ChromaKnowledgeBase | None:
+    kb_base_config = get_kb_base_config(userdata)
+    if not profile.kb_collection or not kb_base_config.enabled:
         return None
-    config = with_collection(_kb_base_config, profile.kb_collection)
-    return ChromaKnowledgeBase(config)
+    return build_cached_knowledge_base(
+        userdata,
+        base_config=kb_base_config,
+        collection_name=profile.kb_collection,
+    )
 
 
 def _attach_metrics_logging(session: AgentSession) -> None:
@@ -343,6 +390,7 @@ def _compute_worker_load(current_server: AgentServer) -> float:
 
 
 server = AgentServer(
+    setup_fnc=prewarm,
     shutdown_process_timeout=60,
     load_fnc=_compute_worker_load,
     load_threshold=0.5,
@@ -389,6 +437,59 @@ async def _post_webhook(
         )
     except Exception as e:
         logger.error("Webhook delivery failed for %s: %s", webhook_url, e)
+
+
+async def _start_recording_for_session(
+    *,
+    config: RecordingConfig,
+    ctx: agents.JobContext,
+    profile: AgentProfile,
+    room_name: str,
+    resolved_user_id: str | None,
+    participant_identity: str | None,
+    phone_number: str | None,
+    metadata: dict[str, object],
+) -> RecordingStartState:
+    if not config.enabled:
+        return RecordingStartState()
+
+    try:
+        if config.database_url:
+            try:
+                await init_pool(config.database_url)
+            except Exception as e:
+                logger.error("Failed to initialize recording DB: %s", e)
+        (
+            recording_session_id,
+            audio_url,
+            audio_s3_key,
+            egress_id,
+            video_url,
+            video_s3_key,
+            video_egress_id,
+        ) = await start_recording(
+            config=config,
+            lk_api=ctx.api,
+            agent_type=profile.agent_type,
+            agent_name=profile.agent_type,
+            room_name=room_name,
+            resolved_user_id=resolved_user_id,
+            participant_identity=participant_identity,
+            phone_number=phone_number,
+            metadata=metadata,
+        )
+        return RecordingStartState(
+            recording_session_id=recording_session_id,
+            audio_url=audio_url,
+            audio_s3_key=audio_s3_key,
+            egress_id=egress_id,
+            video_url=video_url,
+            video_s3_key=video_s3_key,
+            video_egress_id=video_egress_id,
+        )
+    except Exception as e:
+        logger.error("Failed to initialize recording: %s", e)
+        return RecordingStartState()
 
 
 async def on_session_end(ctx: agents.JobContext) -> None:
@@ -499,11 +600,17 @@ async def on_session_end(ctx: agents.JobContext) -> None:
 
 @server.rtc_session(agent_name=REGISTERED_AGENT_NAME, on_session_end=on_session_end)
 async def entrypoint(ctx: agents.JobContext) -> None:
+    timer = StartupTimer(ctx.room.name)
+    userdata = ctx.proc.userdata
     room_metadata = ctx.job.room.metadata or ctx.room.metadata
     metadata = parse_room_metadata(room_metadata)
+    profile_catalog = get_profile_catalog(
+        userdata,
+        fallback_path=_resolve_profile_config_path(),
+    )
 
     try:
-        profile = pick_profile(_profile_catalog, metadata)
+        profile = pick_profile(profile_catalog, metadata)
     except ProfileError as e:
         logger.error(f"Cannot resolve agent profile: {e}")
         return
@@ -511,7 +618,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     mode = resolve_interaction_mode(metadata)
     session_config = extract_session_config(metadata)
     recording_metadata = build_recording_metadata(metadata, mode, profile)
+    timer.mark("metadata_profile")
+
     await ctx.connect()
+    timer.mark("ctx_connect")
     register_idle_room_watchdog(ctx)
 
     @ctx.room.on("participant_disconnected")
@@ -523,8 +633,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         resolved_user_id,
         participant_identity,
         phone_number,
-        participant_attributes,
+        _participant_attributes,
     ) = await _resolve_call_state(ctx, initial_user_id)
+    timer.mark("participant_lookup")
 
     try:
         setup_langfuse(
@@ -548,12 +659,30 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     prompt_context = build_prompt_context(metadata)
     agent_instructions = render_prompt(prompt_template, context=prompt_context)
+    timer.mark("prompt_render")
+
+    rec_cfg = get_recording_config(userdata)
+    recording_task: asyncio.Task[RecordingStartState] | None = None
+    if rec_cfg.enabled:
+        recording_task = asyncio.create_task(
+            _start_recording_for_session(
+                config=rec_cfg,
+                ctx=ctx,
+                profile=profile,
+                room_name=ctx.room.name,
+                resolved_user_id=resolved_user_id,
+                participant_identity=participant_identity,
+                phone_number=phone_number,
+                metadata=recording_metadata,
+            ),
+            name=f"recording-start:{ctx.room.name}",
+        )
 
     tools: list[Any] = []
     if profile.end_call_enabled:
         tools.append(_build_end_call_tool())
 
-    kb = _build_kb(profile)
+    kb = _build_kb(profile, userdata)
     if kb is not None:
         kb_tools = build_kb_tool(
             profile.kb_shape,
@@ -565,23 +694,27 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         else:
             tools.append(kb_tools)
 
-    memory_client = None
     if profile.memory_enabled:
         try:
-            from memory import AsyncMemoryClient
-
-            memory_client = AsyncMemoryClient()
+            memory_client = get_memory_client(userdata)
+            tools.extend(build_memory_tools(memory_client, resolved_user_id))
+            agent_instructions = (
+                f"{agent_instructions}\n\n"
+                "Memory tools are available. Use recall_memory only when past "
+                "context would materially help the conversation. Use save_memory "
+                "only for stable facts, preferences, goals, skills, or outcomes "
+                "that should help future conversations. Do not call memory tools "
+                "for routine greetings or every user turn."
+            )
         except Exception as e:
             logger.warning(f"Failed to initialize mem0 client: {e}")
+    timer.mark("tool_build")
 
     agent = UnifiedAgent(
         instructions=agent_instructions,
         tools=tools,
         initial_reply=profile.initial_reply,
-        memory_client=memory_client,
-        user_id=resolved_user_id,
         participant_identity=participant_identity,
-        participant_attributes=participant_attributes,
         room_name=ctx.room.name,
     )
 
@@ -590,8 +723,15 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         tts_dict_id=profile.voice_dict_id,
         mode=mode,
         session_config=session_config,
+        vad=get_prewarmed_vad(userdata),
+        turn_detector=(
+            get_or_create_turn_detector(userdata)
+            if mode is InteractionMode.AUTO
+            else get_prewarmed_turn_detector(userdata)
+        ),
     )
     _attach_metrics_logging(session)
+    timer.mark("session_build")
 
     webhook_url_raw = metadata.get("webhook_url")
     webhook_url = (
@@ -600,43 +740,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         else None
     )
 
-    rec_cfg = build_recording_config()
-    recording_session_id: str | None = None
-    audio_url: str | None = None
-    audio_s3_key: str | None = None
-    egress_id: str | None = None
-    video_url: str | None = None
-    video_s3_key: str | None = None
-    video_egress_id: str | None = None
-
-    if rec_cfg.enabled:
-        try:
-            if rec_cfg.database_url:
-                try:
-                    await init_pool(rec_cfg.database_url)
-                except Exception as e:
-                    logger.error(f"Failed to initialize recording DB: {e}")
-            (
-                recording_session_id,
-                audio_url,
-                audio_s3_key,
-                egress_id,
-                video_url,
-                video_s3_key,
-                video_egress_id,
-            ) = await start_recording(
-                config=rec_cfg,
-                lk_api=ctx.api,
-                agent_type=profile.agent_type,
-                agent_name=profile.agent_type,
-                room_name=ctx.room.name,
-                resolved_user_id=resolved_user_id,
-                participant_identity=participant_identity,
-                phone_number=phone_number,
-                metadata=recording_metadata,
-            )
-        except Exception as e:
-            logger.error(f"Failed to initialize recording: {e}")
+    recording_start = (
+        await recording_task if recording_task is not None else RecordingStartState()
+    )
+    timer.mark("recording_start")
 
     _sessions[ctx.room.name] = SessionState(
         profile=profile,
@@ -646,19 +753,20 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         phone_number=phone_number,
         webhook_url=webhook_url,
         recording_config=rec_cfg if rec_cfg.enabled else None,
-        recording_session_id=recording_session_id,
-        egress_id=egress_id,
-        audio_url=audio_url,
-        audio_s3_key=audio_s3_key,
-        video_egress_id=video_egress_id,
-        video_url=video_url,
-        video_s3_key=video_s3_key,
+        recording_session_id=recording_start.recording_session_id,
+        egress_id=recording_start.egress_id,
+        audio_url=recording_start.audio_url,
+        audio_s3_key=recording_start.audio_s3_key,
+        video_egress_id=recording_start.video_egress_id,
+        video_url=recording_start.video_url,
+        video_s3_key=recording_start.video_s3_key,
     )
 
     if mode is InteractionMode.PTT:
         await _start_ptt_session(ctx, session, agent)
     else:
         await _start_auto_session(ctx, session, agent)
+    timer.mark("session_start")
 
 
 def main() -> None:

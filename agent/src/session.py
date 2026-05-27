@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 from livekit.agents import AgentSession, TurnHandlingOptions
 from livekit.plugins import openai, sarvam, silero
@@ -36,6 +36,8 @@ def build_agent_session(
     tts_model: str = DEFAULT_SARVAM_TTS_MODEL,
     mode: InteractionMode = InteractionMode.AUTO,
     session_config: SessionConfig | None = None,
+    vad: Any | None = None,
+    turn_detector: Any | None = None,
 ) -> AgentSession:
     effective_session_config = session_config or SessionConfig()
 
@@ -61,12 +63,7 @@ def build_agent_session(
     )
 
     if hasattr(tts, "prewarm"):
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            pass
-        else:
-            tts.prewarm()
+        tts.prewarm()
 
     if mode is InteractionMode.PTT:
         return AgentSession(
@@ -89,9 +86,9 @@ def build_agent_session(
         stt=stt,
         llm=llm,
         tts=tts,
-        vad=silero.VAD.load(),
+        vad=vad or silero.VAD.load(),
         turn_handling=TurnHandlingOptions(
-            turn_detection=MultilingualModel(),
+            turn_detection=turn_detector or MultilingualModel(),
             endpointing={
                 "mode": "dynamic",
                 "min_delay": 1.5,

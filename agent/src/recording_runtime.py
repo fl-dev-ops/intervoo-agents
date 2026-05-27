@@ -258,6 +258,52 @@ async def _post_completion_webhook(
         logger.error(f"Recording webhook delivery failed: {e}")
 
 
+async def _stop_and_poll_egress(
+    *,
+    lk_api: api.LiveKitAPI,
+    egress_id: str,
+    timeout: int,
+    label: str,
+) -> tuple[str | None, bool, bool]:
+    try:
+        await lk_api.egress.stop_egress(StopEgressRequest(egress_id=egress_id))
+        logger.info(f"Sent stop_egress for {label} {egress_id}")
+    except Exception as e:
+        logger.warning(f"Failed to stop {label} egress {egress_id}: {e}")
+
+    egress_status_str: str | None = None
+    failed = False
+    timed_out = False
+    poll_interval = 2
+    elapsed = 0
+    while elapsed < timeout:
+        try:
+            resp = await lk_api.egress.list_egress(
+                ListEgressRequest(egress_id=egress_id)
+            )
+            if resp.items:
+                info = resp.items[0]
+                egress_status_str = EgressStatus.Name(info.status)
+                if info.status in TERMINAL_STATUSES:
+                    failed = info.status in (
+                        EgressStatus.EGRESS_FAILED,
+                        EgressStatus.EGRESS_ABORTED,
+                    )
+                    break
+        except Exception as e:
+            logger.warning(f"Error polling {label} egress {egress_id}: {e}")
+        await asyncio.sleep(poll_interval)
+        elapsed += poll_interval
+    else:
+        timed_out = True
+        logger.warning(
+            f"{label.title()} egress {egress_id} did not reach terminal state "
+            f"within {timeout}s"
+        )
+
+    return egress_status_str, failed, timed_out
+
+
 async def finalize_recording(
     *,
     config: RecordingConfig,
@@ -292,79 +338,44 @@ async def finalize_recording(
     egress_status_str: str | None = None
     final_status = "COMPLETED"
 
+    egress_tasks = []
     if egress_id:
-        try:
-            await lk_api.egress.stop_egress(StopEgressRequest(egress_id=egress_id))
-            logger.info(f"Sent stop_egress for {egress_id}")
-        except Exception as e:
-            logger.warning(f"Failed to stop egress {egress_id}: {e}")
-
-        timeout = config.egress_poll_timeout_seconds
-        poll_interval = 2
-        elapsed = 0
-        while elapsed < timeout:
-            try:
-                resp = await lk_api.egress.list_egress(
-                    ListEgressRequest(egress_id=egress_id)
-                )
-                if resp.items:
-                    info = resp.items[0]
-                    egress_status_str = EgressStatus.Name(info.status)
-                    if info.status in TERMINAL_STATUSES:
-                        if info.status in (
-                            EgressStatus.EGRESS_FAILED,
-                            EgressStatus.EGRESS_ABORTED,
-                        ):
-                            final_status = "EGRESS_FAILED"
-                        break
-            except Exception as e:
-                logger.warning(f"Error polling egress {egress_id}: {e}")
-            await asyncio.sleep(poll_interval)
-            elapsed += poll_interval
-        else:
-            final_status = "FINALIZE_TIMEOUT"
-            logger.warning(
-                f"Egress {egress_id} did not reach terminal state within {timeout}s"
+        egress_tasks.append(
+            _stop_and_poll_egress(
+                lk_api=lk_api,
+                egress_id=egress_id,
+                timeout=config.egress_poll_timeout_seconds,
+                label="audio",
             )
-
+        )
     if video_egress_id:
-        try:
-            await lk_api.egress.stop_egress(
-                StopEgressRequest(egress_id=video_egress_id)
+        egress_tasks.append(
+            _stop_and_poll_egress(
+                lk_api=lk_api,
+                egress_id=video_egress_id,
+                timeout=config.egress_poll_timeout_seconds,
+                label="video",
             )
-            logger.info(f"Sent stop_egress for video {video_egress_id}")
-        except Exception as e:
-            logger.warning(f"Failed to stop video egress {video_egress_id}: {e}")
+        )
 
-        timeout = config.egress_poll_timeout_seconds
-        poll_interval = 2
-        elapsed = 0
-        while elapsed < timeout:
-            try:
-                resp = await lk_api.egress.list_egress(
-                    ListEgressRequest(egress_id=video_egress_id)
+    if egress_tasks:
+        egress_results = await asyncio.gather(*egress_tasks)
+        audio_result = egress_results[0] if egress_id else None
+        if audio_result is not None:
+            egress_status_str, audio_failed, audio_timed_out = audio_result
+            if audio_failed:
+                final_status = "EGRESS_FAILED"
+            elif audio_timed_out:
+                final_status = "FINALIZE_TIMEOUT"
+
+        if video_egress_id:
+            video_result = egress_results[-1]
+            _, video_failed, _ = video_result
+            if video_failed:
+                logger.warning(
+                    f"Video egress {video_egress_id} failed/aborted, "
+                    "continuing with audio-only recording"
                 )
-                if resp.items:
-                    info = resp.items[0]
-                    if info.status in TERMINAL_STATUSES:
-                        if info.status in (
-                            EgressStatus.EGRESS_FAILED,
-                            EgressStatus.EGRESS_ABORTED,
-                        ):
-                            logger.warning(
-                                f"Video egress {video_egress_id} failed/aborted, "
-                                "continuing with audio-only recording"
-                            )
-                        break
-            except Exception as e:
-                logger.warning(f"Error polling video egress {video_egress_id}: {e}")
-            await asyncio.sleep(poll_interval)
-            elapsed += poll_interval
-        else:
-            logger.warning(
-                f"Video egress {video_egress_id} did not reach terminal state "
-                f"within {timeout}s"
-            )
 
     duration_ms: int | None = None
     started_at = report_dict.get("started_at")
