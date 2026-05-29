@@ -391,6 +391,7 @@ def _compute_worker_load(current_server: AgentServer) -> float:
 
 server = AgentServer(
     setup_fnc=prewarm,
+    initialize_process_timeout=120,  # prewarm downloads Chroma onnx model on first proc; 10s default is too short
     shutdown_process_timeout=60,
     load_fnc=_compute_worker_load,
     load_threshold=0.5,
