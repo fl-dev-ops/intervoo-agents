@@ -37,6 +37,7 @@ from kb_tools import build_kb_tool
 from knowledge_base import ChromaKnowledgeBase
 from memory_tools import build_memory_tools
 from prompt import build_prompt_context, load_prompt, render_prompt
+from question_tools import build_question_event_tool
 from recording_config import RecordingConfig
 from recording_db import init_pool
 from recording_runtime import finalize_recording, start_recording
@@ -694,6 +695,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             tools.extend(kb_tools)
         else:
             tools.append(kb_tools)
+
+    if profile.question_events_enabled:
+        tools.append(build_question_event_tool(ctx.room))
 
     if profile.memory_enabled:
         try:

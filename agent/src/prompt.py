@@ -88,6 +88,7 @@ def build_prompt_context(
         "additional_context": "",
         "prompt": "",
         "question_filters": "{}",
+        "interview_questions": "",
         "user_name": (user_name or "").strip() or DEFAULT_PROMPT_USER_NAME,
     }
 
@@ -97,6 +98,14 @@ def build_prompt_context(
     metadata_user_name = metadata.get("user_name")
     if isinstance(metadata_user_name, str) and metadata_user_name.strip():
         prompt_context["user_name"] = metadata_user_name.strip()
+
+    questions = metadata.get("questions")
+    if isinstance(questions, list):
+        items = [q.strip() for q in questions if isinstance(q, str) and q.strip()]
+        if items:
+            prompt_context["interview_questions"] = "\n".join(
+                f"{index + 1}. {question}" for index, question in enumerate(items)
+            )
 
     question_filters = metadata.get("question_filters")
     if isinstance(question_filters, Mapping):

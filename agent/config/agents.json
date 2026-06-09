@@ -58,6 +58,21 @@
         },
         "memory": false
       }
+    },
+    "diagnostic_v2": {
+      "agent_type": "diagnostic-agent",
+      "prompt_url": "prompts/diagnostic/v4.md",
+      "initial_reply": "Greet the user, introduce yourself as interviewer.",
+      "voice": {
+        "speaker": "ishita",
+        "dict_id": "p_fcfdd23b"
+      },
+      "tools": {
+        "end_call": true,
+        "knowledge_base": false,
+        "memory": false,
+        "question_events": true
+      }
     }
   }
 }
