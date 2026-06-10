@@ -5,6 +5,7 @@ import logging
 from collections import UserDict
 from collections.abc import Mapping
 from pathlib import Path
+from typing import TypedDict
 from urllib import error, request
 from urllib.parse import urlparse
 
@@ -14,6 +15,32 @@ DEFAULT_PROMPT_AGENT_NAME = "Sara"
 DEFAULT_PROMPT_USER_NAME = "the student"
 DEFAULT_PROMPT_FETCH_TIMEOUT_SECONDS = 10
 AGENT_ROOT = Path(__file__).resolve().parents[1]
+
+
+class InterviewMetadata(TypedDict, total=False):
+    """Shape of the room metadata fields this module reads."""
+
+    user_name: str
+    user_details: str
+    questions: list[str]
+    question_filters: Mapping[str, object]
+    prompt_context: Mapping[str, object]
+
+
+class PromptContext(TypedDict):
+    """Known base keys filled into the prompt template.
+
+    The `prompt_context` sub-map of the incoming metadata may add further
+    dynamic keys (e.g. `current_round`) on top of these.
+    """
+
+    agent_name: str
+    additional_context: str
+    prompt: str
+    question_filters: str
+    interview_questions: str
+    user_name: str
+    user_details: str
 
 _prompt_cache: dict[str, str] = {}
 
@@ -79,25 +106,30 @@ def _stringify_prompt_value(value: object) -> str:
 
 
 def build_prompt_context(
-    metadata: Mapping[str, object] | None,
+    metadata: InterviewMetadata | Mapping[str, object] | None,
     *,
     user_name: str | None = None,
 ) -> dict[str, str]:
-    prompt_context: dict[str, str] = {
+    prompt_context: PromptContext = {
         "agent_name": DEFAULT_PROMPT_AGENT_NAME,
         "additional_context": "",
         "prompt": "",
         "question_filters": "{}",
         "interview_questions": "",
         "user_name": (user_name or "").strip() or DEFAULT_PROMPT_USER_NAME,
+        "user_details": "",
     }
 
     if not metadata:
-        return prompt_context
+        return {key: str(value) for key, value in prompt_context.items()}
 
     metadata_user_name = metadata.get("user_name")
     if isinstance(metadata_user_name, str) and metadata_user_name.strip():
         prompt_context["user_name"] = metadata_user_name.strip()
+
+    user_details = metadata.get("user_details")
+    if isinstance(user_details, str) and user_details.strip():
+        prompt_context["user_details"] = user_details.strip()
 
     questions = metadata.get("questions")
     if isinstance(questions, list):
@@ -119,22 +151,26 @@ def build_prompt_context(
             sort_keys=True,
         )
 
+    # The sub-map may add dynamic keys beyond PromptContext, so widen to a plain
+    # dict before merging.
+    context: dict[str, str] = {key: str(value) for key, value in prompt_context.items()}
+
     metadata_prompt_context = metadata.get("prompt_context")
     if isinstance(metadata_prompt_context, Mapping):
         additional_context: dict[str, str] = {}
         for key, value in metadata_prompt_context.items():
             if isinstance(key, str) and key:
                 string_value = _stringify_prompt_value(value)
-                prompt_context[key] = string_value
+                context[key] = string_value
                 if key not in {"agent_name", "user_name"} and string_value:
                     additional_context[key] = string_value
 
         if additional_context:
-            prompt_context["additional_context"] = json.dumps(
+            context["additional_context"] = json.dumps(
                 additional_context, ensure_ascii=True, sort_keys=True
             )
 
-    return prompt_context
+    return context
 
 
 def render_prompt(
