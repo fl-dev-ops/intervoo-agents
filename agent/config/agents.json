@@ -68,7 +68,7 @@
         "dict_id": "p_fcfdd23b"
       },
       "tools": {
-        "end_call": true,
+        "end_call": false,
         "knowledge_base": false,
         "memory": false,
         "question_events": true
