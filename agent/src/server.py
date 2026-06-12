@@ -25,6 +25,7 @@ from livekit.agents import (
     metrics,
     room_io,
 )
+from livekit.agents.metrics import STTMetrics, TTSMetrics
 from livekit.agents.beta.tools import EndCallTool
 from livekit.plugins import noise_cancellation
 
@@ -53,6 +54,7 @@ from runtime_resources import (
     prewarm_runtime_resources,
 )
 from session import InteractionMode, SessionConfig, build_agent_session
+from langfuse import get_client as get_langfuse_client
 from tracing import flush_langfuse, setup_langfuse
 from unified_agent import UnifiedAgent
 from watchdog import cancel_idle_room_watchdog, register_idle_room_watchdog
@@ -104,6 +106,7 @@ class SessionState:
 
 
 _sessions: dict[str, SessionState] = {}
+_session_usage_loggers: dict[str, Any] = {}
 
 
 @dataclass(frozen=True)
@@ -237,13 +240,45 @@ def _build_kb(
     )
 
 
-def _attach_metrics_logging(session: AgentSession) -> None:
+def _attach_metrics_logging(session: AgentSession):
     usage_collector = metrics.UsageCollector()
+    stt_audio_total: float = 0.0
+    tts_chars_total: int = 0
+    tts_audio_total: float = 0.0
 
     @session.on("metrics_collected")
     def _on_metrics_collected(ev: MetricsCollectedEvent) -> None:
+        nonlocal stt_audio_total, tts_chars_total, tts_audio_total
         metrics.log_metrics(ev.metrics)
         usage_collector.collect(ev.metrics)
+        for m in ev.metrics:
+            if isinstance(m, STTMetrics):
+                stt_audio_total += m.audio_duration
+            elif isinstance(m, TTSMetrics):
+                tts_chars_total += m.characters_count
+                tts_audio_total += m.audio_duration
+
+    def log_usage_summary(room_name: str) -> None:
+        logger.info(
+            "Session usage summary: room=%s stt_audio_seconds=%.2f "
+            "tts_characters=%d tts_audio_seconds=%.2f",
+            room_name,
+            stt_audio_total,
+            tts_chars_total,
+            tts_audio_total,
+        )
+        try:
+            lf = get_langfuse_client()
+            for name, value in (
+                ("stt_audio_seconds", stt_audio_total),
+                ("tts_characters", float(tts_chars_total)),
+                ("tts_audio_seconds", tts_audio_total),
+            ):
+                lf.create_score(session_id=room_name, name=name, value=value, data_type="NUMERIC")
+        except Exception as e:
+            logger.warning("Failed to log usage scores to Langfuse: %s", e)
+
+    return log_usage_summary
 
     @session.on("function_tools_executed")
     def _on_tools_executed(ev: Any) -> None:
@@ -597,6 +632,10 @@ async def on_session_end(ctx: agents.JobContext) -> None:
         except Exception as e:
             logger.error(f"Failed to post completion webhook: {e}")
 
+    log_usage_summary = _session_usage_loggers.pop(ctx.room.name, None)
+    if log_usage_summary is not None:
+        log_usage_summary(ctx.room.name)
+
     flush_langfuse()
 
 
@@ -735,7 +774,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             else get_prewarmed_turn_detector(userdata)
         ),
     )
-    _attach_metrics_logging(session)
+    _session_usage_loggers[ctx.room.name] = _attach_metrics_logging(session)
     timer.mark("session_build")
 
     webhook_url_raw = metadata.get("webhook_url")
