@@ -133,11 +133,26 @@ def build_prompt_context(
 
     questions = metadata.get("questions")
     if isinstance(questions, list):
-        items = [q.strip() for q in questions if isinstance(q, str) and q.strip()]
-        if items:
-            prompt_context["interview_questions"] = "\n".join(
-                f"{index + 1}. {question}" for index, question in enumerate(items)
-            )
+        # Each question is an object {id, text, question_type, ...}. Surface the id
+        # so the agent can pass it to mark_question_started; the bracketed id is
+        # internal and must not be spoken.
+        lines: list[str] = []
+        for question in questions:
+            if not isinstance(question, Mapping):
+                continue
+            text = question.get("text")
+            question_id = question.get("id")
+            if (
+                isinstance(text, str)
+                and text.strip()
+                and isinstance(question_id, str)
+                and question_id.strip()
+            ):
+                lines.append(
+                    f"{len(lines) + 1}. [id: {question_id.strip()}] {text.strip()}"
+                )
+        if lines:
+            prompt_context["interview_questions"] = "\n".join(lines)
 
     question_filters = metadata.get("question_filters")
     if isinstance(question_filters, Mapping):

@@ -736,7 +736,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             tools.append(kb_tools)
 
     if profile.question_events_enabled:
-        tools.append(build_question_event_tool(ctx.room))
+        tools.append(
+            build_question_event_tool(ctx.room, questions=metadata.get("questions"))
+        )
 
     if profile.memory_enabled:
         try:
