@@ -91,8 +91,8 @@ def build_agent_session(
             turn_detection=turn_detector or MultilingualModel(),
             endpointing={
                 "mode": "dynamic",
-                "min_delay": 1.5,
-                "max_delay": 3.0,
+                "min_delay": 3.0,
+                "max_delay": 6.0,
             },
             interruption={
                 "mode": "adaptive",
