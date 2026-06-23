@@ -16,7 +16,9 @@ from profile import (
 )
 from typing import Any
 
+from aiohttp import web
 from dotenv import load_dotenv
+from langfuse import get_client as get_langfuse_client
 from livekit import agents, rtc
 from livekit.agents import (
     AgentServer,
@@ -25,8 +27,8 @@ from livekit.agents import (
     metrics,
     room_io,
 )
-from livekit.agents.metrics import STTMetrics, TTSMetrics
 from livekit.agents.beta.tools import EndCallTool
+from livekit.agents.metrics import STTMetrics, TTSMetrics
 from livekit.plugins import noise_cancellation
 
 from identity import (
@@ -54,7 +56,6 @@ from runtime_resources import (
     prewarm_runtime_resources,
 )
 from session import InteractionMode, SessionConfig, build_agent_session
-from langfuse import get_client as get_langfuse_client
 from tracing import flush_langfuse, setup_langfuse
 from unified_agent import UnifiedAgent
 from watchdog import cancel_idle_room_watchdog, register_idle_room_watchdog
@@ -434,6 +435,42 @@ server = AgentServer(
     job_memory_warn_mb=2048,
     job_memory_limit_mb=4096,
 )
+
+# ---------------------------------------------------------------------------
+# Localhost /status endpoint — read-only, sidecar-facing, no AWS coupling.
+# Bound to 127.0.0.1:8082 so it is never reachable outside the Fargate task.
+# ---------------------------------------------------------------------------
+
+STATUS_HOST = "127.0.0.1"
+STATUS_PORT = 8082
+
+
+async def _status_handler(request: web.Request) -> web.Response:
+    return web.json_response(
+        {
+            "active_jobs": len(server.active_jobs),
+            "max": MAX_CONCURRENT_SESSIONS,
+            "draining": server.draining,
+        }
+    )
+
+
+async def _start_status_server() -> None:
+    app = web.Application()
+    app.add_routes([web.get("/status", _status_handler)])
+    runner = web.AppRunner(app)
+    await runner.setup()
+    await web.TCPSite(runner, STATUS_HOST, STATUS_PORT).start()
+    logger.info("status server listening on %s:%d/status", STATUS_HOST, STATUS_PORT)
+
+
+def _on_worker_started() -> None:
+    asyncio.get_event_loop().create_task(
+        _start_status_server(), name="status-server"
+    )
+
+
+server.on("worker_started", _on_worker_started)
 
 
 async def _post_webhook(
