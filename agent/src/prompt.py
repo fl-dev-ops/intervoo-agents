@@ -188,6 +188,11 @@ def build_prompt_context(
     return context
 
 
+def extract_prompt_version(prompt_url: str) -> str:
+    """'prompts/diagnostic/v5.md' → 'v5'"""
+    return Path(prompt_url).stem or "unknown"
+
+
 def render_prompt(
     template: str,
     *,
