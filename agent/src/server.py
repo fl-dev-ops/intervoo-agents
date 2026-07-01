@@ -62,7 +62,7 @@ from watchdog import cancel_idle_room_watchdog, register_idle_room_watchdog
 
 logger = logging.getLogger("intervoo_agent")
 
-CALLER_LOOKUP_TIMEOUT_SECONDS = 5
+CALLER_LOOKUP_TIMEOUT_SECONDS = 300
 DEFAULT_AGENT_NAME = "intervoo-agent"
 MAX_CONCURRENT_SESSIONS = 10
 
@@ -792,6 +792,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         _participant_attributes,
     ) = await _resolve_call_state(ctx, initial_user_id)
     timer.mark("participant_lookup")
+    if participant_identity is None:
+        logger.warning(
+            "No participant joined within %ds, ending job before session start room=%s",
+            CALLER_LOOKUP_TIMEOUT_SECONDS,
+            ctx.room.name,
+        )
+        return
 
     _prompt_version = extract_prompt_version(profile.prompt_url)
     try:
