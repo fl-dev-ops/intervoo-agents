@@ -10,18 +10,20 @@ tasks:
   download-files:
     desc: Download required LiveKit model assets
     cmds:
-      - uv run src/server.py download-files
+      - uv run python -m livekit.agents download-files
 
   dev:
     interactive: true
     desc: Run the unified agent in development mode
+    env:
+      PYTHONPATH: src
     cmds:
-      - uv run src/server.py dev
+      - uv run lk agent dev src/server.py
 
   start:
     desc: Run the unified agent in production mode
     cmds:
-      - uv run src/server.py start
+      - uv run python -m livekit.agents start src/server.py
 
   test:
     desc: Run the test suite

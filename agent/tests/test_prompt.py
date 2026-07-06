@@ -32,7 +32,9 @@ def test_build_prompt_context_uses_defaults_when_metadata_missing() -> None:
         "additional_context": "",
         "prompt": "",
         "question_filters": "{}",
+        "interview_questions": "",
         "user_name": "the student",
+        "user_details": "",
     }
 
 
@@ -136,7 +138,7 @@ def test_configured_profile_prompts_load_from_local_files() -> None:
         for agent_id, profile in catalog.items()
     }
 
-    assert set(prompts) == {"interview", "pre_screen", "diagnostic", "job"}
+    assert set(prompts) == {"interview", "pre_screen", "diagnostic", "diagnostic_v2", "job"}
     assert "Job Interview Voice Agent" in prompts["job"]
     assert "Interview Practice Voice Agent" in prompts["interview"]
     assert "Role And Objective" in prompts["pre_screen"]
