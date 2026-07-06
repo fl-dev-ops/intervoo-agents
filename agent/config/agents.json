@@ -54,7 +54,7 @@
         "end_call": false,
         "knowledge_base": {
           "collection": "CS_Diagnostics_Agent",
-          "shape": "diagnostic"
+          "shape": "diagnostic_fast"
         },
         "memory": false
       }

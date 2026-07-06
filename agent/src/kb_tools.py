@@ -197,6 +197,108 @@ def make_diagnostic_retrieve_knowledge(
     return retrieve_knowledge, mark_question_started
 
 
+def make_diagnostic_retrieve_and_start(
+    kb: ChromaKnowledgeBase,
+    room: Any | None = None,
+):
+    """Merged tool: retrieves KB questions AND marks the selected question as started.
+
+    This eliminates one LLM round-trip per question by combining retrieve_knowledge
+    and mark_question_started into a single tool call. The LLM calls this with the
+    query and the question_id it wants to ask — the tool retrieves, publishes the
+    event, and returns the question text ready to speak.
+    """
+    questions_by_id: dict[str, dict[str, object]] = {}
+
+    @function_tool(
+        name="retrieve_and_start_question",
+        description=(
+            "Retrieve a question from the knowledge base AND mark it as started "
+            "(publishes to the candidate's screen). Use this instead of calling "
+            "retrieve_knowledge and mark_question_started separately. Pass the "
+            "question_id of the record you want to ask from the previous retrieve "
+            "results, or omit it to just retrieve without starting."
+        ),
+    )
+    async def retrieve_and_start_question(
+        query: str,
+        question_id: str | None = None,
+        content_type: str | None = None,
+        domain: str | None = None,
+        category: str | None = None,
+        difficulty_level: str | list[str] | None = None,
+        band: int | None = None,
+        exclude_ids: list[str] | None = None,
+        limit: int | None = None,
+    ) -> dict[str, object]:
+        filters = {
+            key: value
+            for key, value in {
+                "content_type": content_type,
+                "domain": domain,
+                "category": category,
+                "difficulty_level": difficulty_level,
+                "band": band,
+            }.items()
+            if value is not None
+        }
+        logger.info("[KB] retrieve_and_start_question: query=%s, filters=%s, question_id=%s", query, filters, question_id)
+
+        result = await retrieve_knowledge_from_base(
+            kb,
+            query=query,
+            filters=filters or None,
+            exclude_ids=exclude_ids,
+            limit=limit,
+        )
+
+        records = result.get("records") if isinstance(result, dict) else None
+        if result.get("status") == "ok" and isinstance(records, list):
+            for record in records:
+                if not isinstance(record, dict):
+                    continue
+                question = _normalize_question_record(record)
+                if question is not None:
+                    questions_by_id[str(question["id"])] = question
+
+        if question_id is None:
+            return result
+
+        normalized_id = question_id.strip()
+        question = questions_by_id.get(normalized_id)
+        if question is None:
+            return {
+                "status": "not_found",
+                "message": (
+                    "Question id not found in retrieved records. "
+                    "Pass question_id from a record returned by this same call."
+                ),
+                "retrieval": result,
+            }
+
+        if room is not None:
+            try:
+                await _publish_question_started_event(room, question=question)
+            except Exception as e:
+                logger.error("Failed to publish question started event: %s", e)
+                return {
+                    "status": "publish_failed",
+                    "question_id": normalized_id,
+                    "message": "Question could not be published to the frontend.",
+                    "retrieval": result,
+                }
+
+        return {
+            "status": "ok",
+            "question_id": normalized_id,
+            "question_text": question["text"],
+            "question": question,
+            "retrieval": result,
+        }
+
+    return retrieve_and_start_question
+
+
 def build_kb_tool(
     shape: str,
     kb: ChromaKnowledgeBase,
@@ -206,4 +308,6 @@ def build_kb_tool(
         return make_simple_retrieve_knowledge(kb)
     if shape == "diagnostic":
         return make_diagnostic_retrieve_knowledge(kb, room)
+    if shape == "diagnostic_fast":
+        return make_diagnostic_retrieve_and_start(kb, room)
     raise ValueError(f"Unknown kb shape: {shape!r}")

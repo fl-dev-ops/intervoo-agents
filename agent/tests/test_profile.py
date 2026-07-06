@@ -16,7 +16,7 @@ CONFIG_PATH = Path(__file__).resolve().parents[1] / "config" / "agents.json"
 def test_catalog_loads_all_four_personas() -> None:
     catalog = load_profile_catalog(CONFIG_PATH)
 
-    assert set(catalog.keys()) == {"interview", "pre_screen", "diagnostic", "job"}
+    assert set(catalog.keys()) == {"interview", "pre_screen", "diagnostic", "diagnostic_v2", "job"}
 
 
 def test_pre_screen_profile_has_end_call_and_no_kb() -> None:
@@ -27,7 +27,7 @@ def test_pre_screen_profile_has_end_call_and_no_kb() -> None:
     assert profile.prompt_url == "prompts/pre-screen/v1.md"
     assert profile.voice_speaker == "ishita"
     assert profile.voice_dict_id == "p_fcfdd23b"
-    assert profile.end_call_enabled is True
+    assert profile.end_call_enabled is False
     assert profile.kb_collection is None
     assert profile.kb_shape == "simple"
     assert profile.memory_enabled is False
@@ -37,9 +37,9 @@ def test_diagnostic_profile_has_diagnostic_kb_shape() -> None:
     catalog = load_profile_catalog(CONFIG_PATH)
     profile = catalog["diagnostic"]
 
-    assert profile.prompt_url == "prompts/diagnostic/v1.md"
-    assert profile.kb_shape == "diagnostic"
-    assert profile.end_call_enabled is True
+    assert profile.prompt_url == "prompts/diagnostic/v3.md"
+    assert profile.kb_shape == "diagnostic_fast"
+    assert profile.end_call_enabled is False
     assert profile.memory_enabled is False
 
 

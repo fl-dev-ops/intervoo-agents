@@ -19,7 +19,7 @@ RUN uv sync --locked --no-dev
 
 COPY . .
 
-RUN uv run src/server.py download-files
+RUN uv run python -m livekit.agents download-files
 
 FROM base
 
@@ -38,4 +38,4 @@ COPY --from=build --chown=appuser:appuser /app /app
 
 USER appuser
 
-CMD ["uv", "run", "src/server.py", "start"]
+CMD ["uv", "run", "python", "-m", "livekit.agents", "start", "src/server.py"]

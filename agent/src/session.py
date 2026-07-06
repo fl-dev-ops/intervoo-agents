@@ -6,12 +6,12 @@ from enum import Enum
 from typing import Any
 
 from livekit.agents import AgentSession, TurnHandlingOptions
-from livekit.plugins import openai, sarvam, silero
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.agents.inference import TurnDetector
+from livekit.plugins import openai, sarvam
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_OPENROUTER_MODEL = "openai/gpt-5.1"
+DEFAULT_OPENROUTER_MODEL = "openai/gpt-4o"
 DEFAULT_SARVAM_LANGUAGE = "en-IN"
 DEFAULT_SARVAM_TTS_MODEL = "bulbul:v3"
 
@@ -36,7 +36,6 @@ def build_agent_session(
     tts_model: str = DEFAULT_SARVAM_TTS_MODEL,
     mode: InteractionMode = InteractionMode.AUTO,
     session_config: SessionConfig | None = None,
-    vad: Any | None = None,
     turn_detector: Any | None = None,
 ) -> AgentSession:
     effective_session_config = session_config or SessionConfig()
@@ -86,18 +85,22 @@ def build_agent_session(
         stt=stt,
         llm=llm,
         tts=tts,
-        vad=vad or silero.VAD.load(),
         turn_handling=TurnHandlingOptions(
-            turn_detection=turn_detector or MultilingualModel(),
+            turn_detection=turn_detector or TurnDetector(version="v1-mini"),
             endpointing={
                 "mode": "dynamic",
-                "min_delay": 3.0,
-                "max_delay": 6.0,
+                "min_delay": 2.0,
+                "max_delay": 4.0,
             },
             interruption={
                 "mode": "adaptive",
                 "min_duration": 0.5,
+                "min_words": 0,
                 "resume_false_interruption": True,
+                "false_interruption_timeout": 2.0,
+            },
+            preemptive_generation={
+                "preemptive_tts": False,
             },
         ),
     )

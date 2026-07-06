@@ -27,8 +27,8 @@ from livekit.agents import (
     metrics,
     room_io,
 )
-from livekit.agents.metrics import LLMMetrics, STTMetrics, TTSMetrics
 from livekit.agents.beta.tools import EndCallTool
+from livekit.agents.metrics import LLMMetrics, STTMetrics, TTSMetrics
 from livekit.plugins import noise_cancellation
 
 from identity import (
@@ -39,7 +39,12 @@ from identity import (
 from kb_tools import build_kb_tool
 from knowledge_base import ChromaKnowledgeBase
 from memory_tools import build_memory_tools
-from prompt import build_prompt_context, extract_prompt_version, load_prompt, render_prompt
+from prompt import (
+    build_prompt_context,
+    extract_prompt_version,
+    load_prompt,
+    render_prompt,
+)
 from question_tools import build_question_event_tool
 from recording_config import RecordingConfig
 from recording_db import init_pool
@@ -50,7 +55,6 @@ from runtime_resources import (
     get_memory_client,
     get_or_create_turn_detector,
     get_prewarmed_turn_detector,
-    get_prewarmed_vad,
     get_profile_catalog,
     get_recording_config,
     prewarm_runtime_resources,
@@ -512,6 +516,7 @@ server = AgentServer(
     load_threshold=0.5,
     job_memory_warn_mb=2048,
     job_memory_limit_mb=4096,
+    num_idle_processes=1,
 )
 
 # ---------------------------------------------------------------------------
@@ -912,7 +917,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         tts_dict_id=profile.voice_dict_id,
         mode=mode,
         session_config=session_config,
-        vad=get_prewarmed_vad(userdata),
         turn_detector=(
             get_or_create_turn_detector(userdata)
             if mode is InteractionMode.AUTO

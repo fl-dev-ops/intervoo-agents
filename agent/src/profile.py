@@ -66,10 +66,10 @@ def _parse_profile(agent_id: str, value: Any) -> AgentProfile:
             f"agents.{agent_id}.tools.knowledge_base.collection",
         )
         shape_raw = kb_raw.get("shape", "simple")
-        if shape_raw not in ("simple", "diagnostic"):
+        if shape_raw not in ("simple", "diagnostic", "diagnostic_fast"):
             raise ProfileError(
                 f"agents.{agent_id}.tools.knowledge_base.shape must be "
-                f"'simple' or 'diagnostic', got {shape_raw!r}"
+                f"'simple', 'diagnostic', or 'diagnostic_fast', got {shape_raw!r}"
             )
         kb_shape = shape_raw
 
