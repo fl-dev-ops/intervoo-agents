@@ -918,6 +918,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             if mode is InteractionMode.AUTO
             else get_prewarmed_turn_detector(userdata)
         ),
+        # Diagnostic interviews must act only on a completed turn — disable
+        # speculative generation so questions aren't asked/marked before the
+        # candidate answers. Other agents keep preemptive generation.
+        disable_preemptive_generation=(profile.agent_type == "diagnostic-agent"),
     )
     _session_usage_loggers[ctx.room.name] = _attach_metrics_logging(session, ctx.room.name)
     timer.mark("session_build")

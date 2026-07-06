@@ -38,6 +38,7 @@ def build_agent_session(
     session_config: SessionConfig | None = None,
     vad: Any | None = None,
     turn_detector: Any | None = None,
+    disable_preemptive_generation: bool = False,
 ) -> AgentSession:
     effective_session_config = session_config or SessionConfig()
 
@@ -82,22 +83,30 @@ def build_agent_session(
             preemptive_generation=False,
         )
 
+    turn_handling = TurnHandlingOptions(
+        turn_detection=turn_detector or MultilingualModel(),
+        endpointing={
+            "mode": "dynamic",
+            "min_delay": 3.0,
+            "max_delay": 6.0,
+        },
+        interruption={
+            "mode": "adaptive",
+            "min_duration": 0.5,
+            "resume_false_interruption": True,
+        },
+    )
+    if disable_preemptive_generation:
+        # Structured interviews (e.g. the diagnostic agent) must act only on a
+        # completed turn. Preemptive generation runs the LLM on partial
+        # transcripts and fires screen-publishing tools like
+        # mark_question_started speculatively, causing question-jumping.
+        turn_handling["preemptive_generation"] = {"enabled": False}
+
     return AgentSession(
         stt=stt,
         llm=llm,
         tts=tts,
         vad=vad or silero.VAD.load(),
-        turn_handling=TurnHandlingOptions(
-            turn_detection=turn_detector or MultilingualModel(),
-            endpointing={
-                "mode": "dynamic",
-                "min_delay": 3.0,
-                "max_delay": 6.0,
-            },
-            interruption={
-                "mode": "adaptive",
-                "min_duration": 0.5,
-                "resume_false_interruption": True,
-            },
-        ),
+        turn_handling=turn_handling,
     )
