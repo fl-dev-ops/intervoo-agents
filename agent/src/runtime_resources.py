@@ -8,8 +8,7 @@ from typing import Any
 
 import chromadb
 from livekit.agents import JobProcess
-from livekit.plugins import silero
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.agents.inference import TurnDetector
 
 from knowledge_base import (
     ChromaKnowledgeBase,
@@ -22,7 +21,6 @@ from recording_config import RecordingConfig, build_recording_config
 
 logger = logging.getLogger(__name__)
 
-USERDATA_VAD = "vad"
 USERDATA_TURN_DETECTOR = "turn_detector"
 USERDATA_PROFILE_CATALOG = "profile_catalog"
 USERDATA_KB_BASE_CONFIG = "kb_base_config"
@@ -41,9 +39,8 @@ def prewarm_runtime_resources(
     userdata.setdefault(USERDATA_CHROMA_CLIENTS, {})
     userdata.setdefault(USERDATA_CHROMA_COLLECTIONS, {})
 
-    userdata[USERDATA_VAD] = silero.VAD.load()
     try:
-        userdata[USERDATA_TURN_DETECTOR] = MultilingualModel()
+        userdata[USERDATA_TURN_DETECTOR] = TurnDetector(version="v1-mini")
     except RuntimeError as e:
         logger.info("Turn detector prewarm deferred until job context: %s", e)
 
@@ -114,10 +111,6 @@ def get_recording_config(userdata: MutableMapping[str, Any]) -> RecordingConfig:
     return config
 
 
-def get_prewarmed_vad(userdata: MutableMapping[str, Any]) -> Any | None:
-    return userdata.get(USERDATA_VAD)
-
-
 def get_prewarmed_turn_detector(userdata: MutableMapping[str, Any]) -> Any | None:
     return userdata.get(USERDATA_TURN_DETECTOR)
 
@@ -125,7 +118,7 @@ def get_prewarmed_turn_detector(userdata: MutableMapping[str, Any]) -> Any | Non
 def get_or_create_turn_detector(userdata: MutableMapping[str, Any]) -> Any:
     turn_detector = userdata.get(USERDATA_TURN_DETECTOR)
     if turn_detector is None:
-        turn_detector = MultilingualModel()
+        turn_detector = TurnDetector(version="v1-mini")
         userdata[USERDATA_TURN_DETECTOR] = turn_detector
     return turn_detector
 

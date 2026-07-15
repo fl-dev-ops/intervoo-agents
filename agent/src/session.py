@@ -6,12 +6,20 @@ from enum import Enum
 from typing import Any
 
 from livekit.agents import AgentSession, TurnHandlingOptions
-from livekit.plugins import openai, sarvam, silero
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.agents.inference import AdaptiveInterruptionDetector, TurnDetector
+from livekit.plugins import openai, sarvam
+
+# ---------------------------------------------------------------------------
+# Sarvam TTS pool patch (workaround for livekit/agents#5681)
+# The pool defaults to max_session_duration=3600 but Sarvam closes idle WS
+# connections after ~60s. Setting it to 50s forces proactive recycling.
+# Remove once the fix is upstreamed into livekit-plugins-sarvam.
+# ---------------------------------------------------------------------------
+_SARVAM_POOL_MAX_SESSION_DURATION = 50.0  # seconds, below Sarvam's 60s idle timeout
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_OPENROUTER_MODEL = "openai/gpt-5.1"
+DEFAULT_OPENROUTER_MODEL = "openai/gpt-4o"
 DEFAULT_SARVAM_LANGUAGE = "en-IN"
 DEFAULT_SARVAM_TTS_MODEL = "bulbul:v3"
 
@@ -36,7 +44,6 @@ def build_agent_session(
     tts_model: str = DEFAULT_SARVAM_TTS_MODEL,
     mode: InteractionMode = InteractionMode.AUTO,
     session_config: SessionConfig | None = None,
-    vad: Any | None = None,
     turn_detector: Any | None = None,
     disable_preemptive_generation: bool = False,
 ) -> AgentSession:
@@ -66,6 +73,12 @@ def build_agent_session(
     if hasattr(tts, "prewarm"):
         tts.prewarm()
 
+    # Patch the connection pool so it recycles connections before Sarvam's
+    # server-side 60s idle timeout evicts them (livekit/agents#5681).
+    if hasattr(tts, "_pool"):
+        tts._pool._max_session_duration = _SARVAM_POOL_MAX_SESSION_DURATION
+        tts._pool._mark_refreshed_on_get = True
+
     if mode is InteractionMode.PTT:
         return AgentSession(
             stt=stt,
@@ -73,40 +86,40 @@ def build_agent_session(
             tts=tts,
             turn_handling=TurnHandlingOptions(
                 turn_detection="manual",
-                interruption={
-                    "mode": "adaptive",
-                    "min_duration": 0.5,
-                    "resume_false_interruption": True,
-                },
+                interruption=AdaptiveInterruptionDetector(
+                    min_duration=0.5,
+                    resume_false_interruption=True,
+                ),
             ),
             use_tts_aligned_transcript=True,
             preemptive_generation=False,
         )
 
-    turn_handling = TurnHandlingOptions(
-        turn_detection=turn_detector or MultilingualModel(),
-        endpointing={
-            "mode": "dynamic",
-            "min_delay": 3.0,
-            "max_delay": 6.0,
-        },
-        interruption={
-            "mode": "adaptive",
-            "min_duration": 0.5,
-            "resume_false_interruption": True,
-        },
-    )
-    if disable_preemptive_generation:
+    preemptive_generation: dict | bool = (
         # Structured interviews (e.g. the diagnostic agent) must act only on a
         # completed turn. Preemptive generation runs the LLM on partial
         # transcripts and fires screen-publishing tools like
         # mark_question_started speculatively, causing question-jumping.
-        turn_handling["preemptive_generation"] = {"enabled": False}
+        {"preemptive_tts": False}
+        if disable_preemptive_generation
+        else {"preemptive_tts": False}
+    )
 
     return AgentSession(
         stt=stt,
         llm=llm,
         tts=tts,
-        vad=vad or silero.VAD.load(),
-        turn_handling=turn_handling,
+        turn_handling=TurnHandlingOptions(
+            turn_detection=turn_detector or TurnDetector(version="v1"),
+            endpointing={
+                "mode": "dynamic",
+                "min_delay": 2.0,
+                "max_delay": 4.0,
+            },
+            interruption=AdaptiveInterruptionDetector(
+                min_duration=0.5,
+                resume_false_interruption=True,
+            ),
+            preemptive_generation=preemptive_generation,
+        ),
     )
