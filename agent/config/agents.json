@@ -59,6 +59,21 @@
         "memory": false
       }
     },
+    "mock_interview": {
+      "agent_type": "mock-interview-agent",
+      "prompt_url": "prompts/interview/v3.md",
+      "initial_reply": "Greet the candidate by name, introduce yourself as their interviewer for today's technical interview, and ask them to briefly introduce themselves.",
+      "voice": {
+        "speaker": "ishita",
+        "dict_id": "p_fcfdd23b"
+      },
+      "tools": {
+        "end_call": true,
+        "knowledge_base": false,
+        "memory": false,
+        "editor_events": true
+      }
+    },
     "diagnostic_v2": {
       "agent_type": "diagnostic-agent",
       "prompt_url": "prompts/diagnostic/v7.md",
@@ -69,9 +84,11 @@
       },
       "tools": {
         "end_call": false,
-        "knowledge_base": false,
-        "memory": false,
-        "question_events": true
+        "knowledge_base": {
+          "collection": "CS_Diagnostics_Agent",
+          "shape": "diagnostic"
+        },
+        "memory": false
       }
     }
   }

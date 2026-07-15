@@ -27,6 +27,7 @@ class AgentProfile:
     kb_shape: str
     memory_enabled: bool
     question_events_enabled: bool
+    editor_events_enabled: bool
 
 
 def _required_str(value: Any, field: str) -> str:
@@ -87,6 +88,7 @@ def _parse_profile(agent_id: str, value: Any) -> AgentProfile:
         kb_shape=kb_shape,
         memory_enabled=bool(tools.get("memory", False)),
         question_events_enabled=bool(tools.get("question_events", False)),
+        editor_events_enabled=bool(tools.get("editor_events", False)),
     )
 
 

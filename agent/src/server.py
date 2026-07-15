@@ -31,6 +31,7 @@ from livekit.agents.beta.tools import EndCallTool
 from livekit.agents.metrics import LLMMetrics, STTMetrics, TTSMetrics
 from livekit.plugins import noise_cancellation
 
+from editor_tools import build_editor_tools
 from identity import (
     resolve_phone_number_from_call_context,
     resolve_user_id_from_call_context,
@@ -59,6 +60,7 @@ from runtime_resources import (
     get_recording_config,
     prewarm_runtime_resources,
 )
+from screen_feedback import ScreenFeedbackRuntime, build_screen_inspection_tool
 from session import InteractionMode, SessionConfig, build_agent_session
 from tracing import flush_langfuse, setup_langfuse
 from unified_agent import UnifiedAgent
@@ -71,7 +73,9 @@ DEFAULT_AGENT_NAME = "intervoo-agent"
 MAX_CONCURRENT_SESSIONS = 10
 
 END_CALL_EXTRA_DESCRIPTION = (
-    "Only end the call when the user clearly indicates the conversation is complete."
+    "Only end the call when the user clearly indicates the conversation is complete. "
+    "A disabled screen share, unavailable editor frame, hint request, tool recovery "
+    "result, or temporary tool failure is never a reason to end the call."
 )
 END_CALL_INSTRUCTIONS = "Thanks for practicing with me today. Goodbye."
 
@@ -112,6 +116,7 @@ class SessionState:
 
 _sessions: dict[str, SessionState] = {}
 _session_usage_loggers: dict[str, Any] = {}
+_screen_feedback_runtimes: dict[str, ScreenFeedbackRuntime] = {}
 
 
 @dataclass(frozen=True)
@@ -652,6 +657,15 @@ async def _start_recording_for_session(
 async def on_session_end(ctx: agents.JobContext) -> None:
     cancel_idle_room_watchdog(ctx.room.name)
 
+    screen_feedback = _screen_feedback_runtimes.pop(ctx.room.name, None)
+    if screen_feedback is not None:
+        try:
+            await screen_feedback.close()
+        except Exception:
+            logger.exception(
+                "Failed to close screen feedback runtime room=%s", ctx.room.name
+            )
+
     state = _sessions.pop(ctx.room.name, None)
     if state is None:
         logger.info("No session state found for room %s", ctx.room.name)
@@ -867,6 +881,16 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             name=f"recording-start:{ctx.room.name}",
         )
 
+    screen_feedback: ScreenFeedbackRuntime | None = None
+    if (
+        profile.editor_events_enabled
+        and metadata.get("screen_feedback_mode") == "timer"
+    ):
+        screen_feedback = ScreenFeedbackRuntime(
+            room=ctx.room,
+            participant_identity=participant_identity,
+        )
+
     tools: list[Any] = []
     if profile.end_call_enabled:
         tools.append(_build_end_call_tool())
@@ -886,6 +910,33 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     if profile.question_events_enabled:
         tools.append(
             build_question_event_tool(ctx.room, questions=metadata.get("questions"))
+        )
+
+    if profile.editor_events_enabled:
+        tools.extend(
+            build_editor_tools(
+                ctx.room,
+                questions=metadata.get("questions"),
+                on_question_started=(
+                    screen_feedback.on_question_started
+                    if screen_feedback is not None
+                    else None
+                ),
+            )
+        )
+
+    if screen_feedback is not None:
+        tools.append(build_screen_inspection_tool(screen_feedback))
+        agent_instructions = (
+            f"{agent_instructions}\n\n"
+            "During an active coding or whiteboard question, call "
+            "inspect_shared_screen before answering any request for a hint, doubt "
+            "clarification, correctness check, description of current work, or next "
+            "step. Base the reply on the tool result. Never claim that you cannot see "
+            "the candidate's screen. If the result includes candidate_message, say it "
+            "and continue the interview. Treat screen_share_required, "
+            "surface_unavailable, and loading as normal recoverable states; never call "
+            "end_call because of them. Do not call it for verbal questions."
         )
 
     if profile.memory_enabled:
@@ -925,8 +976,12 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         ),
         # Diagnostic interviews must act only on a completed turn — disable
         # speculative generation so questions aren't asked/marked before the
-        # candidate answers. Other agents keep preemptive generation.
-        disable_preemptive_generation=(profile.agent_type == "diagnostic-agent"),
+        # candidate answers. Profiles with editor events need the same guard so
+        # editors aren't opened from partial transcripts. Other agents keep
+        # preemptive generation.
+        disable_preemptive_generation=(
+            profile.agent_type == "diagnostic-agent" or profile.editor_events_enabled
+        ),
     )
     _session_usage_loggers[ctx.room.name] = _attach_metrics_logging(session, ctx.room.name)
     timer.mark("session_build")
@@ -964,6 +1019,15 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         await _start_ptt_session(ctx, session, agent)
     else:
         await _start_auto_session(ctx, session, agent)
+    if screen_feedback is not None:
+        try:
+            await screen_feedback.start(session)
+            _screen_feedback_runtimes[ctx.room.name] = screen_feedback
+        except Exception:
+            logger.exception(
+                "Failed to start screen feedback runtime room=%s", ctx.room.name
+            )
+            await screen_feedback.close()
     timer.mark("session_start")
 
 
