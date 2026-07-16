@@ -1311,6 +1311,7 @@ dependencies = [
     { name = "chromadb" },
     { name = "langfuse" },
     { name = "livekit-agents" },
+    { name = "livekit-plugins-assemblyai" },
     { name = "livekit-plugins-noise-cancellation" },
     { name = "livekit-plugins-openai" },
     { name = "livekit-plugins-sarvam" },
@@ -1333,6 +1334,7 @@ requires-dist = [
     { name = "chromadb", specifier = ">=1.5.6" },
     { name = "langfuse", specifier = ">=3.0" },
     { name = "livekit-agents", specifier = "==1.6.4" },
+    { name = "livekit-plugins-assemblyai", specifier = "==1.6.4" },
     { name = "livekit-plugins-noise-cancellation", specifier = "~=0.2.6" },
     { name = "livekit-plugins-openai", specifier = "==1.6.4" },
     { name = "livekit-plugins-sarvam", specifier = "==1.6.4" },
@@ -1693,6 +1695,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ba/9a/7cdf1a77d5fd80e06533d4f2584c45d2c978f1249338969f814502db45ad/livekit_local_inference-0.2.6-cp314-cp314-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:80dc582413d816c86a0620410c2bfc3234e782a49d2b07b4bed0ff6285bdf4a1", size = 34824215, upload-time = "2026-06-24T16:55:45.02Z" },
     { url = "https://files.pythonhosted.org/packages/86/f2/0207071f236f639cf9515838ce98cfc3a8c1b19db8e6f46350e7231f2200/livekit_local_inference-0.2.6-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9c148ec2735e903dc00e37dc2580e0417f67ec7ee4be119dca7844b104afbfe9", size = 34868380, upload-time = "2026-06-24T16:55:48.119Z" },
     { url = "https://files.pythonhosted.org/packages/1e/91/c194db20c8e9272cadf0913d42392cda5eec5e78a14820a3fa678e42e4b6/livekit_local_inference-0.2.6-cp314-cp314-win_amd64.whl", hash = "sha256:4140e4fd60dd7b7d69a55e1d454d5d893f8ffe026c30e0d7cd31fa42b10d5621", size = 34914243, upload-time = "2026-06-24T16:55:51.322Z" },
+]
+
+[[package]]
+name = "livekit-plugins-assemblyai"
+version = "1.6.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "livekit-agents" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6c/78/361481fe2f1d8b3bf89ceaec75bbe485037a2410a82e2e96145a7a75ee6f/livekit_plugins_assemblyai-1.6.4.tar.gz", hash = "sha256:caad6c3805019e66e68873a881948b1cd99a46d4bc83a78c88f8d8111073dd4b", size = 12071, upload-time = "2026-06-24T20:49:23.487Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/31/60/dd172af5a6c4b153042da51f074eae8e99c662fabbb9e154bd69d634475e/livekit_plugins_assemblyai-1.6.4-py3-none-any.whl", hash = "sha256:127cb9efd3603198aae7d0b46d7031fc0681ea307308ab68a6dd0c067898a7a0", size = 12204, upload-time = "2026-06-24T20:49:22.487Z" },
 ]
 
 [[package]]

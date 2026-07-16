@@ -20,6 +20,7 @@ dependencies = [
     "av>=17.1.0",
     "langfuse>=3.0",
     "chromadb>=1.5.6",
+    "livekit-plugins-assemblyai==1.6.4",
 ]
 
 [dependency-groups]
