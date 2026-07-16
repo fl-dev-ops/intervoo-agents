@@ -52,7 +52,7 @@ def test_session_uses_assemblyai_universal_3_5_pro(
     }
 
 
-def test_diagnostic_session_enables_15_second_user_turn_limit(
+def test_diagnostic_session_disables_preemptive_generation(
     fake_session_dependencies: dict[str, dict],
 ) -> None:
     built = build_agent_session(
@@ -60,25 +60,11 @@ def test_diagnostic_session_enables_15_second_user_turn_limit(
         tts_dict_id=None,
         turn_detector=object(),
         disable_preemptive_generation=True,
-        enable_user_turn_limit=True,
     )
 
-    assert built.turn_handling["user_turn_limit"] == {"max_duration": 15.0}
     assert built.turn_handling["preemptive_generation"] == {"enabled": False}
     assert built.turn_handling["interruption"] == {
         "mode": "adaptive",
         "min_duration": 0.5,
         "resume_false_interruption": True,
     }
-
-
-def test_other_sessions_leave_user_turn_limit_disabled(
-    fake_session_dependencies: dict[str, dict],
-) -> None:
-    built = build_agent_session(
-        tts_speaker="test",
-        tts_dict_id=None,
-        turn_detector=object(),
-    )
-
-    assert built.turn_handling["user_turn_limit"] is None

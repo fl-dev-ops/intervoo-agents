@@ -47,7 +47,6 @@ def build_agent_session(
     session_config: SessionConfig | None = None,
     turn_detector: Any | None = None,
     disable_preemptive_generation: bool = False,
-    enable_user_turn_limit: bool = False,
 ) -> AgentSession:
     effective_session_config = session_config or SessionConfig()
 
@@ -132,8 +131,5 @@ def build_agent_session(
                 "resume_false_interruption": True,
             },
             preemptive_generation=preemptive_generation,
-            user_turn_limit=(
-                {"max_duration": 15.0} if enable_user_turn_limit else None
-            ),
         ),
     )

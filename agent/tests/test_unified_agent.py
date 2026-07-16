@@ -1,16 +1,21 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import time
 from types import SimpleNamespace
 
 import pytest
-from livekit.agents import AgentStateChangedEvent, UserTurnExceededEvent
+from livekit.agents import (
+    AgentStateChangedEvent,
+    UserInputTranscribedEvent,
+    UserStateChangedEvent,
+)
 from livekit.agents.llm import ChatChunk, ChatContext, ChoiceDelta
 
 from unified_agent import (
     OVER_DETAILED_MIN_DURATION_SECONDS,
     SESSION_TIMER_ROLE,
-    USER_TURN_EVALUATION_INTERVAL_SECONDS,
     InterruptionDecision,
     UnifiedAgent,
 )
@@ -60,21 +65,18 @@ class _FakeSession:
     def __init__(self, decision: str) -> None:
         self.llm = _FakeLLM(decision)
         self.generated_replies: list[dict] = []
+        self.committed_turns: list[dict] = []
+        self.said: list[tuple[str, dict]] = []
 
     async def generate_reply(self, **kwargs) -> None:
         self.generated_replies.append(kwargs)
 
+    async def commit_user_turn(self, **kwargs) -> str:
+        self.committed_turns.append(kwargs)
+        return "committed transcript"
 
-def _turn_event(duration: float = 15.0) -> UserTurnExceededEvent:
-    return UserTurnExceededEvent(
-        transcript="I kept adding retries and then added more retries.",
-        accumulated_transcript=(
-            "I solved the outage with retries. I kept adding retries and then "
-            "added more retries."
-        ),
-        accumulated_word_count=16,
-        duration=duration,
-    )
+    def say(self, text: str, **kwargs) -> None:
+        self.said.append((text, kwargs))
 
 
 def _running_agent(decision: str) -> tuple[UnifiedAgent, _FakeSession]:
@@ -82,6 +84,7 @@ def _running_agent(decision: str) -> tuple[UnifiedAgent, _FakeSession]:
         instructions="You are a test interviewer.",
         tools=[],
         initial_reply="Hello.",
+        manage_candidate_turns=True,
     )
     if decision == "CONTINUE":
         payload = {
@@ -100,6 +103,8 @@ def _running_agent(decision: str) -> tuple[UnifiedAgent, _FakeSession]:
         }
     session = _FakeSession(json.dumps(payload))
     agent._activity = SimpleNamespace(session=session)
+    agent._user_speaking = True
+    agent._user_turn_generation = 1
     return agent, session
 
 
@@ -107,8 +112,11 @@ def _running_agent(decision: str) -> tuple[UnifiedAgent, _FakeSession]:
 async def test_user_turn_continues_without_spoken_interruption() -> None:
     agent, session = _running_agent("CONTINUE")
 
-    await agent.on_user_turn_exceeded(_turn_event())
+    interrupted = await agent._evaluate_and_maybe_interrupt(
+        "I solved the outage with retries and monitoring.", 15.0, 1
+    )
 
+    assert interrupted is False
     assert session.llm.calls == 1
     assert session.generated_replies == []
 
@@ -117,11 +125,21 @@ async def test_user_turn_continues_without_spoken_interruption() -> None:
 async def test_strong_signal_generates_contextual_spoken_interruption() -> None:
     agent, session = _running_agent("TO_INTERRUPT:repetition")
 
-    await agent.on_user_turn_exceeded(_turn_event())
+    interrupted = await agent._evaluate_and_maybe_interrupt(
+        "I kept adding retries and then added more retries.", 15.0, 1
+    )
 
+    assert interrupted is True
+    assert session.committed_turns == [
+        {
+            "transcript_timeout": 1.5,
+            "stt_flush_duration": 0.2,
+            "skip_reply": True,
+        }
+    ]
     assert len(session.generated_replies) == 1
     reply = session.generated_replies[0]
-    assert reply["user_input"] == _turn_event().transcript
+    assert "user_input" not in reply
     assert reply["allow_interruptions"] is False
     assert "Let me pause you there" in reply["instructions"]
     assert "classified as repetition" in reply["instructions"]
@@ -163,7 +181,9 @@ def test_interruption_decision_requires_nonblank_rational() -> None:
 async def test_over_detailed_decision_is_ignored_before_minimum_duration() -> None:
     agent, session = _running_agent("TO_INTERRUPT:over_detailed")
 
-    await agent.on_user_turn_exceeded(_turn_event(20.0))
+    await agent._evaluate_and_maybe_interrupt(
+        "A detailed but still ongoing answer with enough words.", 20.0, 1
+    )
 
     assert OVER_DETAILED_MIN_DURATION_SECONDS == 45.0
     assert session.llm.calls == 1
@@ -174,34 +194,130 @@ async def test_over_detailed_decision_is_ignored_before_minimum_duration() -> No
 async def test_over_detailed_decision_interrupts_after_minimum_duration() -> None:
     agent, session = _running_agent("TO_INTERRUPT:over_detailed")
 
-    await agent.on_user_turn_exceeded(_turn_event(45.0))
+    await agent._evaluate_and_maybe_interrupt(
+        "A detailed answer that has now continued for long enough.", 45.0, 1
+    )
 
     assert len(session.generated_replies) == 1
 
 
 @pytest.mark.asyncio
-async def test_user_turn_is_reassessed_at_15_second_intervals() -> None:
+async def test_user_turn_is_reassessed_at_fixed_intervals(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     agent, session = _running_agent("CONTINUE")
+    calls: list[tuple[str, float, int]] = []
 
-    await agent.on_user_turn_exceeded(_turn_event(17.0))
-    await agent.on_user_turn_exceeded(_turn_event(25.0))
-    await agent.on_user_turn_exceeded(_turn_event(32.0))
+    async def evaluate(transcript: str, duration: float, generation: int) -> bool:
+        calls.append((transcript, duration, generation))
+        if len(calls) == 1:
+            agent._latest_user_transcript += " with additional useful details"
+        else:
+            agent._user_speaking = False
+        return False
 
-    assert USER_TURN_EVALUATION_INTERVAL_SECONDS == 15.0
-    assert session.llm.calls == 2
+    monkeypatch.setattr("unified_agent.USER_TURN_EVALUATION_INTERVAL_SECONDS", 0.001)
+    monkeypatch.setattr(agent, "_evaluate_and_maybe_interrupt", evaluate)
+    agent._latest_user_transcript = "This transcript contains enough words to evaluate."
+    agent._user_turn_started_at = time.monotonic()
+
+    await asyncio.wait_for(agent._run_user_turn_checks(1), timeout=0.1)
+
+    assert len(calls) == 2
+    assert calls[1][0] == agent._latest_user_transcript
+    assert calls[0][2] == 1
+    assert session.llm.calls == 0
 
 
-def test_agent_speaking_resets_evaluation_interval_for_next_user_turn() -> None:
+@pytest.mark.asyncio
+async def test_short_pause_keeps_checkpoint_task_until_agent_speaks() -> None:
     agent, _ = _running_agent("CONTINUE")
+    agent._user_speaking = False
 
-    assert agent._should_evaluate_user_turn(15.0) is True
-    assert agent._should_evaluate_user_turn(20.0) is False
+    agent._on_user_state_changed(
+        UserStateChangedEvent(old_state="listening", new_state="speaking")
+    )
+    task = agent._user_turn_task
+
+    assert task is not None
+    assert agent._user_speaking is True
+
+    agent._on_user_state_changed(
+        UserStateChangedEvent(old_state="speaking", new_state="listening")
+    )
+    await asyncio.sleep(0)
+
+    assert agent._user_speaking is True
+    assert not task.cancelled()
+
+    generation = agent._user_turn_generation
+    agent._on_user_state_changed(
+        UserStateChangedEvent(old_state="listening", new_state="speaking")
+    )
+    assert agent._user_turn_generation == generation
+    assert agent._user_turn_task is task
 
     agent._on_agent_state_changed(
         AgentStateChangedEvent(old_state="thinking", new_state="speaking")
     )
+    await asyncio.sleep(0)
 
-    assert agent._should_evaluate_user_turn(15.0) is True
+    assert agent._user_speaking is False
+    assert task.cancelled()
+
+
+def test_interim_transcript_keeps_most_complete_snapshot() -> None:
+    agent, _ = _running_agent("CONTINUE")
+
+    agent._on_user_input_transcribed(
+        UserInputTranscribedEvent(
+            transcript="I built a production monitoring dashboard", is_final=False
+        )
+    )
+    agent._on_user_input_transcribed(
+        UserInputTranscribedEvent(
+            transcript="I built a production monitoring dashboard", is_final=True
+        )
+    )
+    agent._on_user_input_transcribed(
+        UserInputTranscribedEvent(
+            transcript="Then deployed it for the support team", is_final=False
+        )
+    )
+    agent._on_user_input_transcribed(
+        UserInputTranscribedEvent(
+            transcript="Then deployed it for the support team", is_final=True
+        )
+    )
+
+    assert agent._latest_user_transcript == (
+        "I built a production monitoring dashboard "
+        "Then deployed it for the support team"
+    )
+
+
+@pytest.mark.asyncio
+async def test_away_state_prompts_once_until_user_speaks() -> None:
+    agent, session = _running_agent("CONTINUE")
+    agent._user_speaking = False
+
+    away = UserStateChangedEvent(old_state="listening", new_state="away")
+    agent._on_user_state_changed(away)
+    agent._on_user_state_changed(away)
+
+    assert session.said == [
+        ("Take your time. Let me know when you're ready.", {"allow_interruptions": True})
+    ]
+
+    agent._on_user_state_changed(
+        UserStateChangedEvent(old_state="away", new_state="speaking")
+    )
+
+    assert agent._silence_prompted is False
+    assert agent._user_turn_task is not None
+    agent._user_turn_task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await agent._user_turn_task
 
 
 @pytest.mark.asyncio
@@ -226,7 +342,8 @@ async def test_turn_evaluator_uses_isolated_context_with_current_question() -> N
     await agent.update_chat_ctx(interview_ctx)
     agent._activity = activity
 
-    decision = await agent._evaluate_user_turn(_turn_event())
+    transcript = "I solved the outage with retries and monitoring."
+    decision = await agent._evaluate_user_turn(transcript, 15.0)
 
     assert decision is not None
     assert decision.to_interrupt is True
@@ -237,5 +354,5 @@ async def test_turn_evaluator_uses_isolated_context_with_current_question() -> N
     prompt = evaluator_messages[0].text_content or ""
     assert "What did you build and what problem did it solve?" in prompt
     assert "2 minute(s) elapsed" in prompt
-    assert _turn_event().accumulated_transcript in prompt
+    assert transcript in prompt
     assert "Never interrupt the candidate" not in prompt

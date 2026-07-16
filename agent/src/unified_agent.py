@@ -6,7 +6,12 @@ import logging
 import time
 from typing import Any, Literal
 
-from livekit.agents import Agent, AgentStateChangedEvent, UserTurnExceededEvent
+from livekit.agents import (
+    Agent,
+    AgentStateChangedEvent,
+    UserInputTranscribedEvent,
+    UserStateChangedEvent,
+)
 from livekit.agents.llm import ChatContext
 from pydantic import BaseModel, Field, model_validator
 
@@ -17,6 +22,8 @@ logger = logging.getLogger(__name__)
 SESSION_TIMER_INTERVAL_SECONDS = 60
 SESSION_TIMER_ROLE = "developer"
 USER_TURN_EVALUATION_INTERVAL_SECONDS = 15.0
+USER_TURN_EVALUATION_TIMEOUT_SECONDS = 3.0
+MIN_USER_TURN_EVALUATION_WORDS = 5
 OVER_DETAILED_MIN_DURATION_SECONDS = 45.0
 INTERRUPTION_EVALUATION_PROMPT_URL = "prompts/interruption/v1.md"
 INTERRUPTION_REASONS = {
@@ -61,13 +68,24 @@ class UnifiedAgent(Agent):
         initial_reply: str,
         participant_identity: str | None = None,
         room_name: str | None = None,
+        manage_candidate_turns: bool = False,
     ) -> None:
         self.initial_reply = initial_reply
         self.participant_identity = participant_identity
         self.room_name = room_name
+        self.manage_candidate_turns = manage_candidate_turns
         self._session_timer_task: asyncio.Task[None] | None = None
-        self._next_user_turn_evaluation_at = USER_TURN_EVALUATION_INTERVAL_SECONDS
-        self._agent_state_listener_registered = False
+        self._user_turn_task: asyncio.Task[None] | None = None
+        self._user_turn_started_at = 0.0
+        self._user_turn_generation = 0
+        self._user_speaking = False
+        self._user_audio_speaking = False
+        self._final_user_transcript = ""
+        self._latest_user_transcript = ""
+        self._last_evaluated_transcript = ""
+        self._interrupting = False
+        self._silence_prompted = False
+        self._turn_listeners_registered = False
         self._interruption_evaluation_template = load_prompt(
             INTERRUPTION_EVALUATION_PROMPT_URL
         )
@@ -127,8 +145,11 @@ class UnifiedAgent(Agent):
 
     async def on_enter(self) -> None:
         self._start_session_timer()
-        self.session.on("agent_state_changed", self._on_agent_state_changed)
-        self._agent_state_listener_registered = True
+        if self.manage_candidate_turns:
+            self.session.on("user_state_changed", self._on_user_state_changed)
+            self.session.on("user_input_transcribed", self._on_user_input_transcribed)
+            self.session.on("agent_state_changed", self._on_agent_state_changed)
+            self._turn_listeners_registered = True
         started_at = time.perf_counter()
         logger.info(
             "startup_phase phase=first_generate_reply_start room=%s",
@@ -144,28 +165,129 @@ class UnifiedAgent(Agent):
             )
 
     async def on_exit(self) -> None:
-        if self._agent_state_listener_registered:
+        if self._turn_listeners_registered:
+            self.session.off("user_state_changed", self._on_user_state_changed)
+            self.session.off("user_input_transcribed", self._on_user_input_transcribed)
             self.session.off("agent_state_changed", self._on_agent_state_changed)
-            self._agent_state_listener_registered = False
+            self._turn_listeners_registered = False
+        self._user_turn_generation += 1
+        if self._user_turn_task is not None:
+            self._user_turn_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._user_turn_task
+            self._user_turn_task = None
         await self._stop_session_timer()
         await super().on_exit()
 
-    def _on_agent_state_changed(self, ev: AgentStateChangedEvent) -> None:
+    def _on_user_state_changed(self, ev: UserStateChangedEvent) -> None:
+        self._user_audio_speaking = ev.new_state == "speaking"
         if ev.new_state == "speaking":
-            self._next_user_turn_evaluation_at = (
-                USER_TURN_EVALUATION_INTERVAL_SECONDS
+            if self._interrupting:
+                return
+            if self._user_speaking:
+                return
+            self._user_speaking = True
+            self._interrupting = False
+            self._silence_prompted = False
+            self._final_user_transcript = ""
+            self._latest_user_transcript = ""
+            self._last_evaluated_transcript = ""
+            self._user_turn_generation += 1
+            self._user_turn_started_at = time.monotonic()
+            generation = self._user_turn_generation
+            self._user_turn_task = asyncio.create_task(
+                self._run_user_turn_checks(generation),
+                name=f"user-turn-checks:{self.room_name or generation}",
+            )
+            logger.info("candidate_turn_started generation=%d", generation)
+            return
+
+        # LiveKit toggles listening during short pauses inside one logical turn.
+        # The next agent speech is the reliable boundary for that turn.
+        if ev.new_state == "away":
+            self._finish_user_turn()
+        if ev.new_state == "away" and not self._silence_prompted:
+            self._silence_prompted = True
+            logger.info("candidate_no_answer_nudge")
+            self.session.say(
+                "Take your time. Let me know when you're ready.",
+                allow_interruptions=True,
             )
 
-    def _should_evaluate_user_turn(self, duration: float) -> bool:
-        if duration < self._next_user_turn_evaluation_at:
-            return False
+    def _on_agent_state_changed(self, ev: AgentStateChangedEvent) -> None:
+        if ev.new_state == "speaking" and not self._interrupting:
+            self._finish_user_turn()
 
-        self._next_user_turn_evaluation_at = (
-            duration + USER_TURN_EVALUATION_INTERVAL_SECONDS
-        )
-        return True
+    def _finish_user_turn(self) -> None:
+        if not self._user_speaking:
+            return
+        self._user_speaking = False
+        self._user_audio_speaking = False
+        self._user_turn_generation += 1
+        if self._user_turn_task is not None:
+            self._user_turn_task.cancel()
+        logger.info("candidate_turn_finished generation=%d", self._user_turn_generation)
 
-    def _build_user_turn_evaluation_prompt(self, ev: UserTurnExceededEvent) -> str:
+    def _on_user_input_transcribed(self, ev: UserInputTranscribedEvent) -> None:
+        if not self._user_speaking:
+            return
+        transcript = " ".join(ev.transcript.split())
+        if not transcript:
+            return
+        if ev.is_final:
+            self._final_user_transcript = (
+                f"{self._final_user_transcript} {transcript}".strip()
+            )
+            self._latest_user_transcript = self._final_user_transcript
+            return
+        candidate = f"{self._final_user_transcript} {transcript}".strip()
+        if len(candidate.split()) >= len(self._latest_user_transcript.split()):
+            self._latest_user_transcript = candidate
+
+    async def _run_user_turn_checks(self, generation: int) -> None:
+        next_check = self._user_turn_started_at + USER_TURN_EVALUATION_INTERVAL_SECONDS
+        try:
+            while generation == self._user_turn_generation and self._user_speaking:
+                await asyncio.sleep(max(0.0, next_check - time.monotonic()))
+                if generation != self._user_turn_generation or not self._user_speaking:
+                    return
+
+                transcript = self._latest_user_transcript
+                words = len(transcript.split())
+                if words < MIN_USER_TURN_EVALUATION_WORDS:
+                    logger.info(
+                        "candidate_turn_checkpoint_skipped generation=%d "
+                        "reason=insufficient_transcript words=%d",
+                        generation,
+                        words,
+                    )
+                elif transcript == self._last_evaluated_transcript:
+                    # ponytail: retry stale interim text next tick; add audio recovery
+                    # only if real sessions show persistent STT gaps.
+                    logger.info(
+                        "candidate_turn_checkpoint_skipped generation=%d "
+                        "reason=unchanged_transcript words=%d",
+                        generation,
+                        words,
+                    )
+                else:
+                    self._last_evaluated_transcript = transcript
+                    duration = time.monotonic() - self._user_turn_started_at
+                    if await self._evaluate_and_maybe_interrupt(
+                        transcript, duration, generation
+                    ):
+                        return
+
+                next_check += USER_TURN_EVALUATION_INTERVAL_SECONDS
+                while next_check <= time.monotonic():
+                    next_check += USER_TURN_EVALUATION_INTERVAL_SECONDS
+        finally:
+            if self._user_turn_task is asyncio.current_task():
+                self._user_turn_task = None
+
+    def _build_user_turn_evaluation_prompt(
+        self, transcript: str, duration: float
+    ) -> str:
         interviewer_message = self._latest_interviewer_message()
         elapsed_minutes = self._elapsed_session_minutes()
         session_timing = (
@@ -176,10 +298,10 @@ class UnifiedAgent(Agent):
         return render_prompt(
             self._interruption_evaluation_template,
             context={
-                "response_duration": f"{ev.duration:.1f}",
+                "response_duration": f"{duration:.1f}",
                 "session_timing": session_timing,
                 "interviewer_message": interviewer_message,
-                "candidate_response": ev.accumulated_transcript,
+                "candidate_response": transcript,
                 "over_detailed_min_duration": (
                     f"{OVER_DETAILED_MIN_DURATION_SECONDS:.0f}"
                 ),
@@ -211,7 +333,7 @@ class UnifiedAgent(Agent):
             return None
 
     async def _evaluate_user_turn(
-        self, ev: UserTurnExceededEvent
+        self, transcript: str, duration: float
     ) -> InterruptionDecision | None:
         # Keep the classifier independent from the main agent's long behavioral
         # prompt. That prompt contains turn-taking rules which can bias this
@@ -219,18 +341,24 @@ class UnifiedAgent(Agent):
         eval_ctx = ChatContext.empty()
         eval_ctx.add_message(
             role="system",
-            content=self._build_user_turn_evaluation_prompt(ev),
+            content=self._build_user_turn_evaluation_prompt(transcript, duration),
         )
 
-        stream = self.session.llm.chat(
-            chat_ctx=eval_ctx,
-            response_format=InterruptionDecision,
+        async def collect_response() -> str:
+            stream = self.session.llm.chat(
+                chat_ctx=eval_ctx,
+                response_format=InterruptionDecision,
+            )
+            response = ""
+            async for chunk in stream:
+                content = chunk.delta.content if chunk.delta is not None else None
+                if content:
+                    response += content
+            return response
+
+        response = await asyncio.wait_for(
+            collect_response(), timeout=USER_TURN_EVALUATION_TIMEOUT_SECONDS
         )
-        response = ""
-        async for chunk in stream:
-            content = chunk.delta.content if chunk.delta is not None else None
-            if content:
-                response += content
 
         decision = self._parse_interruption_decision(response)
         logger.info(
@@ -247,31 +375,33 @@ class UnifiedAgent(Agent):
             )
         return decision
 
-    async def on_user_turn_exceeded(self, ev: UserTurnExceededEvent) -> None:
-        if not self._should_evaluate_user_turn(ev.duration):
-            return
-
+    async def _evaluate_and_maybe_interrupt(
+        self, transcript: str, duration: float, generation: int
+    ) -> bool:
         logger.info(
-            "user_turn_exceeded words=%d duration=%.1fs — evaluating transcript",
-            ev.accumulated_word_count,
-            ev.duration,
+            "candidate_turn_checkpoint generation=%d words=%d duration=%.1fs",
+            generation,
+            len(transcript.split()),
+            duration,
         )
         try:
-            decision = await self._evaluate_user_turn(ev)
+            decision = await self._evaluate_user_turn(transcript, duration)
+            if generation != self._user_turn_generation or not self._user_speaking:
+                return False
             if decision is None or not decision.to_interrupt:
                 logger.info("User-turn evaluation decided to continue listening")
-                return
+                return False
 
             if (
                 decision.reason == "over_detailed"
-                and ev.duration < OVER_DETAILED_MIN_DURATION_SECONDS
+                and duration < OVER_DETAILED_MIN_DURATION_SECONDS
             ):
                 logger.info(
                     "Ignoring early over_detailed decision duration=%.1fs minimum=%.1fs",
-                    ev.duration,
+                    duration,
                     OVER_DETAILED_MIN_DURATION_SECONDS,
                 )
-                return
+                return False
 
             action_by_reason = {
                 "answer_complete": "Move directly to the next interview question.",
@@ -285,8 +415,13 @@ class UnifiedAgent(Agent):
                 decision.reason,
                 decision.rational,
             )
+            self._interrupting = True
+            await self.session.commit_user_turn(
+                transcript_timeout=1.5,
+                stt_flush_duration=0.2,
+                skip_reply=True,
+            )
             await self.session.generate_reply(
-                user_input=ev.transcript,
                 instructions=(
                     "Interrupt the candidate now because the interview turn was "
                     f"classified as {decision.reason}. Begin with a brief, natural, "
@@ -298,5 +433,21 @@ class UnifiedAgent(Agent):
                 ),
                 allow_interruptions=False,
             )
+            self._user_speaking = False
+            self._user_audio_speaking = False
+            self._user_turn_generation += 1
+            return True
+        except asyncio.TimeoutError:
+            logger.warning("User-turn evaluation timed out after %.1fs", duration)
         except Exception as e:
             logger.warning("Failed to evaluate or interrupt user turn: %s", e)
+        finally:
+            self._interrupting = False
+            if (
+                getattr(self.session, "user_state", None) == "speaking"
+                and not self._user_speaking
+            ):
+                self._on_user_state_changed(
+                    UserStateChangedEvent(old_state="listening", new_state="speaking")
+                )
+        return False

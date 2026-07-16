@@ -910,6 +910,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         initial_reply=profile.initial_reply,
         participant_identity=participant_identity,
         room_name=ctx.room.name,
+        manage_candidate_turns=(profile.agent_type == "diagnostic-agent"),
     )
 
     session = build_agent_session(
@@ -926,7 +927,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         # speculative generation so questions aren't asked/marked before the
         # candidate answers. Other agents keep preemptive generation.
         disable_preemptive_generation=(profile.agent_type == "diagnostic-agent"),
-        enable_user_turn_limit=(profile.agent_type == "diagnostic-agent"),
     )
     _session_usage_loggers[ctx.room.name] = _attach_metrics_logging(session, ctx.room.name)
     timer.mark("session_build")
