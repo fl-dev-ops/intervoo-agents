@@ -6,3 +6,7 @@ __pycache__/
 agent_template.egg-info
 *.egg-info
 .env
+*.log
+.auto-iterate/real_sources.local.json
+.auto-iterate/real_raw/
+.auto-iterate/real_*.local.json
