@@ -56,6 +56,7 @@ def test_session_uses_assemblyai_universal_3_5_pro(
 
     assert fake_session_dependencies["stt"] == {
         "model": "universal-3-5-pro",
+        "language_detection": False,
         "min_turn_silence": 100,
         "max_turn_silence": 1000,
         "vad_threshold": 0.3,

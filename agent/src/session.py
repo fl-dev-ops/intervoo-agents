@@ -58,6 +58,7 @@ def build_agent_session(
     # )
     stt = assemblyai.STT(
         model=DEFAULT_ASSEMBLYAI_STT_MODEL,
+        language_detection=False,
         min_turn_silence=100,
         max_turn_silence=1000,
         vad_threshold=0.3,
