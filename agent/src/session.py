@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Any
 
 from livekit.agents import AgentSession, TurnHandlingOptions
-from livekit.agents.inference import TurnDetector
+from livekit.agents.inference import VAD, TurnDetector
 from livekit.plugins import assemblyai, openai, sarvam
 
 # ---------------------------------------------------------------------------
@@ -94,14 +94,9 @@ def build_agent_session(
             tts=tts,
             turn_handling=TurnHandlingOptions(
                 turn_detection="manual",
-                interruption={
-                    "mode": "adaptive",
-                    "min_duration": 0.5,
-                    "resume_false_interruption": True,
-                },
+                preemptive_generation={"enabled": False},
             ),
             use_tts_aligned_transcript=True,
-            preemptive_generation=False,
         )
 
     preemptive_generation = (
@@ -116,10 +111,11 @@ def build_agent_session(
 
     return AgentSession(
         stt=stt,
+        vad=VAD(model="silero", activation_threshold=0.3),
         llm=llm,
         tts=tts,
         turn_handling=TurnHandlingOptions(
-            turn_detection=turn_detector or TurnDetector(version="v1"),
+            turn_detection=turn_detector or TurnDetector(version="v1-mini"),
             endpointing={
                 "mode": "dynamic",
                 "min_delay": 2.0,
