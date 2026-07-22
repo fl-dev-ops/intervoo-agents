@@ -31,6 +31,7 @@ from livekit.agents.beta.tools import EndCallTool
 from livekit.agents.metrics import LLMMetrics, STTMetrics, TTSMetrics
 from livekit.plugins import noise_cancellation
 
+from avatar_provider import start_avatar
 from editor_tools import build_editor_tools
 from identity import (
     resolve_phone_number_from_call_context,
@@ -1014,6 +1015,14 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         video_url=recording_start.video_url,
         video_s3_key=recording_start.video_s3_key,
     )
+
+    avatar_request = metadata.get("avatar")
+    await start_avatar(
+        session,
+        ctx.room,
+        enabled=avatar_request is True or avatar_request == "liveavatar",
+    )
+    timer.mark("avatar_start")
 
     if mode is InteractionMode.PTT:
         await _start_ptt_session(ctx, session, agent)

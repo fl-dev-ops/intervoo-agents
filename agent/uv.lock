@@ -1312,9 +1312,11 @@ dependencies = [
     { name = "langfuse" },
     { name = "livekit-agents" },
     { name = "livekit-plugins-assemblyai" },
+    { name = "livekit-plugins-liveavatar" },
     { name = "livekit-plugins-noise-cancellation" },
     { name = "livekit-plugins-openai" },
     { name = "livekit-plugins-sarvam" },
+    { name = "livekit-plugins-simli" },
     { name = "mem0ai" },
     { name = "python-dotenv" },
 ]
@@ -1335,9 +1337,12 @@ requires-dist = [
     { name = "langfuse", specifier = ">=3.0" },
     { name = "livekit-agents", specifier = "==1.6.6" },
     { name = "livekit-plugins-assemblyai", specifier = "==1.6.6" },
+    { name = "livekit-agents", specifier = "==1.6.4" },
+    { name = "livekit-plugins-liveavatar", specifier = "==1.6.4" },
     { name = "livekit-plugins-noise-cancellation", specifier = "~=0.2.6" },
     { name = "livekit-plugins-openai", specifier = "==1.6.6" },
     { name = "livekit-plugins-sarvam", specifier = "==1.6.4" },
+    { name = "livekit-plugins-simli", specifier = "==1.6.4" },
     { name = "mem0ai", specifier = ">=0.1.0" },
     { name = "python-dotenv", specifier = ">=1.0" },
 ]
@@ -1700,6 +1705,8 @@ wheels = [
 [[package]]
 name = "livekit-plugins-assemblyai"
 version = "1.6.6"
+name = "livekit-plugins-liveavatar"
+version = "1.6.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "livekit-agents" },
@@ -1707,6 +1714,9 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/63/d4/c4134003a40dc902ba37d068c9ea37d51cc5854194e99dcb2ebc718e06ac/livekit_plugins_assemblyai-1.6.6.tar.gz", hash = "sha256:d6e81c729bdbe6c747a4fde85c3ad2aae76120c45e4c96573b27cbe789a0f0be", size = 14662, upload-time = "2026-07-18T04:17:06.925Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bd/f4/330625dbed052c8d39ca4b75b72b64d7f2e3c9fb0cf9666037594da825d0/livekit_plugins_assemblyai-1.6.6-py3-none-any.whl", hash = "sha256:a94b0479382c61fd5b6a41edfe56404d13f4cede750d531c104a762c091783ff", size = 14808, upload-time = "2026-07-18T04:17:05.76Z" },
+sdist = { url = "https://files.pythonhosted.org/packages/f7/5b/cb6cc84ce4e9894819fd6e67cb2e0661df85bb40643eac3d22bedbc60f78/livekit_plugins_liveavatar-1.6.4.tar.gz", hash = "sha256:ffe458c9ae48aa2f89579442d0d60e4a2922c44ef5e9d983f6a41da7bc4fffd6", size = 7949, upload-time = "2026-06-24T20:50:22.12Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b1/84/46ef71acd9065941edfa145ed05dd68d5ebc55a7b4ec7e4dd6419aa660a6/livekit_plugins_liveavatar-1.6.4-py3-none-any.whl", hash = "sha256:73d40b7259f3137ec7aff5c88ef252b149a0abd74b388561661475f6d7c7b64f", size = 8276, upload-time = "2026-06-24T20:50:20.995Z" },
 ]
 
 [[package]]
@@ -1749,6 +1759,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f1/fd/4c4dc63f126798bf085c4d205f02cb655d051cca37538ea621f2eb180ccc/livekit_plugins_sarvam-1.6.4.tar.gz", hash = "sha256:3fc313bf2af0df57ff92ac1958732f623bdef9354798665b21061aa4e666966a", size = 31668, upload-time = "2026-06-24T20:51:12.055Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/43/46/1c512ab49c3762d7d384306eac81dce93b75d2790bdfab0b0348482f6425/livekit_plugins_sarvam-1.6.4-py3-none-any.whl", hash = "sha256:fb0d03bcf499414dcff2ec577ba80365f68523e0584a1c563eaad388ceb8d6e4", size = 34460, upload-time = "2026-06-24T20:51:10.826Z" },
+]
+
+[[package]]
+name = "livekit-plugins-simli"
+version = "1.6.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "livekit-agents" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5d/58/9557ba79fd831a8183b93c7a9907e2d38957d908fbe8779a5dc7c12b9598/livekit_plugins_simli-1.6.4.tar.gz", hash = "sha256:b896d6c29b45e9bb12d6f049811194f75552b2550de0ec411661cfd1b20f2e6d", size = 5197, upload-time = "2026-06-24T20:51:18.758Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/0f/35e10c89af5a6d69f9c7ddf5d69b88b79c614d8440a6d18435e4642f7c03/livekit_plugins_simli-1.6.4-py3-none-any.whl", hash = "sha256:0d5ba0d8e004116c18fa46b066dbb04182c19a0f8003add56ecfa4adaaa00cd5", size = 5274, upload-time = "2026-06-24T20:51:17.71Z" },
 ]
 
 [[package]]

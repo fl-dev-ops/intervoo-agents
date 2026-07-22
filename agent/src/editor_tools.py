@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 SUPPORTED_LANGUAGES = ("java", "javascript", "python")
 EDITOR_SURFACES = ("code", "whiteboard")
-QuestionStartedCallback = Callable[[dict[str, str]], Awaitable[None]]
+QuestionStartedCallback = Callable[[dict[str, Any]], Awaitable[None]]
 
 
 async def _publish_editor_event(room: Any, payload: dict[str, object]) -> None:
@@ -25,7 +25,7 @@ async def _publish_editor_event(room: Any, payload: dict[str, object]) -> None:
 
 async def _notify_question_started(
     callback: QuestionStartedCallback | None,
-    question: dict[str, str],
+    question: dict[str, Any],
 ) -> None:
     if callback is None:
         return
@@ -51,7 +51,7 @@ def _whiteboard_payload(question: str) -> dict[str, object]:
     }
 
 
-def _question_started_payload(question: dict[str, str]) -> dict[str, object]:
+def _question_started_payload(question: dict[str, Any]) -> dict[str, object]:
     return {
         "type": "interview_question_started",
         "status": "started",
@@ -65,8 +65,8 @@ def _normalize_language(value: object) -> str:
     return language if language in SUPPORTED_LANGUAGES else "javascript"
 
 
-def _normalize_question(record: object) -> dict[str, str] | None:
-    """Normalize a metadata question into {id, text, surface, language}.
+def _normalize_question(record: object) -> dict[str, Any] | None:
+    """Normalize a metadata question for both visual display and spoken output.
 
     Returns None for records without a usable id/text. Questions without an
     editor surface are kept (surface "verbal") so the tool can report that no
@@ -84,11 +84,25 @@ def _normalize_question(record: object) -> dict[str, str] | None:
     surface = surface_raw.strip().lower() if isinstance(surface_raw, str) else "verbal"
     if surface not in EDITOR_SURFACES:
         surface = "verbal"
+    spoken_text_raw = record.get("spokenText")
+    spoken_text = (
+        spoken_text_raw.strip()
+        if isinstance(spoken_text_raw, str) and spoken_text_raw.strip()
+        else text.strip()
+    )
+    answer_mode = "surface" if surface in EDITOR_SURFACES else "verbal"
+    if surface == "code" and record.get("answerMode") == "verbal":
+        answer_mode = "verbal"
+    starter_code_raw = record.get("starterCode")
+    starter_code = starter_code_raw.strip() if isinstance(starter_code_raw, str) else ""
     return {
         "id": question_id.strip(),
         "text": text.strip(),
+        "spokenText": spoken_text,
         "surface": surface,
+        "answerMode": answer_mode,
         "language": _normalize_language(record.get("language")),
+        "starterCode": starter_code,
     }
 
 
@@ -97,7 +111,7 @@ def _build_question_editor_tool(
     questions: list,
     on_question_started: QuestionStartedCallback | None,
 ) -> tuple:
-    by_id: dict[str, dict[str, str]] = {}
+    by_id: dict[str, dict[str, Any]] = {}
     for record in questions:
         normalized = _normalize_question(record)
         if normalized is not None:
@@ -109,8 +123,9 @@ def _build_question_editor_tool(
             "Call this immediately before asking a planned verbal interview "
             "question. Pass the question's id shown in the interview plan. It "
             "publishes the full question object to the candidate's screen and "
-            "returns the exact question text to ask. Do not call it for code "
-            "editor or whiteboard questions; open_question_editor handles those."
+            "returns the TTS-safe question text to ask. Do not call it for code "
+            "viewer, code editor, or whiteboard questions; open_question_editor "
+            "handles those."
         ),
     )
     async def mark_question_started(question_id: str) -> dict[str, object]:
@@ -137,7 +152,7 @@ def _build_question_editor_tool(
             }
         return {
             "status": "ok",
-            "question_text": question["text"],
+            "question_text": question["spokenText"],
             "question": question,
         }
 
@@ -145,13 +160,13 @@ def _build_question_editor_tool(
         name="open_question_editor",
         description=(
             "Call this immediately before asking an interview question marked "
-            "(code editor) or (whiteboard) in your interview plan. Pass the "
-            "question's id (shown in brackets in the plan). It opens the right "
-            "surface with the full question on the candidate's screen and "
-            "returns the question text to ask. After calling it, tell the "
-            "candidate the editor or whiteboard is now open on their screen, "
-            "that they should write or draw their answer there, and to say out "
-            "loud when they are done. Do not call it for (verbal) questions."
+            "(code viewer), (code editor), or (whiteboard) in your interview "
+            "plan. Pass the question's id (shown in brackets in the plan). It opens the right "
+            "surface with the full visual question and returns a TTS-safe "
+            "question_text plus answer_mode. For answer_mode verbal, ask the "
+            "returned text and wait for a spoken answer. For answer_mode surface, "
+            "tell the candidate to write or draw their answer and say aloud when "
+            "they are done. Do not call it for (verbal) questions."
         ),
     )
     async def open_question_editor(question_id: str) -> dict[str, object]:
@@ -172,7 +187,7 @@ def _build_question_editor_tool(
         else:
             return {
                 "status": "verbal_only",
-                "question_text": question["text"],
+                "question_text": question["spokenText"],
                 "message": "This question is verbal; no editor is needed. Just ask it.",
             }
         try:
@@ -188,7 +203,9 @@ def _build_question_editor_tool(
         return {
             "status": "ok",
             "surface": question["surface"],
-            "question_text": question["text"],
+            "answer_mode": question["answerMode"],
+            "question_text": question["spokenText"],
+            "question": question,
         }
 
     return mark_question_started, open_question_editor
