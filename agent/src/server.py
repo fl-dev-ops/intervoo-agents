@@ -61,7 +61,11 @@ from runtime_resources import (
     get_recording_config,
     prewarm_runtime_resources,
 )
-from screen_feedback import ScreenFeedbackRuntime, build_screen_inspection_tool
+from screen_feedback import (
+    ScreenFeedbackRuntime,
+    build_resume_inspection_tool,
+    build_screen_inspection_tool,
+)
 from session import InteractionMode, SessionConfig, build_agent_session
 from tracing import flush_langfuse, setup_langfuse
 from unified_agent import UnifiedAgent
@@ -882,14 +886,17 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             name=f"recording-start:{ctx.room.name}",
         )
 
+    screen_feedback_mode = metadata.get("screen_feedback_mode")
+    timer_screen_feedback_enabled = screen_feedback_mode == "timer"
+    resume_inspection_enabled = profile.id == "mock_interview"
     screen_feedback: ScreenFeedbackRuntime | None = None
-    if (
-        profile.editor_events_enabled
-        and metadata.get("screen_feedback_mode") == "timer"
+    if profile.editor_events_enabled and (
+        timer_screen_feedback_enabled or resume_inspection_enabled
     ):
         screen_feedback = ScreenFeedbackRuntime(
             room=ctx.room,
             participant_identity=participant_identity,
+            timer_enabled=timer_screen_feedback_enabled,
         )
 
     tools: list[Any] = []
@@ -926,7 +933,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             )
         )
 
-    if screen_feedback is not None:
+    if screen_feedback is not None and timer_screen_feedback_enabled:
         tools.append(build_screen_inspection_tool(screen_feedback))
         agent_instructions = (
             f"{agent_instructions}\n\n"
@@ -938,6 +945,23 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             "and continue the interview. Treat screen_share_required, "
             "surface_unavailable, and loading as normal recoverable states; never call "
             "end_call because of them. Do not call it for verbal questions."
+        )
+
+    if screen_feedback is not None and resume_inspection_enabled:
+        tools.append(build_resume_inspection_tool(screen_feedback))
+        agent_instructions = (
+            f"{agent_instructions}\n\n"
+            "During the introduction, ask whether the candidate has their resume "
+            "available and is comfortable sharing it. If they agree, ask them to "
+            "share their screen, open the resume, and say when the current view is "
+            "ready. Call inspect_resume_screen for every visible viewport and follow "
+            "its candidate_message exactly. Never assume the resume is complete. "
+            "After apparent_end, ask whether this is the last page or end of the "
+            "resume, then call inspect_resume_screen with end_of_document_confirmed "
+            "set to true only after explicit confirmation. Do not begin project "
+            "questions until the tool returns complete. If resume sharing is declined "
+            "or repeatedly unavailable, gather the same professional and project "
+            "context verbally and continue."
         )
 
     if profile.memory_enabled:
