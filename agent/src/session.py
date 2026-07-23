@@ -6,8 +6,8 @@ from enum import Enum
 from typing import Any
 
 from livekit.agents import AgentSession, TurnHandlingOptions
-from livekit.agents.inference import AdaptiveInterruptionDetector, TurnDetector
-from livekit.plugins import openai, sarvam
+from livekit.agents.inference import VAD, TurnDetector
+from livekit.plugins import assemblyai, openai, sarvam
 
 # ---------------------------------------------------------------------------
 # Sarvam TTS pool patch (workaround for livekit/agents#5681)
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_OPENROUTER_MODEL = "openai/gpt-4o"
 DEFAULT_SARVAM_LANGUAGE = "en-IN"
 DEFAULT_SARVAM_TTS_MODEL = "bulbul:v3"
+DEFAULT_ASSEMBLYAI_STT_MODEL = "universal-3-5-pro"
 
 
 class InteractionMode(str, Enum):
@@ -49,10 +50,18 @@ def build_agent_session(
 ) -> AgentSession:
     effective_session_config = session_config or SessionConfig()
 
-    stt = sarvam.STT(
-        language=DEFAULT_SARVAM_LANGUAGE,
-        model="saaras:v3",
-        mode="transcribe",
+    # Sarvam STT retained for easy rollback after the AssemblyAI test run.
+    # stt = sarvam.STT(
+    #     language=DEFAULT_SARVAM_LANGUAGE,
+    #     model="saaras:v3",
+    #     mode="transcribe",
+    # )
+    stt = assemblyai.STT(
+        model=DEFAULT_ASSEMBLYAI_STT_MODEL,
+        language_codes=["en"],
+        min_turn_silence=100,
+        max_turn_silence=1000,
+        vad_threshold=0.3,
     )
 
     llm = openai.LLM.with_openrouter(model=openrouter_model)
@@ -86,40 +95,38 @@ def build_agent_session(
             tts=tts,
             turn_handling=TurnHandlingOptions(
                 turn_detection="manual",
-                interruption=AdaptiveInterruptionDetector(
-                    min_duration=0.5,
-                    resume_false_interruption=True,
-                ),
+                preemptive_generation={"enabled": False},
             ),
             use_tts_aligned_transcript=True,
-            preemptive_generation=False,
         )
 
-    preemptive_generation: dict | bool = (
+    preemptive_generation = (
         # Structured interviews (e.g. the diagnostic agent) must act only on a
         # completed turn. Preemptive generation runs the LLM on partial
         # transcripts and fires screen-publishing tools like
         # mark_question_started speculatively, causing question-jumping.
-        {"preemptive_tts": False}
+        {"enabled": False}
         if disable_preemptive_generation
         else {"preemptive_tts": False}
     )
 
     return AgentSession(
         stt=stt,
+        vad=VAD(model="silero", activation_threshold=0.3),
         llm=llm,
         tts=tts,
         turn_handling=TurnHandlingOptions(
-            turn_detection=turn_detector or TurnDetector(version="v1"),
+            turn_detection=turn_detector or TurnDetector(version="v1-mini"),
             endpointing={
                 "mode": "dynamic",
                 "min_delay": 2.0,
                 "max_delay": 4.0,
             },
-            interruption=AdaptiveInterruptionDetector(
-                min_duration=0.5,
-                resume_false_interruption=True,
-            ),
+            interruption={
+                "mode": "adaptive",
+                "min_duration": 0.5,
+                "resume_false_interruption": True,
+            },
             preemptive_generation=preemptive_generation,
         ),
     )

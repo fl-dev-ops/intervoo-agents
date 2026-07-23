@@ -6,3 +6,4 @@ __pycache__/
 agent_template.egg-info
 *.egg-info
 .env
+*.log

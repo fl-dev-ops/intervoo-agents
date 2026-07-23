@@ -910,6 +910,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         initial_reply=profile.initial_reply,
         participant_identity=participant_identity,
         room_name=ctx.room.name,
+        manage_candidate_turns=(profile.agent_type == "diagnostic-agent"),
     )
 
     session = build_agent_session(
