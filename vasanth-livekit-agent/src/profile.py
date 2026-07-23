@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class ProfileError(ValueError):
-    """Raised when an agent profile catalog is invalid or a profile cannot be resolved."""
+    """Raised when the mock-interview profile is invalid or cannot be resolved."""
 
 
 @dataclass(frozen=True)
@@ -23,10 +23,7 @@ class AgentProfile:
     voice_speaker: str
     voice_dict_id: str | None
     end_call_enabled: bool
-    kb_collection: str | None
-    kb_shape: str
-    memory_enabled: bool
-    question_events_enabled: bool
+    editor_events_enabled: bool
 
 
 def _required_str(value: Any, field: str) -> str:
@@ -53,40 +50,23 @@ def _parse_profile(agent_id: str, value: Any) -> AgentProfile:
     if not isinstance(tools, Mapping):
         raise ProfileError(f"agents.{agent_id}.tools must be an object")
 
-    kb_raw = tools.get("knowledge_base")
-    kb_collection: str | None = None
-    kb_shape = "simple"
-    if kb_raw is not None and kb_raw is not False:
-        if not isinstance(kb_raw, Mapping):
-            raise ProfileError(
-                f"agents.{agent_id}.tools.knowledge_base must be an object or null"
-            )
-        kb_collection = _required_str(
-            kb_raw.get("collection"),
-            f"agents.{agent_id}.tools.knowledge_base.collection",
-        )
-        shape_raw = kb_raw.get("shape", "simple")
-        if shape_raw not in ("simple", "diagnostic"):
-            raise ProfileError(
-                f"agents.{agent_id}.tools.knowledge_base.shape must be "
-                f"'simple' or 'diagnostic', got {shape_raw!r}"
-            )
-        kb_shape = shape_raw
-
     return AgentProfile(
         id=agent_id,
-        agent_type=_required_str(value.get("agent_type"), f"agents.{agent_id}.agent_type"),
-        prompt_url=_required_str(value.get("prompt_url"), f"agents.{agent_id}.prompt_url"),
+        agent_type=_required_str(
+            value.get("agent_type"), f"agents.{agent_id}.agent_type"
+        ),
+        prompt_url=_required_str(
+            value.get("prompt_url"), f"agents.{agent_id}.prompt_url"
+        ),
         initial_reply=_required_str(
             value.get("initial_reply"), f"agents.{agent_id}.initial_reply"
         ),
-        voice_speaker=_required_str(voice.get("speaker"), f"agents.{agent_id}.voice.speaker"),
+        voice_speaker=_required_str(
+            voice.get("speaker"), f"agents.{agent_id}.voice.speaker"
+        ),
         voice_dict_id=_optional_str(voice.get("dict_id")),
         end_call_enabled=bool(tools.get("end_call", False)),
-        kb_collection=kb_collection,
-        kb_shape=kb_shape,
-        memory_enabled=bool(tools.get("memory", False)),
-        question_events_enabled=bool(tools.get("question_events", False)),
+        editor_events_enabled=bool(tools.get("editor_events", False)),
     )
 
 
@@ -122,8 +102,7 @@ def pick_profile(
     if metadata is None:
         raise ProfileError("Room metadata is missing; cannot select agent profile")
 
-    agent_id_raw = metadata.get("agent_id")
-    agent_id = _optional_str(agent_id_raw)
+    agent_id = _optional_str(metadata.get("agent_id"))
     if agent_id is None:
         raise ProfileError("Room metadata must include 'agent_id'")
 

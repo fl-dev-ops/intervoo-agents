@@ -1,0 +1,17 @@
+{
+  "agents": {
+    "mock_interview": {
+      "agent_type": "mock-interview-agent",
+      "prompt_url": "prompts/interview/vasanth.md",
+      "initial_reply": "Follow the Introduction Flow in your system instructions now. Use the candidate's actual name, then ask the exact introduction question specified there.",
+      "voice": {
+        "speaker": "rohan",
+        "dict_id": "p_fcfdd23b"
+      },
+      "tools": {
+        "end_call": true,
+        "editor_events": true
+      }
+    }
+  }
+}

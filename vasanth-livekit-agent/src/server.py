@@ -31,33 +31,33 @@ from livekit.agents.beta.tools import EndCallTool
 from livekit.agents.metrics import LLMMetrics, STTMetrics, TTSMetrics
 from livekit.plugins import noise_cancellation
 
+from avatar_provider import start_avatar
+from editor_tools import build_editor_tools
 from identity import (
     resolve_phone_number_from_call_context,
     resolve_user_id_from_call_context,
     resolve_user_id_from_room_metadata,
 )
-from kb_tools import build_kb_tool
-from knowledge_base import ChromaKnowledgeBase
-from memory_tools import build_memory_tools
 from prompt import (
     build_prompt_context,
     extract_prompt_version,
     load_prompt,
     render_prompt,
 )
-from question_tools import build_question_event_tool
 from recording_config import RecordingConfig
 from recording_db import init_pool
 from recording_runtime import finalize_recording, start_recording
 from runtime_resources import (
-    build_cached_knowledge_base,
-    get_kb_base_config,
-    get_memory_client,
     get_or_create_turn_detector,
     get_prewarmed_turn_detector,
     get_profile_catalog,
     get_recording_config,
     prewarm_runtime_resources,
+)
+from screen_feedback import (
+    ScreenFeedbackRuntime,
+    build_resume_inspection_tool,
+    build_screen_inspection_tool,
 )
 from session import InteractionMode, SessionConfig, build_agent_session
 from tracing import flush_langfuse, setup_langfuse
@@ -67,11 +67,15 @@ from watchdog import cancel_idle_room_watchdog, register_idle_room_watchdog
 logger = logging.getLogger("intervoo_agent")
 
 CALLER_LOOKUP_TIMEOUT_SECONDS = 300
+DATABASE_INIT_TIMEOUT_SECONDS = 10
+SCREEN_FEEDBACK_CLOSE_TIMEOUT_SECONDS = 5
 DEFAULT_AGENT_NAME = "intervoo-agent"
 MAX_CONCURRENT_SESSIONS = 10
 
 END_CALL_EXTRA_DESCRIPTION = (
-    "Only end the call when the user clearly indicates the conversation is complete."
+    "Only end the call when the user clearly indicates the conversation is complete. "
+    "A disabled screen share, unavailable editor frame, hint request, tool recovery "
+    "result, or temporary tool failure is never a reason to end the call."
 )
 END_CALL_INSTRUCTIONS = "Thanks for practicing with me today. Goodbye."
 
@@ -112,6 +116,7 @@ class SessionState:
 
 _sessions: dict[str, SessionState] = {}
 _session_usage_loggers: dict[str, Any] = {}
+_screen_feedback_runtimes: dict[str, ScreenFeedbackRuntime] = {}
 
 
 @dataclass(frozen=True)
@@ -228,20 +233,6 @@ def _build_end_call_tool() -> EndCallTool:
         extra_description=END_CALL_EXTRA_DESCRIPTION,
         delete_room=True,
         end_instructions=END_CALL_INSTRUCTIONS,
-    )
-
-
-def _build_kb(
-    profile: AgentProfile,
-    userdata: dict[str, Any],
-) -> ChromaKnowledgeBase | None:
-    kb_base_config = get_kb_base_config(userdata)
-    if not profile.kb_collection or not kb_base_config.enabled:
-        return None
-    return build_cached_knowledge_base(
-        userdata,
-        base_config=kb_base_config,
-        collection_name=profile.kb_collection,
     )
 
 
@@ -510,7 +501,7 @@ def _compute_worker_load(current_server: AgentServer) -> float:
 
 server = AgentServer(
     setup_fnc=prewarm,
-    initialize_process_timeout=120,  # prewarm downloads Chroma onnx model on first proc; 10s default is too short
+    initialize_process_timeout=120,
     shutdown_process_timeout=60,
     load_fnc=_compute_worker_load,
     load_threshold=0.5,
@@ -613,7 +604,10 @@ async def _start_recording_for_session(
     try:
         if config.database_url:
             try:
-                await init_pool(config.database_url)
+                await asyncio.wait_for(
+                    init_pool(config.database_url),
+                    timeout=DATABASE_INIT_TIMEOUT_SECONDS,
+                )
             except Exception as e:
                 logger.error("Failed to initialize recording DB: %s", e)
         (
@@ -652,6 +646,25 @@ async def _start_recording_for_session(
 async def on_session_end(ctx: agents.JobContext) -> None:
     cancel_idle_room_watchdog(ctx.room.name)
 
+    screen_feedback = _screen_feedback_runtimes.pop(ctx.room.name, None)
+    if screen_feedback is not None:
+        try:
+            await asyncio.wait_for(
+                screen_feedback.close(),
+                timeout=SCREEN_FEEDBACK_CLOSE_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                "Timed out closing screen feedback runtime room=%s after %ss; "
+                "continuing recording finalization",
+                ctx.room.name,
+                SCREEN_FEEDBACK_CLOSE_TIMEOUT_SECONDS,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to close screen feedback runtime room=%s", ctx.room.name
+            )
+
     state = _sessions.pop(ctx.room.name, None)
     if state is None:
         logger.info("No session state found for room %s", ctx.room.name)
@@ -679,8 +692,8 @@ async def on_session_end(ctx: agents.JobContext) -> None:
                 agent_type=state.profile.agent_type,
                 agent_name=state.profile.agent_type,
                 room_name=state.room_name,
-                audio_url=state.audio_url or "",
-                audio_s3_key=state.audio_s3_key or "",
+                audio_url=state.audio_url,
+                audio_s3_key=state.audio_s3_key,
                 report_dict=report_dict,
                 resolved_user_id=state.resolved_user_id,
                 participant_identity=state.participant_identity,
@@ -867,41 +880,67 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             name=f"recording-start:{ctx.room.name}",
         )
 
+    screen_feedback_mode = metadata.get("screen_feedback_mode")
+    timer_screen_feedback_enabled = screen_feedback_mode == "timer"
+    resume_inspection_enabled = profile.id == "mock_interview"
+    screen_feedback: ScreenFeedbackRuntime | None = None
+    if profile.editor_events_enabled and (
+        timer_screen_feedback_enabled or resume_inspection_enabled
+    ):
+        screen_feedback = ScreenFeedbackRuntime(
+            room=ctx.room,
+            participant_identity=participant_identity,
+            timer_enabled=timer_screen_feedback_enabled,
+        )
+
     tools: list[Any] = []
     if profile.end_call_enabled:
         tools.append(_build_end_call_tool())
 
-    kb = _build_kb(profile, userdata)
-    if kb is not None:
-        kb_tools = build_kb_tool(
-            profile.kb_shape,
-            kb,
-            room=ctx.room if profile.kb_shape == "diagnostic" else None,
-        )
-        if isinstance(kb_tools, tuple):
-            tools.extend(kb_tools)
-        else:
-            tools.append(kb_tools)
-
-    if profile.question_events_enabled:
-        tools.append(
-            build_question_event_tool(ctx.room, questions=metadata.get("questions"))
-        )
-
-    if profile.memory_enabled:
-        try:
-            memory_client = get_memory_client(userdata)
-            tools.extend(build_memory_tools(memory_client, resolved_user_id))
-            agent_instructions = (
-                f"{agent_instructions}\n\n"
-                "Memory tools are available. Use recall_memory only when past "
-                "context would materially help the conversation. Use save_memory "
-                "only for stable facts, preferences, goals, skills, or outcomes "
-                "that should help future conversations. Do not call memory tools "
-                "for routine greetings or every user turn."
+    if profile.editor_events_enabled:
+        tools.extend(
+            build_editor_tools(
+                ctx.room,
+                questions=metadata.get("questions"),
+                on_question_started=(
+                    screen_feedback.on_question_started
+                    if screen_feedback is not None
+                    else None
+                ),
             )
-        except Exception as e:
-            logger.warning(f"Failed to initialize mem0 client: {e}")
+        )
+
+    if screen_feedback is not None and timer_screen_feedback_enabled:
+        tools.append(build_screen_inspection_tool(screen_feedback))
+        agent_instructions = (
+            f"{agent_instructions}\n\n"
+            "During an active coding or whiteboard question, call "
+            "inspect_shared_screen before answering any request for a hint, doubt "
+            "clarification, correctness check, description of current work, or next "
+            "step. Base the reply on the tool result. Never claim that you cannot see "
+            "the candidate's screen. If the result includes candidate_message, say it "
+            "and continue the interview. Treat screen_share_required, "
+            "surface_unavailable, and loading as normal recoverable states; never call "
+            "end_call because of them. Do not call it for verbal questions."
+        )
+
+    if screen_feedback is not None and resume_inspection_enabled:
+        tools.append(build_resume_inspection_tool(screen_feedback))
+        agent_instructions = (
+            f"{agent_instructions}\n\n"
+            "During the introduction, ask whether the candidate has their resume "
+            "available and is comfortable sharing it. If they agree, ask them to "
+            "share their screen, open the resume, and say when the current view is "
+            "ready. Call inspect_resume_screen for every visible viewport and follow "
+            "its candidate_message exactly. Never assume the resume is complete. "
+            "After apparent_end, ask whether this is the last page or end of the "
+            "resume, then call inspect_resume_screen with end_of_document_confirmed "
+            "set to true only after explicit confirmation. Do not begin project "
+            "questions until the tool returns complete. If resume sharing is declined "
+            "or repeatedly unavailable, gather the same professional and project "
+            "context verbally and continue."
+        )
+
     timer.mark("tool_build")
 
     agent = UnifiedAgent(
@@ -910,7 +949,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         initial_reply=profile.initial_reply,
         participant_identity=participant_identity,
         room_name=ctx.room.name,
-        manage_candidate_turns=(profile.agent_type == "diagnostic-agent"),
     )
 
     session = build_agent_session(
@@ -923,10 +961,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             if mode is InteractionMode.AUTO
             else get_prewarmed_turn_detector(userdata)
         ),
-        # Diagnostic interviews must act only on a completed turn — disable
-        # speculative generation so questions aren't asked/marked before the
-        # candidate answers. Other agents keep preemptive generation.
-        disable_preemptive_generation=(profile.agent_type == "diagnostic-agent"),
+        # Editor events must act only on completed turns so tools are not called
+        # speculatively from partial transcripts.
+        disable_preemptive_generation=profile.editor_events_enabled,
     )
     _session_usage_loggers[ctx.room.name] = _attach_metrics_logging(session, ctx.room.name)
     timer.mark("session_build")
@@ -960,10 +997,27 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         video_s3_key=recording_start.video_s3_key,
     )
 
+    avatar_request = metadata.get("avatar")
+    await start_avatar(
+        session,
+        ctx.room,
+        enabled=avatar_request is True or avatar_request == "liveavatar",
+    )
+    timer.mark("avatar_start")
+
     if mode is InteractionMode.PTT:
         await _start_ptt_session(ctx, session, agent)
     else:
         await _start_auto_session(ctx, session, agent)
+    if screen_feedback is not None:
+        try:
+            await screen_feedback.start(session)
+            _screen_feedback_runtimes[ctx.room.name] = screen_feedback
+        except Exception:
+            logger.exception(
+                "Failed to start screen feedback runtime room=%s", ctx.room.name
+            )
+            await screen_feedback.close()
     timer.mark("session_start")
 
 
