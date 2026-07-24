@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from typing import Any
 
-from livekit.agents import function_tool
+from livekit.agents import RunContext, function_tool
 
 logger = logging.getLogger(__name__)
 
@@ -120,15 +120,18 @@ def _build_question_editor_tool(
     @function_tool(
         name="mark_question_started",
         description=(
-            "Call this immediately before asking a planned verbal interview "
-            "question. Pass the question's id shown in the interview plan. It "
-            "publishes the full question object to the candidate's screen and "
-            "returns the TTS-safe question text to ask. Do not call it for code "
-            "viewer, code editor, or whiteboard questions; open_question_editor "
-            "handles those."
+            "Call this as a silent tool-only action for a planned verbal interview "
+            "question. Pass the question's id shown in the interview plan. The tool "
+            "publishes the full question object and speaks the TTS-safe question "
+            "exactly once. Do not speak an acknowledgement or question before, "
+            "during, or after this call. Do not call it for code viewer, code editor, "
+            "or whiteboard questions; open_question_editor handles those."
         ),
     )
-    async def mark_question_started(question_id: str) -> dict[str, object]:
+    async def mark_question_started(
+        context: RunContext,
+        question_id: str,
+    ) -> dict[str, object] | None:
         identifier = question_id.strip() if isinstance(question_id, str) else ""
         question = by_id.get(identifier)
         if question is None:
@@ -142,6 +145,7 @@ def _build_question_editor_tool(
         try:
             await _publish_editor_event(room, _question_started_payload(question))
             await _notify_question_started(on_question_started, question)
+            await context.session.say(question["spokenText"])
         except Exception as e:
             logger.error(f"Failed to publish question started event: {e}")
             return {
@@ -150,11 +154,7 @@ def _build_question_editor_tool(
                     "The question could not be published to the candidate's screen."
                 ),
             }
-        return {
-            "status": "ok",
-            "question_text": question["spokenText"],
-            "question": question,
-        }
+        return None
 
     @function_tool(
         name="open_question_editor",
@@ -298,8 +298,8 @@ def build_editor_tools(
     language?}), id-based question-start and editor tools are exposed so the
     published question always matches the configured one. Without questions,
     the free-form open_code_editor / open_whiteboard tools are exposed instead.
-    Editor content never comes back to the agent; the candidate says out loud
-    when they are done.
+    Exact code-editor answers are collected separately for final evaluation;
+    whiteboard answers are evaluated from the candidate's spoken walkthrough.
     """
     if isinstance(questions, list) and questions:
         return _build_question_editor_tool(room, questions, on_question_started)

@@ -78,27 +78,27 @@ def build_agent_session(
 
     # Sarvam TTS (active)
     effective_session_config = session_config or SessionConfig()
-    tts = sarvam.TTS(
-        target_language_code=DEFAULT_SARVAM_LANGUAGE,
-        model=tts_model,
-        speaker=effective_session_config.voice or tts_speaker,
-        pace=effective_session_config.speaking_speed or 1.0,
-        temperature=0.6,
-        enable_preprocessing=True,
-        output_audio_bitrate="128k",
-        min_buffer_size=50,
-        max_chunk_length=150,
-        dict_id=effective_session_config.dict_id or tts_dict_id,
-    )
-    if hasattr(tts, "prewarm"):
-        tts.prewarm()
-    # Patch the connection pool so it recycles connections before Sarvam's
-    # server-side 60s idle timeout evicts them (livekit/agents#5681).
-    if hasattr(tts, "_pool"):
-        tts._pool._max_session_duration = _SARVAM_POOL_MAX_SESSION_DURATION
-        tts._pool._mark_refreshed_on_get = True
+    # tts = sarvam.TTS(
+    #     target_language_code=DEFAULT_SARVAM_LANGUAGE,
+    #     model=tts_model,
+    #     speaker=effective_session_config.voice or tts_speaker,
+    #     pace=effective_session_config.speaking_speed or 1.0,
+    #     temperature=0.6,
+    #     enable_preprocessing=True,
+    #     output_audio_bitrate="128k",
+    #     min_buffer_size=50,
+    #     max_chunk_length=150,
+    #     dict_id=effective_session_config.dict_id or tts_dict_id,
+    # )
+    # if hasattr(tts, "prewarm"):
+    #     tts.prewarm()
+    # # Patch the connection pool so it recycles connections before Sarvam's
+    # # server-side 60s idle timeout evicts them (livekit/agents#5681).
+    # if hasattr(tts, "_pool"):
+    #     tts._pool._max_session_duration = _SARVAM_POOL_MAX_SESSION_DURATION
+    #     tts._pool._mark_refreshed_on_get = True
 
-    # tts = QwenTTS(QWEN_TTS_ENDPOINT)
+    tts = QwenTTS(QWEN_TTS_ENDPOINT)
     # -----------------------------------------------------------------------
 
     if mode is InteractionMode.PTT:

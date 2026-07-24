@@ -23,6 +23,7 @@ from livekit import agents, rtc
 from livekit.agents import (
     AgentServer,
     AgentSession,
+    ConversationItemAddedEvent,
     MetricsCollectedEvent,
     metrics,
     room_io,
@@ -37,6 +38,10 @@ from identity import (
     resolve_phone_number_from_call_context,
     resolve_user_id_from_call_context,
     resolve_user_id_from_room_metadata,
+)
+from interview_evaluator import (
+    InterviewEvidenceTracker,
+    build_finish_interview_tool,
 )
 from prompt import (
     build_prompt_context,
@@ -69,6 +74,7 @@ logger = logging.getLogger("intervoo_agent")
 CALLER_LOOKUP_TIMEOUT_SECONDS = 300
 DATABASE_INIT_TIMEOUT_SECONDS = 10
 SCREEN_FEEDBACK_CLOSE_TIMEOUT_SECONDS = 5
+EVIDENCE_TRACKER_CLOSE_TIMEOUT_SECONDS = 5
 DEFAULT_AGENT_NAME = "intervoo-agent"
 MAX_CONCURRENT_SESSIONS = 10
 
@@ -112,6 +118,7 @@ class SessionState:
     video_egress_id: str | None = None
     video_url: str | None = None
     video_s3_key: str | None = None
+    evidence_tracker: InterviewEvidenceTracker | None = None
 
 
 _sessions: dict[str, SessionState] = {}
@@ -671,6 +678,25 @@ async def on_session_end(ctx: agents.JobContext) -> None:
         flush_langfuse()
         return
 
+    if state.evidence_tracker is not None:
+        try:
+            await asyncio.wait_for(
+                state.evidence_tracker.close(),
+                timeout=EVIDENCE_TRACKER_CLOSE_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                "Timed out closing interview evidence tracker room=%s after %ss; "
+                "continuing recording finalization",
+                ctx.room.name,
+                EVIDENCE_TRACKER_CLOSE_TIMEOUT_SECONDS,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to close interview evidence tracker room=%s",
+                ctx.room.name,
+            )
+
     report_dict: dict = {}
     try:
         report = ctx.make_session_report()
@@ -863,6 +889,22 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     except Exception as e:
         logger.warning("Langfuse trace enrichment failed: %s", e)
 
+    evidence_tracker: InterviewEvidenceTracker | None = None
+    evaluator_prompt: str | None = None
+    if profile.id == "mock_interview":
+        try:
+            evaluator_prompt = load_prompt(
+                "prompts/interview/vasanth_evaluator.md"
+            )
+        except Exception as e:
+            logger.error("Failed to load Vasanth evaluator prompt: %s", e)
+            return
+        evidence_tracker = InterviewEvidenceTracker(
+            questions=metadata.get("questions"),
+            participant_identity=participant_identity,
+        )
+        evidence_tracker.start(ctx.room)
+
     rec_cfg = get_recording_config(userdata)
     recording_task: asyncio.Task[RecordingStartState] | None = None
     if rec_cfg.enabled:
@@ -893,6 +935,46 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             timer_enabled=timer_screen_feedback_enabled,
         )
 
+    session = build_agent_session(
+        tts_speaker=profile.voice_speaker,
+        tts_dict_id=profile.voice_dict_id,
+        mode=mode,
+        session_config=session_config,
+        turn_detector=(
+            get_or_create_turn_detector(userdata)
+            if mode is InteractionMode.AUTO
+            else get_prewarmed_turn_detector(userdata)
+        ),
+        # Editor events must act only on completed turns so tools are not called
+        # speculatively from partial transcripts.
+        disable_preemptive_generation=profile.editor_events_enabled,
+    )
+    _session_usage_loggers[ctx.room.name] = _attach_metrics_logging(
+        session,
+        ctx.room.name,
+    )
+
+    if evidence_tracker is not None:
+
+        @session.on("conversation_item_added")
+        def _on_conversation_item_added(
+            event: ConversationItemAddedEvent,
+        ) -> None:
+            evidence_tracker.on_conversation_item(event.item)
+
+    async def _on_question_started(question: dict[str, Any]) -> None:
+        if evidence_tracker is not None:
+            evidence_tracker.on_question_started(question)
+        if screen_feedback is not None:
+            await screen_feedback.on_question_started(question)
+
+    async def _end_after_evaluator_feedback() -> None:
+        session.shutdown(drain=True)
+        try:
+            await ctx.delete_room()
+        finally:
+            ctx.shutdown(reason="Vasanth evaluator feedback delivered")
+
     tools: list[Any] = []
     if profile.end_call_enabled:
         tools.append(_build_end_call_tool())
@@ -902,11 +984,17 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             build_editor_tools(
                 ctx.room,
                 questions=metadata.get("questions"),
-                on_question_started=(
-                    screen_feedback.on_question_started
-                    if screen_feedback is not None
-                    else None
-                ),
+                on_question_started=_on_question_started,
+            )
+        )
+
+    if evidence_tracker is not None and evaluator_prompt is not None:
+        tools.append(
+            build_finish_interview_tool(
+                tracker=evidence_tracker,
+                evaluator_prompt=evaluator_prompt,
+                candidate_context=dict(prompt_context),
+                end_session=_end_after_evaluator_feedback,
             )
         )
 
@@ -951,21 +1039,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         room_name=ctx.room.name,
     )
 
-    session = build_agent_session(
-        tts_speaker=profile.voice_speaker,
-        tts_dict_id=profile.voice_dict_id,
-        mode=mode,
-        session_config=session_config,
-        turn_detector=(
-            get_or_create_turn_detector(userdata)
-            if mode is InteractionMode.AUTO
-            else get_prewarmed_turn_detector(userdata)
-        ),
-        # Editor events must act only on completed turns so tools are not called
-        # speculatively from partial transcripts.
-        disable_preemptive_generation=profile.editor_events_enabled,
-    )
-    _session_usage_loggers[ctx.room.name] = _attach_metrics_logging(session, ctx.room.name)
     timer.mark("session_build")
 
     webhook_url_raw = metadata.get("webhook_url")
@@ -995,6 +1068,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         video_egress_id=recording_start.video_egress_id,
         video_url=recording_start.video_url,
         video_s3_key=recording_start.video_s3_key,
+        evidence_tracker=evidence_tracker,
     )
 
     avatar_request = metadata.get("avatar")
