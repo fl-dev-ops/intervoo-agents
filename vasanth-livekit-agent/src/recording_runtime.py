@@ -73,7 +73,7 @@ def _build_s3_upload(config: RecordingConfig) -> S3Upload:
 async def start_recording(
     *,
     config: RecordingConfig,
-    lk_api: api.LiveKitAPI,
+    lk_api: api.LiveKitAPI | None = None,
     agent_type: str,
     agent_name: str,
     room_name: str,
@@ -114,16 +114,17 @@ async def start_recording(
                 filepath=audio_s3_key,
                 s3=s3_upload,
             )
-            egress_info = await asyncio.wait_for(
-                lk_api.egress.start_room_composite_egress(
-                    RoomCompositeEgressRequest(
-                        room_name=room_name,
-                        audio_only=True,
-                        file_outputs=[file_output],
-                    )
-                ),
-                timeout=config.egress_start_timeout_seconds,
-            )
+            async with api.LiveKitAPI() as fresh_api:
+                egress_info = await asyncio.wait_for(
+                    fresh_api.egress.start_room_composite_egress(
+                        RoomCompositeEgressRequest(
+                            room_name=room_name,
+                            audio_only=True,
+                            file_outputs=[file_output],
+                        )
+                    ),
+                    timeout=config.egress_start_timeout_seconds,
+                )
             audio_egress_id = egress_info.egress_id
             logger.info(f"Started audio egress {audio_egress_id} for room {room_name}")
         except Exception as e:
@@ -137,22 +138,24 @@ async def start_recording(
                 filepath=video_s3_key,
                 s3=s3_upload,
             )
-            egress_info = await asyncio.wait_for(
-                lk_api.egress.start_room_composite_egress(
-                    RoomCompositeEgressRequest(
-                        room_name=room_name,
-                        audio_only=False,
-                        file_outputs=[file_output],
-                    )
-                ),
-                timeout=config.egress_start_timeout_seconds,
-            )
+            async with api.LiveKitAPI() as fresh_api:
+                egress_info = await asyncio.wait_for(
+                    fresh_api.egress.start_room_composite_egress(
+                        RoomCompositeEgressRequest(
+                            room_name=room_name,
+                            audio_only=False,
+                            file_outputs=[file_output],
+                        )
+                    ),
+                    timeout=config.egress_start_timeout_seconds,
+                )
             video_egress_id = egress_info.egress_id
             logger.info(f"Started video egress {video_egress_id} for room {room_name}")
         except Exception as e:
             logger.error(f"Failed to start video egress for room {room_name}: {e}")
 
-    await asyncio.gather(_start_audio_egress(), _start_video_egress())
+    await _start_audio_egress()
+    await _start_video_egress()
 
     if audio_egress_id is None:
         audio_url = None
@@ -289,46 +292,46 @@ async def _post_completion_webhook(
 
 async def _stop_and_poll_egress(
     *,
-    lk_api: api.LiveKitAPI,
     egress_id: str,
     timeout: int,
     label: str,
 ) -> tuple[str | None, bool, bool]:
-    try:
-        await lk_api.egress.stop_egress(StopEgressRequest(egress_id=egress_id))
-        logger.info(f"Sent stop_egress for {label} {egress_id}")
-    except Exception as e:
-        logger.warning(f"Failed to stop {label} egress {egress_id}: {e}")
-
-    egress_status_str: str | None = None
-    failed = False
-    timed_out = False
-    poll_interval = 2
-    elapsed = 0
-    while elapsed < timeout:
+    async with api.LiveKitAPI() as lk:
         try:
-            resp = await lk_api.egress.list_egress(
-                ListEgressRequest(egress_id=egress_id)
-            )
-            if resp.items:
-                info = resp.items[0]
-                egress_status_str = EgressStatus.Name(info.status)
-                if info.status in TERMINAL_STATUSES:
-                    failed = info.status in (
-                        EgressStatus.EGRESS_FAILED,
-                        EgressStatus.EGRESS_ABORTED,
-                    )
-                    break
+            await lk.egress.stop_egress(StopEgressRequest(egress_id=egress_id))
+            logger.info(f"Sent stop_egress for {label} {egress_id}")
         except Exception as e:
-            logger.warning(f"Error polling {label} egress {egress_id}: {e}")
-        await asyncio.sleep(poll_interval)
-        elapsed += poll_interval
-    else:
-        timed_out = True
-        logger.warning(
-            f"{label.title()} egress {egress_id} did not reach terminal state "
-            f"within {timeout}s"
-        )
+            logger.warning(f"Failed to stop {label} egress {egress_id}: {e}")
+
+        egress_status_str: str | None = None
+        failed = False
+        timed_out = False
+        poll_interval = 2
+        elapsed = 0
+        while elapsed < timeout:
+            try:
+                resp = await lk.egress.list_egress(
+                    ListEgressRequest(egress_id=egress_id)
+                )
+                if resp.items:
+                    info = resp.items[0]
+                    egress_status_str = EgressStatus.Name(info.status)
+                    if info.status in TERMINAL_STATUSES:
+                        failed = info.status in (
+                            EgressStatus.EGRESS_FAILED,
+                            EgressStatus.EGRESS_ABORTED,
+                        )
+                        break
+            except Exception as e:
+                logger.warning(f"Error polling {label} egress {egress_id}: {e}")
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+        else:
+            timed_out = True
+            logger.warning(
+                f"{label.title()} egress {egress_id} did not reach terminal state "
+                f"within {timeout}s"
+            )
 
     return egress_status_str, failed, timed_out
 
@@ -336,7 +339,7 @@ async def _stop_and_poll_egress(
 async def finalize_recording(
     *,
     config: RecordingConfig,
-    lk_api: api.LiveKitAPI,
+    lk_api: api.LiveKitAPI | None = None,
     session_id: str | None = None,
     egress_id: str | None,
     agent_type: str,
@@ -371,7 +374,6 @@ async def finalize_recording(
     if egress_id:
         egress_tasks.append(
             _stop_and_poll_egress(
-                lk_api=lk_api,
                 egress_id=egress_id,
                 timeout=config.egress_poll_timeout_seconds,
                 label="audio",
@@ -380,7 +382,6 @@ async def finalize_recording(
     if video_egress_id:
         egress_tasks.append(
             _stop_and_poll_egress(
-                lk_api=lk_api,
                 egress_id=video_egress_id,
                 timeout=config.egress_poll_timeout_seconds,
                 label="video",

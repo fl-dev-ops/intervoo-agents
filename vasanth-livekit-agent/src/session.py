@@ -98,7 +98,23 @@ def build_agent_session(
     #     tts._pool._max_session_duration = _SARVAM_POOL_MAX_SESSION_DURATION
     #     tts._pool._mark_refreshed_on_get = True
 
-    tts = QwenTTS(QWEN_TTS_ENDPOINT)
+    tts = sarvam.TTS(
+        target_language_code=DEFAULT_SARVAM_LANGUAGE,
+        model=tts_model,
+        speaker=effective_session_config.voice or tts_speaker,
+        pace=effective_session_config.speaking_speed or 1.0,
+        temperature=0.6,
+        enable_preprocessing=True,
+        output_audio_bitrate="128k",
+        min_buffer_size=50,
+        max_chunk_length=150,
+        dict_id=effective_session_config.dict_id or tts_dict_id,
+    )
+    if hasattr(tts, "prewarm"):
+        tts.prewarm()
+    if hasattr(tts, "_pool"):
+        tts._pool._max_session_duration = _SARVAM_POOL_MAX_SESSION_DURATION
+        tts._pool._mark_refreshed_on_get = True
     # -----------------------------------------------------------------------
 
     if mode is InteractionMode.PTT:
