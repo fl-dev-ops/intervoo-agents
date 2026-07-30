@@ -108,14 +108,18 @@ def _normalize_question(record: object) -> dict[str, Any] | None:
 
 def _build_question_editor_tool(
     room: Any,
-    questions: list,
+    questions: list | dict,
     on_question_started: QuestionStartedCallback | None,
 ) -> tuple:
-    by_id: dict[str, dict[str, Any]] = {}
-    for record in questions:
-        normalized = _normalize_question(record)
-        if normalized is not None:
-            by_id[normalized["id"]] = normalized
+    if isinstance(questions, dict):
+        # Shared, mutable store populated at runtime (e.g. by build_interview_plan).
+        by_id: dict[str, dict[str, Any]] = questions
+    else:
+        by_id = {}
+        for record in questions:
+            normalized = _normalize_question(record)
+            if normalized is not None:
+                by_id[normalized["id"]] = normalized
 
     @function_tool(
         name="mark_question_started",
@@ -291,16 +295,21 @@ def build_editor_tools(
     room: Any,
     questions: object | None = None,
     on_question_started: QuestionStartedCallback | None = None,
+    question_store: dict[str, dict[str, Any]] | None = None,
 ):
     """Tools that open a coding editor / whiteboard on the candidate's screen.
 
-    When room metadata provides a questions list ({id, text, surface,
-    language?}), id-based question-start and editor tools are exposed so the
-    published question always matches the configured one. Without questions,
-    the free-form open_code_editor / open_whiteboard tools are exposed instead.
-    Exact code-editor answers are collected separately for final evaluation;
-    whiteboard answers are evaluated from the candidate's spoken walkthrough.
+    When a `question_store` dict is provided, id-based question-start and editor
+    tools are exposed and read from that shared, mutable store — used when the
+    plan is fetched at runtime (build_interview_plan). When room metadata instead
+    provides a questions list ({id, text, surface, language?}), the id-based tools
+    are built from it. Without either, the free-form open_code_editor /
+    open_whiteboard tools are exposed. Exact code-editor answers are collected
+    separately for final evaluation; whiteboard answers are evaluated from the
+    candidate's spoken walkthrough.
     """
+    if question_store is not None:
+        return _build_question_editor_tool(room, question_store, on_question_started)
     if isinstance(questions, list) and questions:
         return _build_question_editor_tool(room, questions, on_question_started)
     return _build_freeform_tools(room, on_question_started)

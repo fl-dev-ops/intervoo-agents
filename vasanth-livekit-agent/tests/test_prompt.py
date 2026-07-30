@@ -115,7 +115,8 @@ def test_load_prompt_reads_vasanth_prompt() -> None:
     prompt = load_prompt("prompts/interview/vasanth.md")
 
     assert "Vasanth" in prompt
-    assert "{interview_plan}" in prompt
+    # The plan is now fetched at runtime via build_interview_plan, not injected.
+    assert "build_interview_plan" in prompt
 
 
 def test_configured_mock_interview_prompt_loads() -> None:

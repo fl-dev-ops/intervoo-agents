@@ -33,6 +33,12 @@ from livekit.agents.metrics import LLMMetrics, STTMetrics, TTSMetrics
 from livekit.plugins import noise_cancellation
 
 from avatar_provider import start_avatar
+from chroma_tools import (
+    build_interview_plan_tool,
+    chroma_configured,
+    get_cached_collection,
+    prewarm_chroma,
+)
 from editor_tools import build_editor_tools
 from identity import (
     resolve_phone_number_from_call_context,
@@ -158,6 +164,7 @@ def prewarm(proc: agents.JobProcess) -> None:
         proc,
         profile_config_path=_resolve_profile_config_path(),
     )
+    prewarm_chroma(proc.userdata)
 
 
 def parse_room_metadata(metadata: str | None) -> dict[str, object]:
@@ -899,8 +906,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         except Exception as e:
             logger.error("Failed to load Vasanth evaluator prompt: %s", e)
             return
+        # Questions are no longer supplied by the front-end; the plan is fetched
+        # at runtime via build_interview_plan, which calls tracker.load_plan.
         evidence_tracker = InterviewEvidenceTracker(
-            questions=metadata.get("questions"),
+            questions=None,
             participant_identity=participant_identity,
         )
         evidence_tracker.start(ctx.room)
@@ -975,6 +984,17 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         finally:
             ctx.shutdown(reason="Vasanth evaluator feedback delivered")
 
+    # Shared store the runtime-fetched plan is written into; the editor tools read
+    # question ids from it, so it must exist before they are built.
+    plan_by_id: dict[str, dict[str, Any]] = {}
+
+    def _register_plan(normalized: list[dict[str, Any]]) -> None:
+        plan_by_id.clear()
+        for question in normalized:
+            plan_by_id[question["id"]] = question
+        if evidence_tracker is not None:
+            evidence_tracker.load_plan(normalized)
+
     tools: list[Any] = []
     if profile.end_call_enabled:
         tools.append(_build_end_call_tool())
@@ -983,9 +1003,21 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         tools.extend(
             build_editor_tools(
                 ctx.room,
-                questions=metadata.get("questions"),
+                question_store=plan_by_id,
                 on_question_started=_on_question_started,
             )
+        )
+
+    if chroma_configured():
+        tools.append(
+            build_interview_plan_tool(
+                get_collection=lambda: get_cached_collection(userdata),
+                register_plan=_register_plan,
+            )
+        )
+    else:
+        logger.warning(
+            "Chroma is not configured; build_interview_plan tool is unavailable"
         )
 
     if evidence_tracker is not None and evaluator_prompt is not None:

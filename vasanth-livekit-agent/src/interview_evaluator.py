@@ -184,6 +184,27 @@ class InterviewEvidenceTracker:
         self._stream_tasks: set[asyncio.Task[None]] = set()
         self._room: rtc.Room | None = None
 
+    def load_plan(self, questions: object) -> None:
+        """Replace the tracked plan with questions fetched at runtime.
+
+        Called once after build_interview_plan returns, before any question
+        starts. Rebuilds all per-question state so has_started_final_question()
+        and build_evidence() key off the fetched plan.
+        """
+        raw_questions = questions if isinstance(questions, list) else []
+        self._questions = [
+            normalized
+            for raw in raw_questions
+            if (normalized := _normalize_question(raw)) is not None
+        ]
+        self._questions_by_id = {
+            question["id"]: question for question in self._questions
+        }
+        self._turns = {question["id"]: [] for question in self._questions}
+        self._started_question_ids = set()
+        self._active_question_id = None
+        self._code_answers = {}
+
     def start(self, room: rtc.Room) -> None:
         room.register_text_stream_handler(CODE_ANSWER_TOPIC, self._on_code_stream)
         self._room = room
