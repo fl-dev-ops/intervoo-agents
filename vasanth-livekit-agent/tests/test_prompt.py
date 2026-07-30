@@ -28,6 +28,7 @@ def test_build_prompt_context_uses_defaults_when_metadata_missing() -> None:
     assert build_prompt_context(None) == {
         "additional_context": "",
         "interview_plan": "",
+        "resume_markdown": "",
         "user_name": "the student",
     }
 
@@ -46,6 +47,24 @@ def test_build_prompt_context_uses_mock_interview_metadata() -> None:
     assert context["user_name"] == "Ravi"
     assert context["interview_plan"] == "1. Introduce yourself"
     assert context["comfortable_language"] == "hindi"
+    assert context["additional_context"] == '{"comfortable_language": "hindi"}'
+
+
+def test_build_prompt_context_renders_resume_without_duplicating_it() -> None:
+    context = build_prompt_context(
+        {
+            "user_name": "Ravi",
+            "prompt_context": {
+                "resume_markdown": "# Ravi\n\nStaff engineer at Freshworks.",
+                "comfortable_language": "hindi",
+            },
+        }
+    )
+
+    assert context["resume_markdown"] == "# Ravi\n\nStaff engineer at Freshworks."
+    # The resume has its own placeholder, so repeating it in additional_context
+    # would put the whole document in the prompt twice.
+    assert "Freshworks" not in context["additional_context"]
     assert context["additional_context"] == '{"comfortable_language": "hindi"}'
 
 

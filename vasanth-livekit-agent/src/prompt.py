@@ -32,6 +32,7 @@ class PromptContext(TypedDict):
 
     additional_context: str
     interview_plan: str
+    resume_markdown: str
     user_name: str
 
 
@@ -108,6 +109,7 @@ def build_prompt_context(
     prompt_context: PromptContext = {
         "additional_context": "",
         "interview_plan": "",
+        "resume_markdown": "",
         "user_name": (user_name or "").strip() or DEFAULT_PROMPT_USER_NAME,
     }
 
@@ -129,8 +131,16 @@ def build_prompt_context(
             if isinstance(key, str) and key:
                 string_value = _stringify_prompt_value(value)
                 context[key] = string_value
+                # Keys with their own placeholder are rendered there; repeating
+                # them in additional_context would duplicate the whole resume.
                 if (
-                    key not in {"agent_name", "interview_plan", "user_name"}
+                    key
+                    not in {
+                        "agent_name",
+                        "interview_plan",
+                        "resume_markdown",
+                        "user_name",
+                    }
                     and string_value
                 ):
                     additional_context[key] = string_value
