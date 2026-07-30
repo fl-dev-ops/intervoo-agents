@@ -1,0 +1,125 @@
+{
+  "task": "vasanth-interview-behavior-policy",
+  "created_at": "2026-07-30T10:58:02.004111Z",
+  "best_score": 0.7763,
+  "best_run": 4,
+  "runs": [
+    {
+      "run": 1,
+      "timestamp": "2026-07-30T11:02:06.241711Z",
+      "experiment": "Baseline: behavior sections as shipped in vasanth.md",
+      "score": 0.475,
+      "decision": "baseline",
+      "failures": [
+        "The interviewer sometimes reveals the correct mechanism or answer, which is against the expected behavior."
+      ],
+      "next_experiment": "Focus on maintaining the question live without revealing the answer, especially in cases where the candidate provides a plausible but incorrect justification.",
+      "invalid": "Scored on the pre-replication harness; single-pass batch judging, noise +-0.15"
+    },
+    {
+      "run": 2,
+      "timestamp": "2026-07-30T11:11:59.460984Z",
+      "experiment": "Resolve the reveal contradiction: explicit incorrect-answer protocol (concretise, discrepancy, turn their reasoning, one hint, then brief pointer), ban acknowledgements before unresolved errors, add reconcile-a-contradiction and when-to-stop-probing sections",
+      "score": 0.585,
+      "decision": "keep",
+      "failures": [
+        "Probes unnecessarily after strong answers.",
+        "Fails to handle contradictions effectively."
+      ],
+      "next_experiment": "Focus on improving the handling of strong answers by either moving on or introducing genuinely harder variations, and ensure contradictions are addressed without leading the candidate.",
+      "invalid": "Scored on the pre-replication harness; single-pass batch judging, noise +-0.15"
+    },
+    {
+      "run": 3,
+      "timestamp": "2026-07-30T11:13:04.991654Z",
+      "experiment": "Tighten strong-answer routing: forbid probing for correctness on strong answers, close the thread unless the variation tests something uncovered",
+      "score": 0.45,
+      "decision": "discard",
+      "note": "Below best. Reveal case also swung 0.80->0.20 on an unrelated edit, suggesting run-to-run noise.",
+      "failures": [
+        "Revealed part of the answer in 'wrong_answer_with_plausible_justification'.",
+        "Did not address contradictions effectively in 'self_contradiction'.",
+        "Asked for information already provided in 'strong_answer_with_reasoning'."
+      ],
+      "next_experiment": "Focus on maintaining the question live without revealing parts of the answer, especially in cases where the candidate's reasoning is partially correct but leads to a wrong conclusion.",
+      "invalid": "Scored on the pre-replication harness; single-pass batch judging, noise +-0.15"
+    },
+    {
+      "run": 4,
+      "timestamp": "2026-07-30T11:17:47.833865Z",
+      "experiment": "Re-baseline: shipped vasanth.md behavior sections on the replicated harness",
+      "score": 0.7763,
+      "stdev": 0.065,
+      "replicates": [
+        0.7238,
+        0.8137,
+        0.8708,
+        0.7184,
+        0.7546
+      ],
+      "decision": "baseline"
+    },
+    {
+      "run": 5,
+      "timestamp": "2026-07-30T11:17:47.833865Z",
+      "experiment": "Re-measure run 2 policy (incorrect-answer protocol + stop-probing) on the replicated harness",
+      "score": 0.7018,
+      "stdev": 0.071,
+      "replicates": [
+        0.7857,
+        0.714,
+        0.65,
+        0.6115,
+        0.7479
+      ],
+      "decision": "discard",
+      "note": "Fixed its target (no_reveal 0.925->0.952, reveal case 0.60->0.73) but advance_discipline 0.718->0.536: the 5-step protocol overrode time-boxing and the stop-probing section suppressed continuation cues."
+    },
+    {
+      "run": 6,
+      "timestamp": "2026-07-30T11:19:55.824389Z",
+      "experiment": "Minimal: replace 'gentle correction' with an explicit no-reveal + discrepancy line in the routing table",
+      "score": 0.7634,
+      "stdev": 0.0483,
+      "replicates": [
+        0.7199,
+        0.7364,
+        0.845,
+        0.7578,
+        0.7578
+      ],
+      "decision": "discard on aggregate",
+      "note": "Minimal: replace 'gentle correction' with an explicit no-reveal + discrepancy line in the routing table. Fixes the production bug outright (reveal case 0.60->1.00, no_reveal 0.925->1.00). Aggregate flat within noise; advance_discipline 0.718->0.606."
+    },
+    {
+      "run": 7,
+      "timestamp": "2026-07-30T11:19:55.824389Z",
+      "experiment": "Adds explicit carve-outs scoping the no-reveal rule",
+      "score": 0.7673,
+      "stdev": 0.0268,
+      "replicates": [
+        0.7546,
+        0.7737,
+        0.8097,
+        0.7387,
+        0.7597
+      ],
+      "decision": "discard on aggregate",
+      "note": "Adds explicit carve-outs scoping the no-reveal rule. Did not recover stuck/trailing; trailing_off regressed further (0.90->0.64) as the carve-out produced a full question instead of a cue."
+    }
+  ],
+  "harness_change": {
+    "at": "2026-07-30T11:17:47.833865Z",
+    "reason": "Single-pass batch judging had ~0.15 spread on identical input, 15x the improvement threshold. Runs 1-3 could not distinguish signal from noise.",
+    "changes": [
+      "per-case judging with applicability",
+      "5 replicates, mean and stdev reported",
+      "seed passed to generation and judge"
+    ]
+  },
+  "notes": [
+    "Runs 6 and 7 both drive no_reveal_no_lead to 1.000 and the reveal case to 1.00, reproducibly.",
+    "advance_discipline is not trustworthy: on stuck_after_one_rescue the judge scored a full event-loop lecture 1.00 despite the case's must_not forbidding it, while a clean 'let's go to the next one' scored 0.73.",
+    "Recommended change on targeted grounds is workspace/candidate/behavior_policy.md (run 6)."
+  ]
+}

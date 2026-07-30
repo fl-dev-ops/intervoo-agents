@@ -1,0 +1,197 @@
+[
+  {
+    "id": "wrong_output_prediction",
+    "phase": "core_technical",
+    "candidate": "Anand, 8 years, frontend at a SaaS company",
+    "active_question": {
+      "id": "q2",
+      "surface": "code viewer",
+      "answer_mode": "verbal",
+      "asked": "Look at the code shown on your screen. What will it output, and why?",
+      "starter_code": "console.log(a);\nvar a = 5;",
+      "ground_truth": "undefined — var a is hoisted and initialised to undefined, the assignment runs after the log"
+    },
+    "conversation": [
+      { "speaker": "interviewer", "text": "Look at the code shown on your screen. What will it output, and why?" },
+      { "speaker": "candidate", "text": "Um. Answer will be 5." }
+    ],
+    "candidate_state": { "quality": "incorrect", "depth": "surface" },
+    "expected_behaviour": "Do not confirm and do not correct. Keep the question live: ask him to commit and walk through it, or create an observable discrepancy by running the code, so he deduces the mismatch himself.",
+    "must_not": [
+      "state or imply that the output is undefined",
+      "explain hoisting or the var initialisation rule",
+      "acknowledge the answer in a way that reads as confirming it",
+      "move to a different question"
+    ]
+  },
+  {
+    "id": "wrong_answer_with_plausible_justification",
+    "phase": "core_technical",
+    "candidate": "Anand, 8 years, frontend at a SaaS company",
+    "active_question": {
+      "id": "q2",
+      "surface": "code viewer",
+      "answer_mode": "verbal",
+      "asked": "Look at the code shown on your screen. What will it output, and why?",
+      "starter_code": "console.log(a);\nvar a = 5;",
+      "ground_truth": "undefined — var a is hoisted and initialised to undefined, the assignment runs after the log"
+    },
+    "conversation": [
+      { "speaker": "interviewer", "text": "Look at the code shown on your screen. What will it output, and why?" },
+      { "speaker": "candidate", "text": "Um. Answer will be 5." },
+      { "speaker": "interviewer", "text": "Can you walk me through why you think it will output five?" },
+      { "speaker": "candidate", "text": "So. I think there will be a hoisting in the JavaScript code. And that's why the answer would be 5." }
+    ],
+    "candidate_state": { "quality": "incorrect", "depth": "explained" },
+    "expected_behaviour": "He named the right mechanism and drew the wrong conclusion from it. Challenge the assumption inside his own reasoning — what hoisting actually moves, and what value the variable holds at that line — without supplying the answer. This is the case that most often produces a premature reveal or a false 'Good.'",
+    "must_not": [
+      "state or imply that the output is undefined",
+      "say the declaration is hoisted but the assignment is not, or otherwise teach the rule",
+      "accept the reasoning as correct",
+      "move to a different question"
+    ]
+  },
+  {
+    "id": "stuck_after_one_rescue",
+    "phase": "core_technical",
+    "candidate": "Anand, 8 years, frontend at a SaaS company",
+    "active_question": {
+      "id": "q3",
+      "surface": "verbal",
+      "answer_mode": "verbal",
+      "asked": "Explain how the event loop works in JavaScript.",
+      "ground_truth": "call stack, task queue, microtask queue, and the loop that moves work between them"
+    },
+    "conversation": [
+      { "speaker": "interviewer", "text": "Explain how the event loop works in JavaScript." },
+      { "speaker": "candidate", "text": "You put it in the top, pull it in." },
+      { "speaker": "interviewer", "text": "How does the event loop manage asynchronous operations?" },
+      { "speaker": "candidate", "text": "Honestly I am not able to recall this properly." }
+    ],
+    "candidate_state": { "quality": "silent", "depth": "surface" },
+    "expected_behaviour": "One rescue has already been spent and he has now said he does not know. The corpus behaviour here is to briefly orient him or point him at what to revise — one or two sentences at most — and then transition to the next question. A short explanation or revision pointer is CORRECT and expected at this point; it is the one place where teaching is the right move. What is wrong is grinding on the question or delivering a full walkthrough that eats coverage time.",
+    "must_not": [
+      "walk through the call stack, task queue, and microtask queue as a full explanation",
+      "spend more than about two sentences on the concept before transitioning",
+      "ask a third variation of the same question",
+      "tell him the answer is wrong or frame it as a failure"
+    ]
+  },
+  {
+    "id": "surface_definition",
+    "phase": "technical_warmup",
+    "candidate": "Priya, 3 years, React developer",
+    "active_question": {
+      "id": "q4",
+      "surface": "verbal",
+      "answer_mode": "verbal",
+      "asked": "What is a closure in JavaScript?",
+      "ground_truth": "a function retaining access to its lexical scope after the outer function returns"
+    },
+    "conversation": [
+      { "speaker": "interviewer", "text": "What is a closure in JavaScript?" },
+      { "speaker": "candidate", "text": "A closure is when a function remembers the variables from the scope where it was created." }
+    ],
+    "candidate_state": { "quality": "strong", "depth": "surface" },
+    "expected_behaviour": "Correct at definition level. He knows the words; ask for a practical example from real work so he has to show he can apply it. This is the single most common move in the corpus.",
+    "must_not": [
+      "move to a different topic without asking for an example or deeper reasoning",
+      "supply the example himself",
+      "declare the answer complete"
+    ]
+  },
+  {
+    "id": "unsupported_optimization_claim",
+    "phase": "core_technical",
+    "candidate": "Priya, 3 years, React developer",
+    "active_question": {
+      "id": "q5",
+      "surface": "verbal",
+      "answer_mode": "verbal",
+      "asked": "How did you improve the dashboard's rendering performance?",
+      "ground_truth": "no single right answer; the claim needs cost and necessity justification"
+    },
+    "conversation": [
+      { "speaker": "interviewer", "text": "How did you improve the dashboard's rendering performance?" },
+      { "speaker": "candidate", "text": "We wrapped all the computed values in useMemo, so it became much faster. I use useMemo everywhere now, it is a best practice." }
+    ],
+    "candidate_state": { "quality": "partial", "depth": "surface" },
+    "expected_behaviour": "An optimization presented as a universal best practice. Test whether she understands its cost: why it was needed, what simpler option existed, what complexity it adds, or why it should not be used everywhere. This is described as one of his strongest recurring characteristics.",
+    "must_not": [
+      "explain that memoization has overhead or a dependency-comparison cost",
+      "accept the claim and move on",
+      "ask several of these questions at once"
+    ]
+  },
+  {
+    "id": "self_contradiction",
+    "phase": "core_technical",
+    "candidate": "Anubhav, 4 years, JavaScript",
+    "active_question": {
+      "id": "q6",
+      "surface": "verbal",
+      "answer_mode": "verbal",
+      "asked": "How does JavaScript execute a file?",
+      "ground_truth": "no single right answer; the two claims are in tension and the candidate should reconcile them"
+    },
+    "conversation": [
+      { "speaker": "interviewer", "text": "How does JavaScript execute a file?" },
+      { "speaker": "candidate", "text": "JavaScript is interpreted, so it runs line by line from top to bottom." },
+      { "speaker": "interviewer", "text": "Okay. And what happens before the first line runs?" },
+      { "speaker": "candidate", "text": "There is a creation phase where it sets up all the variables and functions, then the execution phase runs the code." }
+    ],
+    "candidate_state": { "quality": "partial", "depth": "explained" },
+    "expected_behaviour": "Two of his own claims are in tension: strictly line-by-line interpretation versus a prior creation phase. Place both beside each other and ask him to reconcile them. Acknowledgement may preserve confidence, but the question must do the challenging.",
+    "must_not": [
+      "resolve the tension by explaining compilation or the creation phase",
+      "tell him one of the two statements is wrong",
+      "ignore the contradiction and move to a new topic"
+    ]
+  },
+  {
+    "id": "trailing_off_mid_thought",
+    "phase": "core_technical",
+    "candidate": "Priya, 3 years, React developer",
+    "active_question": {
+      "id": "q7",
+      "surface": "verbal",
+      "answer_mode": "verbal",
+      "asked": "Why does the child component re-render when the parent updates?",
+      "ground_truth": "no single right answer; the candidate is mid-reasoning"
+    },
+    "conversation": [
+      { "speaker": "interviewer", "text": "Why does the child component re-render when the parent updates?" },
+      { "speaker": "candidate", "text": "So when the parent state changes, React will re-render the parent, and then because the child is part of that tree it also… and the props object is…" }
+    ],
+    "candidate_state": { "quality": "partial", "depth": "explained" },
+    "expected_behaviour": "Her sentence is unfinished and she has stopped speaking. Give a minimal continuation cue of a few words so she picks up the same thread. Do not start a new question and do not complete the reasoning for her.",
+    "must_not": [
+      "complete her sentence or supply the missing reasoning",
+      "ask a new question on a different aspect",
+      "produce a long turn"
+    ]
+  },
+  {
+    "id": "strong_answer_with_reasoning",
+    "phase": "core_technical",
+    "candidate": "Stephen, 9 years, staff engineer",
+    "active_question": {
+      "id": "q8",
+      "surface": "verbal",
+      "answer_mode": "verbal",
+      "asked": "When would you not use a WebSocket for this?",
+      "ground_truth": "no single right answer; the candidate has already covered trade-offs and an example"
+    },
+    "conversation": [
+      { "speaker": "interviewer", "text": "When would you not use a WebSocket for this?" },
+      { "speaker": "candidate", "text": "If updates are infrequent, the connection cost is not worth it — we moved a notification feed off sockets to polling once we measured it at roughly one update a minute per user. We got that number from the gateway metrics, per-connection memory and message counts over a two-week window, and the socket fan-out was clearly dominating memory. Below that rate polling is cheaper and much easier to operate. Above a few updates a second it flips the other way, because reconnect storms and poll amplification start costing more than the persistent connections." }
+    ],
+    "candidate_state": { "quality": "strong", "depth": "with_reasoning" },
+    "expected_behaviour": "He gave the mechanism, a concrete example, how he measured it, the crossover rate, and the reasoning in both directions — all unprompted. There is no remaining gap on this thread. Either raise difficulty with a genuinely harder variation or move to the next planned question. This case guards against a policy that simply probes forever, so any probe that re-asks something already covered is a failure.",
+    "must_not": [
+      "ask for an example, a measurement method, or a number he already gave",
+      "ask him to repeat, restate, or elaborate on what he just explained",
+      "add a probe that gathers no evidence he has not already supplied"
+    ]
+  }
+]

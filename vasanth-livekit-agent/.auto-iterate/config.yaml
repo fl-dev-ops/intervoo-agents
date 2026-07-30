@@ -1,0 +1,94 @@
+task:
+  name: "vasanth-interview-behavior-policy"
+  description: >-
+    Optimize the probe-and-depth section of the mock-interview prompt so its per-turn
+    decisions mirror Vasanth's observed behavior: keep a wrong answer live instead of
+    correcting it, choose the move the corpus associates with each answer type, and
+    protect coverage without grinding.
+  domain: "prompt"
+
+source:
+  files:
+    - path: ".auto-iterate/workspace/current/behavior_policy.md"
+      description: "The only mutable region: Question and Probe Strategy plus Interview Behavior"
+      mutable: true
+    - path: ".auto-iterate/prompt_shell.md"
+      description: "Frozen prompt shell (voice rules, introduction flow, tool rules, guardrails)"
+      mutable: false
+    - path: ".auto-iterate/evaluation_cases.json"
+      description: "Fixed decision-point cases, each ending on a candidate answer"
+      mutable: false
+    - path: ".auto-iterate/vasanth_reference.md"
+      description: "Transcript-grounded behavioral reference"
+      mutable: false
+    - path: ".auto-iterate/run_experiment.py"
+      description: "Fixed generation and judge harness"
+      mutable: false
+  context: |
+    A live session exposed the failure this loop targets. The candidate predicted 5 for
+    `console.log(a); var a = 5;`, was acknowledged with "Good.", was allowed to justify it
+    with "hoisting", was acknowledged again, and the interview advanced. When he later asked
+    about it, the agent announced the correct output and explained the rule.
+
+    Three defects to remove: acknowledging an incorrect answer, advancing while it stands
+    unresolved, and resolving it by assertion instead of discrepancy or counter-question.
+
+    The current policy contradicts itself — "an incorrect answer calls for a gentle
+    correction" sits alongside "never teach, reveal an answer, or suggest an answer
+    direction". Resolving that contradiction is the obvious first experiment.
+
+    Optimize decisions, not phrasing. Adding more of Vasanth's catchphrases is not fidelity.
+
+constraints:
+  can:
+    - "Modify only workspace/current/behavior_policy.md"
+    - "Restructure, reorder, split, or shorten that file freely"
+    - "Run the fixed benchmark once per experiment"
+    - "Restore current from best after a failed experiment"
+  cannot:
+    - "Modify the prompt shell, evaluation cases, reference behavior, runner, weights, or model"
+    - "Modify prompts/interview/vasanth.md or any agent source during experiments"
+    - "Weaken the voice rules, tool-calling rules, or finish_interview handling"
+    - "Use transcript wording as a substitute for decision fidelity"
+    - "Add dependencies"
+  hard_limits:
+    - "One benchmark run per experiment"
+    - "Do not expose or copy API credentials"
+
+experiment:
+  command: >-
+    bash .auto-iterate/run.sh
+    .auto-iterate/workspace/current/behavior_policy.md
+    .auto-iterate/results/run_${RUN_NUMBER}
+  budget:
+    type: "time"
+    limit: 300
+    timeout_multiplier: 1.5
+
+evaluate:
+  method: "shell"
+  direction: "higher"
+  metric: "score"
+  criteria:
+    - name: "wrong_answer_handling"
+      weight: 0.30
+      description: "Keeps an unresolved wrong answer live; never confirms or asserts it away"
+    - name: "probe_selection_fidelity"
+      weight: 0.25
+      description: "Picks the move the corpus associates with that answer type"
+    - name: "no_reveal_no_lead"
+      weight: 0.20
+      description: "Does not state the answer, teach the rule, or telegraph the direction"
+    - name: "advance_discipline"
+      weight: 0.15
+      description: "Neither advances past an unresolved error nor grinds after a failed rescue"
+    - name: "spoken_style_fidelity"
+      weight: 0.10
+      description: "One question, TTS-safe plain speech, length suited to the move"
+
+loop:
+  max_iterations: 10
+  improvement_threshold: 0.01
+  patience: 5
+  target_score: 0.92
+  simplicity_tiebreaker: true
