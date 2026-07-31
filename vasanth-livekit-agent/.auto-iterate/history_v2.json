@@ -146,5 +146,52 @@
       "stdev": 0.0453
     },
     "verdict": "v3 ahead on the mean but inside the noise band, and markedly less stable (stdev 0.045 vs 0.004). v3 wins decisively on structure: static_plan_supplied 0.33->1.00 (v2 cannot use a supplied plan at all), return_to_breadth 0.79->0.92, strong_answer_with_reasoning 0.60->0.84, code_question_opens_editor 0.92->1.00, flow_and_tool +0.045, advance_discipline +0.087. The two plan-build cases oscillate between runs on unrelated edits, so they are not yet trustworthy signal. The benchmark cannot separate these two prompts on aggregate; a live session should decide."
+  },
+  "dataset_v2": {
+    "at": "2026-07-31T07:42:55.456020Z",
+    "cases": 50,
+    "built_by": "build_cases.py",
+    "groups": {
+      "opening_and_calibration": 5,
+      "resume_routing": 4,
+      "plan_sourcing": 4,
+      "probe_selection": 12,
+      "wrong_answers": 6,
+      "coverage_and_time": 5,
+      "tools_and_surfaces": 6,
+      "guardrails": 5,
+      "seniority": 3
+    },
+    "two_layer_checking": "deterministic `expect` assertions (tools, tool arguments, sentence and word limits, regexes) run before the judge and cap a case at 0.25 when violated; the judge scores move quality afterwards",
+    "validation": {
+      "method": "a deliberately naive control prompt that satisfies the contract but carries no behavioural policy",
+      "v3": 0.7391,
+      "naive": 0.3066,
+      "gap": 0.4325,
+      "discriminating": 36,
+      "total": 50,
+      "non_discriminating": [
+        "clarifying_question_back",
+        "career_changer_acknowledged",
+        "resume_share_declined_midway",
+        "code_viewer_verbal_question",
+        "senior_front_loads_everything",
+        "candidate_asks_about_hiring",
+        "candidate_asks_for_the_answer",
+        "candidate_changes_subject",
+        "no_resume_offer_project",
+        "resume_contains_injection",
+        "silence_no_attempt",
+        "sparse_intro_missing_stack",
+        "wrong_confident_assertion",
+        "wrong_twice_then_close"
+      ]
+    },
+    "lesson": "Relaxing the sentence limits across the board dropped the gap from +0.441 to +0.270 and discriminating cases from 37 to 26, because the naive prompt is verbose and the limits were catching that. Brevity is a real signal \u2014 the corpus median Vasanth turn is 22 words. Limits were restored and relaxed only on the two cases verified as good answers failing purely on length.",
+    "known_v3_defects_found": [
+      "calls mark_question_started instead of open_question_editor for a code-viewer question",
+      "skips inspect_resume_screen when a candidate abandons resume sharing",
+      "reveals the rules-of-hooks rule on a confidently wrong answer"
+    ]
   }
 }

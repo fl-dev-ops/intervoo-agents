@@ -205,6 +205,52 @@ class Turn(StrictModel):
     spoken_turn: str
 
 
+def count_sentences(text: str) -> int:
+    return len([p for p in re.split(r"[.!?]+", text) if p.strip()])
+
+
+def mechanical_violations(case: dict[str, Any], turn: Turn) -> list[str]:
+    """Deterministic checks, run before the judge sees anything.
+
+    Prose expectations get rationalised away — a judge once scored a full lecture 1.00
+    against a case forbidding "a full explanation". These cannot be argued with.
+    """
+    expect = case.get("expect") or {}
+    called = " ".join(turn.tool_calls)
+    said = turn.spoken_turn
+    problems = []
+
+    for tool in expect.get("tools_required", []):
+        if tool not in called:
+            problems.append(f"did not call {tool}")
+    for tool in expect.get("tools_forbidden", []):
+        if tool in called:
+            problems.append(f"called {tool}")
+    if expect.get("silent") and said.strip():
+        problems.append("spoke where it must stay silent")
+    limit = expect.get("max_sentences")
+    if limit is not None and count_sentences(said) > limit:
+        problems.append(f"{count_sentences(said)} sentences, limit {limit}")
+    word_limit = expect.get("max_words")
+    if word_limit is not None and len(said.split()) > word_limit:
+        problems.append(f"{len(said.split())} words, limit {word_limit}")
+    for pattern in expect.get("must_not_match", []):
+        if re.search(pattern, said, re.IGNORECASE):
+            problems.append(f"said something matching /{pattern}/")
+    for pattern in expect.get("must_match", []):
+        if not re.search(pattern, said, re.IGNORECASE):
+            problems.append(f"missing something matching /{pattern}/")
+    # Tool arguments are checked separately: a PII leak or a required flag lives in the
+    # call, not in what the interviewer says out loud.
+    for pattern in expect.get("args_must_not_match", []):
+        if re.search(pattern, called, re.IGNORECASE):
+            problems.append(f"tool argument matching /{pattern}/")
+    for pattern in expect.get("args_must_match", []):
+        if not re.search(pattern, called, re.IGNORECASE):
+            problems.append(f"no tool argument matching /{pattern}/")
+    return problems
+
+
 async def generate_turn(
     client: AsyncOpenAI, model: str, prompt: str, case: dict[str, Any], seed: int
 ) -> Turn:
@@ -358,6 +404,17 @@ async def run_replicate(
         )
     )
     by_case = {case["id"]: j for case, j in zip(cases, judgements, strict=True)}
+
+    for case in cases:
+        problems = mechanical_violations(case, outputs[case["id"]])
+        if problems:
+            judgement = by_case[case["id"]]
+            judgement.violated_must_not = True
+            judgement.critical_issue = "MECHANICAL: " + "; ".join(problems)
+            for name in WEIGHTS:
+                criterion = getattr(judgement.criteria, name)
+                if criterion.applicable:
+                    criterion.score = min(criterion.score, 0.25)
 
     # A criterion's score is the mean over the cases that exercise it; the total is the
     # weighted sum over criteria that at least one case exercised.
