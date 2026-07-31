@@ -1,0 +1,81 @@
+{
+  "task": "vasanth-v2-full-prompt",
+  "created_at": "2026-07-31T06:40:22.011102Z",
+  "benchmark": "13 decision-point cases (8 probe/depth + 5 flow/tool), deterministic contract gate, 6 criteria, 5 replicates",
+  "best_score": 0.8447,
+  "best_run": 2,
+  "runs": [
+    {
+      "run": 0,
+      "experiment": "v1 reference (shipped vasanth.md) on the expanded benchmark",
+      "score": 0.6668,
+      "stdev": 0.0762,
+      "replicates": [
+        0.72,
+        0.668,
+        0.7614,
+        0.5789,
+        0.6059
+      ],
+      "decision": "reference"
+    },
+    {
+      "run": 1,
+      "experiment": "v2 baseline: from-scratch prompt organised around the move vocabulary",
+      "score": 0.8159,
+      "stdev": 0.0099,
+      "replicates": [
+        0.8045,
+        0.8319,
+        0.8145,
+        0.8142,
+        0.8145
+      ],
+      "decision": "baseline",
+      "note": "Beats v1 on every criterion (+0.149 overall) and is far more consistent: stdev 0.0099 vs 0.0762.",
+      "failures": [
+        "self_contradiction",
+        "trailing_off_mid_thought",
+        "strong_answer_with_reasoning",
+        "code_question_opens_editor"
+      ]
+    },
+    {
+      "run": 2,
+      "timestamp": "2026-07-31T06:41:23.864522Z",
+      "experiment": "Add a 'Choosing the move' priority order that beats the default follow-up prior; make minimal_cue the whole turn; require the returned question_text verbatim",
+      "score": 0.8447,
+      "stdev": 0.0313,
+      "replicates": [
+        0.7982,
+        0.8469,
+        0.8854,
+        0.8394,
+        0.8536
+      ],
+      "decision": "keep",
+      "note": "trailing_off 0.64->1.00, advance_discipline +0.106. self_contradiction and strong_answer unchanged."
+    },
+    {
+      "run": 3,
+      "timestamp": "2026-07-31T06:42:44.761637Z",
+      "experiment": "Add concrete detection heuristics for reconcile and for the already-answered test",
+      "score": 0.8435,
+      "stdev": 0.0364,
+      "replicates": [
+        0.8301,
+        0.8478,
+        0.9048,
+        0.8198,
+        0.8152
+      ],
+      "decision": "discard",
+      "note": "Flat within noise (0.8435 vs 0.8447). strong_answer +0.08 and code_question +0.08 but stuck_after_one_rescue -0.12 and build_plan -0.12. self_contradiction unmoved."
+    }
+  ],
+  "notes": [
+    "v2 beats v1 by +0.178 (0.845 vs 0.667) and is far more consistent (stdev 0.031 vs 0.076).",
+    "self_contradiction is the one case no experiment moved: the generated turn is byte-identical across runs 2 and 3, and run 3 placed the exact contradiction pattern in the prompt verbatim without effect. This reads as a move-selection limit of the generator, not a missing instruction.",
+    "code_question_opens_editor still flags: the prompt calls open_question_editor correctly but paraphrases the returned question_text instead of speaking it verbatim."
+  ]
+}

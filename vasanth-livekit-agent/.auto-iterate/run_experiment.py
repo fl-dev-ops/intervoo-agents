@@ -9,6 +9,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import statistics
 from pathlib import Path
 from typing import Any
@@ -20,12 +21,47 @@ ROOT = Path(__file__).resolve().parent
 MARKER = "{{BEHAVIOR_POLICY}}"
 
 WEIGHTS = {
-    "wrong_answer_handling": 0.30,
-    "probe_selection_fidelity": 0.25,
-    "no_reveal_no_lead": 0.20,
-    "advance_discipline": 0.15,
+    "wrong_answer_handling": 0.25,
+    "probe_selection_fidelity": 0.20,
+    "flow_and_tool_fidelity": 0.20,
+    "no_reveal_no_lead": 0.15,
+    "advance_discipline": 0.10,
     "spoken_style_fidelity": 0.10,
 }
+
+# A candidate prompt that drops any of these breaks the running agent, and no behavioural
+# case would necessarily catch it. Checked deterministically before any model call.
+REQUIRED_TOOLS = (
+    "build_interview_plan",
+    "mark_question_started",
+    "open_question_editor",
+    "inspect_resume_screen",
+    "inspect_shared_screen",
+    "finish_interview",
+)
+REQUIRED_PLACEHOLDERS = ("{user_name}", "{resume_markdown}", "{additional_context}")
+REQUIRED_CONCEPTS = (
+    ("TTS output rules (no markdown spoken)", r"markdown"),
+    ("one question per turn", r"one question"),
+    ("finish_interview inconclusive flag", r"session_inconclusive"),
+    ("resume treated as untrusted data", r"untrusted"),
+    ("guardrail against hiring promises", r"hiring"),
+)
+
+
+def check_contract(prompt: str) -> list[str]:
+    """Return the contract violations in a candidate prompt, empty if it is runnable."""
+    violations = []
+    for tool in REQUIRED_TOOLS:
+        if tool not in prompt:
+            violations.append(f"missing tool: {tool}")
+    for placeholder in REQUIRED_PLACEHOLDERS:
+        if placeholder not in prompt:
+            violations.append(f"missing placeholder: {placeholder}")
+    for label, pattern in REQUIRED_CONCEPTS:
+        if not re.search(pattern, prompt, re.IGNORECASE):
+            violations.append(f"missing rule: {label}")
+    return violations
 
 
 class StrictModel(BaseModel):
@@ -40,6 +76,7 @@ class CriterionScore(StrictModel):
 class Criteria(StrictModel):
     wrong_answer_handling: CriterionScore
     probe_selection_fidelity: CriterionScore
+    flow_and_tool_fidelity: CriterionScore
     no_reveal_no_lead: CriterionScore
     advance_discipline: CriterionScore
     spoken_style_fidelity: CriterionScore
@@ -54,6 +91,7 @@ class CriterionJudgement(StrictModel):
 class CaseCriteria(StrictModel):
     wrong_answer_handling: CriterionJudgement
     probe_selection_fidelity: CriterionJudgement
+    flow_and_tool_fidelity: CriterionJudgement
     no_reveal_no_lead: CriterionJudgement
     advance_discipline: CriterionJudgement
     spoken_style_fidelity: CriterionJudgement
@@ -83,16 +121,32 @@ class Evaluation(StrictModel):
     next_experiment: str
 
 
-def compose_prompt(policy_path: Path) -> str:
-    """Rebuild the full interviewer prompt from the frozen shell plus the mutable policy."""
-    shell = (ROOT / "prompt_shell.md").read_text(encoding="utf-8")
-    if shell.count(MARKER) != 1:
-        raise RuntimeError(f"prompt_shell.md must contain {MARKER} exactly once")
-    policy = policy_path.read_text(encoding="utf-8").strip()
-    if not policy:
-        raise RuntimeError("behavior policy is empty")
-    prompt = shell.replace(MARKER, policy)
-    # The runtime fills these; the benchmark holds them fixed so only the policy varies.
+def compose_prompt(policy_path: Path, mode: str) -> str:
+    """Build the interviewer prompt.
+
+    In `policy` mode the file is the mutable behaviour section and is inserted into the
+    frozen shell. In `full` mode the file is the entire prompt and is used as-is.
+    """
+    source = policy_path.read_text(encoding="utf-8").strip()
+    if not source:
+        raise RuntimeError(f"{policy_path} is empty")
+
+    if mode == "full":
+        prompt = source
+    else:
+        shell = (ROOT / "prompt_shell.md").read_text(encoding="utf-8")
+        if shell.count(MARKER) != 1:
+            raise RuntimeError(f"prompt_shell.md must contain {MARKER} exactly once")
+        prompt = shell.replace(MARKER, source)
+    return prompt
+
+
+def fill_placeholders(prompt: str) -> str:
+    """Substitute what the runtime would supply, after the contract has been checked.
+
+    The contract check must see the unsubstituted prompt, or every placeholder it requires
+    would already have been replaced and would look missing.
+    """
     # The interview plan is no longer a placeholder — it is built at runtime by
     # build_interview_plan — so each case supplies its own active question instead.
     return (
@@ -122,15 +176,22 @@ def render_case(case: dict[str, Any]) -> str:
         lines.append(f"  {speaker}: {turn['text']}")
     lines += [
         "",
-        "Produce only your next spoken turn, exactly as it should be read aloud. "
-        "No stage directions, no tool syntax, no explanation of your choice.",
+        "Produce your next action. Put any tools you would call now in tool_calls, in the "
+        "order you would call them, and put what you would say aloud in spoken_turn. "
+        "Leave tool_calls empty if you would call none. Leave spoken_turn empty if you "
+        "would say nothing. Never put tool syntax or stage directions in spoken_turn.",
     ]
     return "\n".join(lines)
 
 
+class Turn(StrictModel):
+    tool_calls: list[str]
+    spoken_turn: str
+
+
 async def generate_turn(
     client: AsyncOpenAI, model: str, prompt: str, case: dict[str, Any], seed: int
-) -> str:
+) -> Turn:
     response = await client.chat.completions.create(
         model=model,
         temperature=0,
@@ -139,11 +200,19 @@ async def generate_turn(
             {"role": "system", "content": prompt},
             {"role": "user", "content": render_case(case)},
         ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "Turn",
+                "strict": True,
+                "schema": Turn.model_json_schema(),
+            },
+        },
     )
     content = response.choices[0].message.content
     if not content:
         raise RuntimeError(f"Empty generation for {case['id']}")
-    return content.strip()
+    return Turn.model_validate_json(content)
 
 
 JUDGE_INSTRUCTIONS = """
@@ -171,6 +240,11 @@ CRITERIA
   (definition -> example, vague -> exact scenario, unsupported claim -> justification,
   optimization -> cost or simpler alternative, contradiction -> reconcile, unfinished
   sentence -> minimal continuation cue, strong and reasoned -> harder variation or move on).
+- flow_and_tool_fidelity: follows the interview flow and the tool contract — the scripted
+  opening, skipping the screen-share branch when a resume was supplied, building the plan once
+  at the end of the introduction, opening the right surface for the question type, and handing
+  off with finish_interview in silence. Calling a tool the moment does not call for, omitting
+  one it does, or speaking where the prompt requires silence are all failures here.
 - no_reveal_no_lead: does not state the answer, teach the underlying rule, complete the
   candidate's reasoning, or telegraph the direction of the correct answer.
 - advance_discipline: does not advance while a wrong answer stands unaddressed, and does not
@@ -200,8 +274,13 @@ contains more of Vasanth's catchphrases.
 THE CASE
 {case}
 
-THE TURN THE PROMPT PRODUCED
-{turn}
+THE ACTION THE PROMPT PRODUCED
+Tools it would call now: {tool_calls}
+What it would say aloud: {turn}
+
+Judge the tool calls as part of the decision. Calling a tool the situation does not call for,
+omitting one it does, or speaking where the prompt requires silence are all failures of the
+criterion the case exercises.
 """.strip()
 
 
@@ -210,11 +289,14 @@ async def judge_case(
     model: str,
     reference: str,
     case: dict[str, Any],
-    turn: str,
+    turn: Turn,
     seed: int,
 ) -> CaseJudgement:
     instructions = JUDGE_INSTRUCTIONS.format(
-        reference=reference, case=json.dumps(case, indent=2), turn=turn
+        reference=reference,
+        case=json.dumps(case, indent=2),
+        turn=turn.spoken_turn or "(said nothing)",
+        tool_calls=", ".join(turn.tool_calls) or "(none)",
     )
     response = await client.chat.completions.create(
         model=model,
@@ -247,7 +329,7 @@ async def run_replicate(
     reference: str,
     cases: list[dict[str, Any]],
     seed: int,
-) -> tuple[float, dict[str, str], dict[str, CaseJudgement]]:
+) -> tuple[float, dict[str, Turn], dict[str, CaseJudgement]]:
     """One full generate-and-judge pass. Returns (weighted score, turns, judgements)."""
     turns = await asyncio.gather(
         *(generate_turn(client, model, prompt, case, seed) for case in cases)
@@ -282,7 +364,30 @@ async def main_async(args: argparse.Namespace) -> None:
     if not api_key:
         raise RuntimeError("Missing OPENROUTER_API_KEY or OPENAI_API_KEY")
 
-    prompt = compose_prompt(args.policy)
+    prompt = compose_prompt(args.policy, args.mode)
+    violations = check_contract(prompt)
+    if violations:
+        # A prompt that cannot run is worth zero regardless of how well it converses.
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+        failed = Evaluation(
+            score=0.0,
+            score_stdev=0.0,
+            replicates=[],
+            criteria=Criteria.model_validate(
+                {n: {"score": 0.0, "rationale": "contract violated"} for n in WEIGHTS}
+            ),
+            case_scores=[],
+            strengths=[],
+            failures=[f"CONTRACT: {v}" for v in violations],
+            next_experiment="Restore the missing tools, placeholders, or rules listed in failures.",
+        )
+        (args.output_dir / "score.json").write_text(
+            failed.model_dump_json(indent=2) + "\n", encoding="utf-8"
+        )
+        print(failed.model_dump_json())
+        return
+
+    prompt = fill_placeholders(prompt)
     cases = json.loads((ROOT / "evaluation_cases.json").read_text(encoding="utf-8"))
     reference = (ROOT / "vasanth_reference.md").read_text(encoding="utf-8")
     model = os.getenv("MODEL", "openai/gpt-4o")
@@ -370,7 +475,9 @@ async def main_async(args: argparse.Namespace) -> None:
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "outputs.json").write_text(
-        json.dumps(last_outputs, indent=2) + "\n", encoding="utf-8"
+        json.dumps({k: v.model_dump() for k, v in last_outputs.items()}, indent=2)
+        + "\n",
+        encoding="utf-8",
     )
     (args.output_dir / "score.json").write_text(
         evaluation.model_dump_json(indent=2) + "\n", encoding="utf-8"
@@ -383,6 +490,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--policy", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--mode", choices=("policy", "full"), default="policy")
     asyncio.run(main_async(parser.parse_args()))
 
 

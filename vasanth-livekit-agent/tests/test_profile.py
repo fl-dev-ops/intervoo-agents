@@ -13,10 +13,21 @@ import pytest
 CONFIG_PATH = Path(__file__).resolve().parents[1] / "config" / "agents.json"
 
 
-def test_catalog_loads_only_mock_interview() -> None:
+def test_catalog_loads_mock_interview_variants() -> None:
     catalog = load_profile_catalog(CONFIG_PATH)
 
-    assert set(catalog) == {"mock_interview"}
+    assert set(catalog) == {"mock_interview", "mock_interview_v2"}
+
+
+def test_v2_profile_differs_only_by_prompt() -> None:
+    catalog = load_profile_catalog(CONFIG_PATH)
+    v1, v2 = catalog["mock_interview"], catalog["mock_interview_v2"]
+
+    # v2 is an A/B of the prompt alone: same agent, same voice, same tools.
+    assert v2.prompt_url == "prompts/interview/vasanth_v2.md"
+    assert v1.prompt_url == "prompts/interview/vasanth.md"
+    assert v2.agent_type == v1.agent_type
+    assert (v2.voice_speaker, v2.voice_dict_id) == (v1.voice_speaker, v1.voice_dict_id)
 
 
 def test_mock_interview_profile_enables_required_tools() -> None:
