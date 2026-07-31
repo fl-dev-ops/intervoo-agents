@@ -2,8 +2,8 @@
   "task": "vasanth-v2-full-prompt",
   "created_at": "2026-07-31T06:40:22.011102Z",
   "benchmark": "13 decision-point cases (8 probe/depth + 5 flow/tool), deterministic contract gate, 6 criteria, 5 replicates",
-  "best_score": 0.7915,
-  "best_run": 6,
+  "best_score": 0.7786,
+  "best_run": "v2 on the 50-case set",
   "runs": [
     {
       "run": 0,
@@ -192,6 +192,57 @@
       "calls mark_question_started instead of open_question_editor for a code-viewer question",
       "skips inspect_resume_screen when a candidate abandons resume sharing",
       "reveals the rules-of-hooks rule on a confidently wrong answer"
+    ]
+  },
+  "final_ranking_50_cases": {
+    "at": "2026-07-31T07:47:16.223873Z",
+    "method": "50 validated cases, 3 replicates, same harness",
+    "results": {
+      "v1": {
+        "score": 0.6673,
+        "stdev": 0.0127,
+        "replicates": [
+          0.6562,
+          0.6812,
+          0.6646
+        ]
+      },
+      "v2": {
+        "score": 0.7786,
+        "stdev": 0.0243,
+        "replicates": [
+          0.7507,
+          0.7957,
+          0.7893
+        ]
+      },
+      "v3": {
+        "score": 0.709,
+        "stdev": 0.0088,
+        "replicates": [
+          0.702,
+          0.7062,
+          0.7189
+        ]
+      }
+    },
+    "winner": "v2",
+    "verdict": "v2 0.779 beats v3 0.709 by 0.070, roughly 4x the standard error of the difference, and wins on every one of the six criteria. This overturns the earlier read that v3 was ahead: that comparison ran on the 16-case set, which contained the phase-label, id:none and tool-argument bugs and could not separate the two prompts. v1 is last at 0.667.",
+    "v3_only_advantage": "static_plan_supplied 0.11 -> 1.00. v2 has no {interview_plan} placeholder so it cannot use a plan supplied with the session at all. That capability is real and v2 lacks it.",
+    "v3_regressions": {
+      "candidate_asks_for_the_answer": "1.00 -> 0.08",
+      "plan_args_carry_no_pii": "1.00 -> 0.40",
+      "dont_know_first_time": "0.62 -> 0.27",
+      "stuck_after_one_rescue": "0.99 -> 0.66",
+      "candidate_rambling": "0.99 -> 0.72"
+    },
+    "failed_by_all": [
+      "wrong_twice_then_close",
+      "partial_still_reasoning",
+      "code_viewer_verbal_question",
+      "fresher_names_a_field",
+      "wrong_confident_assertion",
+      "resume_share_declined_midway"
     ]
   }
 }
