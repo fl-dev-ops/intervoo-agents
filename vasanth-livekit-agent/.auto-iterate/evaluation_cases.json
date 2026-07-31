@@ -2260,5 +2260,391 @@
     "expect": {
       "max_sentences": 2
     }
+  },
+  {
+    "id": "spoken_claim_contradicts_resume",
+    "grounding": "team feedback: 'Not questioning if what they spoke is appropriate \u2014 this should be validated from the resume'",
+    "setup": "mid \u00b7 react \u00b7 introduction \u00b7 resume given \u00b7 no plan",
+    "phase": "introduction",
+    "candidate": "Anand \u2014 resume shows 8 years and a Senior Engineer title at Lotusflare",
+    "plan_supplied": "",
+    "active_question": {
+      "id": "none",
+      "surface": "verbal",
+      "answer_mode": "verbal",
+      "asked": "(no plan question is active)",
+      "ground_truth": "n/a"
+    },
+    "conversation": [
+      {
+        "speaker": "interviewer",
+        "text": "Can you give a quick intro of yourself?"
+      },
+      {
+        "speaker": "candidate",
+        "text": "I'm Anand, I've completed my bachelor's, I'm currently working at Lotusflare and I have close to six years of experience."
+      }
+    ],
+    "candidate_state": {
+      "quality": "partial",
+      "depth": "surface"
+    },
+    "correct_move": "notice the gap between six years spoken and eight on the resume, and clarify it",
+    "tempting_move": "accepting the spoken number and moving on as though the resume agreed",
+    "expected_behaviour": "His resume says eight years; he just said six. That is a discrepancy worth one neutral clarifying question \u2014 it changes how the rest of the interview is calibrated. Ask about it plainly, without accusing him of anything.",
+    "must_not": [
+      "accept six years without noticing the resume says otherwise",
+      "accuse him of lying or inflating",
+      "state his years back at him as though it were settled"
+    ],
+    "expect": {
+      "max_sentences": 3,
+      "tools_forbidden": [
+        "build_interview_plan"
+      ]
+    }
+  },
+  {
+    "id": "already_told_you_the_stack",
+    "grounding": "team feedback: 'Acknowledge the tech stack, and then ask primary tech stack?'",
+    "setup": "mid \u00b7 react \u00b7 introduction \u00b7 no resume \u00b7 no plan",
+    "phase": "introduction",
+    "candidate": "Meera, who already named her stack",
+    "plan_supplied": "",
+    "active_question": {
+      "id": "none",
+      "surface": "verbal",
+      "answer_mode": "verbal",
+      "asked": "(no plan question is active)",
+      "ground_truth": "n/a"
+    },
+    "conversation": [
+      {
+        "speaker": "interviewer",
+        "text": "Can you give a quick intro of yourself?"
+      },
+      {
+        "speaker": "candidate",
+        "text": "I'm Meera, four years in, I work mainly with React and TypeScript on the frontend, with some Node on the side."
+      }
+    ],
+    "candidate_state": {
+      "quality": "strong",
+      "depth": "explained"
+    },
+    "correct_move": "move on \u2014 the stack is covered",
+    "tempting_move": "asking what her primary tech stack is, which she just answered",
+    "expected_behaviour": "She named her stack unprompted. Asking for it again is the single most common way to sound like you were not listening. Move to what is actually missing, or into the project discussion.",
+    "must_not": [
+      "ask what her primary tech stack or language is",
+      "ask which technologies she works with",
+      "ask her to repeat anything she just said"
+    ],
+    "expect": {
+      "max_sentences": 3,
+      "must_not_match": [
+        "primary (tech )?stack",
+        "which (technolog|language)",
+        "what (tech )?stack"
+      ]
+    }
+  },
+  {
+    "id": "unexpected_answer_needs_comprehension",
+    "grounding": "team feedback: 'Watering plants. \u2192 Sounds interesting. Your experience is primarily focused on frontend roles.'",
+    "setup": "mid \u00b7 react \u00b7 introduction \u00b7 resume given \u00b7 no plan",
+    "phase": "introduction",
+    "candidate": "Kiran, answering a hobby question literally",
+    "plan_supplied": "",
+    "active_question": {
+      "id": "none",
+      "surface": "verbal",
+      "answer_mode": "verbal",
+      "asked": "(no plan question is active)",
+      "ground_truth": "n/a"
+    },
+    "conversation": [
+      {
+        "speaker": "interviewer",
+        "text": "What do you like doing outside of work?"
+      },
+      {
+        "speaker": "candidate",
+        "text": "Watering plants."
+      }
+    ],
+    "candidate_state": {
+      "quality": "off_track",
+      "depth": "surface"
+    },
+    "correct_move": "respond to what he actually said, briefly, then move the interview along",
+    "tempting_move": "emitting a canned line that ignores the answer and asserts something about his career instead",
+    "expected_behaviour": "He gave a short, genuine, slightly unexpected answer. Respond to that answer specifically \u2014 briefly and naturally \u2014 then move on. A generic 'sounds interesting' followed by an unrelated statement about his experience shows you did not process what he said.",
+    "must_not": [
+      "follow 'sounds interesting' with a statement about his career or experience",
+      "assert what his experience is primarily focused on",
+      "ignore the answer entirely"
+    ],
+    "expect": {
+      "max_sentences": 3,
+      "must_not_match": [
+        "primarily focused on",
+        "your experience is"
+      ]
+    }
+  },
+  {
+    "id": "no_canned_transition",
+    "grounding": "team feedback: \"'Let's continue verbally' \u2014 is this static???\"",
+    "setup": "mid \u00b7 react \u00b7 core technical \u00b7 resume given \u00b7 plan given",
+    "phase": "core_technical",
+    "candidate": "Priya, finishing a project answer before the first plan question",
+    "plan_supplied": "",
+    "active_question": {
+      "id": "q3",
+      "surface": "verbal",
+      "answer_mode": "verbal",
+      "asked": "Explain how the event loop works in JavaScript.",
+      "ground_truth": "first plan question"
+    },
+    "conversation": [
+      {
+        "speaker": "interviewer",
+        "text": "And what part did you own there?"
+      },
+      {
+        "speaker": "candidate",
+        "text": "The filtering and the table virtualisation, mostly."
+      }
+    ],
+    "candidate_state": {
+      "quality": "strong",
+      "depth": "explained"
+    },
+    "correct_move": "transition in your own words, grounded in what she just said",
+    "tempting_move": "reciting a stock phrase like 'let us continue verbally' that names the mechanics of the session",
+    "expected_behaviour": "Move into the first plan question. The transition should sound like a person picking up from her answer, not a stock phrase describing the format. Never narrate the mechanics of the session to the candidate.",
+    "must_not": [
+      "say anything describing the format such as continuing verbally or moving to the verbal round",
+      "announce what kind of question is coming"
+    ],
+    "expect": {
+      "must_not_match": [
+        "continue verbally",
+        "verbal (round|section|part)",
+        "next (we|I) (will|'ll) (ask|do)"
+      ],
+      "max_sentences": 3
+    }
+  },
+  {
+    "id": "coding_question_must_open_editor",
+    "grounding": "team feedback: 'How would you approach merging two sorted arrays step-by-step? (it is discussing verbally), this has to be a coding question'",
+    "setup": "mid \u00b7 dsa \u00b7 core technical \u00b7 resume given \u00b7 plan given",
+    "phase": "core_technical",
+    "candidate": "Rahul, next plan item is a coding task",
+    "plan_supplied": "",
+    "active_question": {
+      "id": "q20",
+      "surface": "code editor",
+      "answer_mode": "surface",
+      "asked": "How would you approach merging two sorted arrays step-by-step?",
+      "ground_truth": "written coding question despite the conversational phrasing"
+    },
+    "conversation": [
+      {
+        "speaker": "interviewer",
+        "text": "Explain how the event loop works in JavaScript."
+      },
+      {
+        "speaker": "candidate",
+        "text": "The stack runs synchronous work, then the loop pulls from the task queue once it empties."
+      },
+      {
+        "speaker": "interviewer",
+        "text": "Good good."
+      },
+      {
+        "speaker": "candidate",
+        "text": "Yeah."
+      }
+    ],
+    "candidate_state": {
+      "quality": "strong",
+      "depth": "explained"
+    },
+    "correct_move": "open the editor for the coding question and have him write it",
+    "tempting_move": "discussing the algorithm verbally because the question is phrased as 'how would you approach'",
+    "expected_behaviour": "The next plan question is a coding task, whatever its wording suggests. Open the editor for its id and have him write the solution. A question phrased as 'how would you approach' is still a coding question when the plan says so.",
+    "must_not": [
+      "discuss the algorithm verbally instead of opening the editor",
+      "ask him to describe the approach out loud as the answer",
+      "call mark_question_started"
+    ],
+    "expect": {
+      "tools_required": [
+        "open_question_editor"
+      ],
+      "tools_forbidden": [
+        "mark_question_started"
+      ]
+    }
+  },
+  {
+    "id": "advance_without_being_asked",
+    "grounding": "team feedback: 'Not moving to next question unless we ask it to'",
+    "setup": "mid \u00b7 react \u00b7 core technical \u00b7 resume given \u00b7 plan given",
+    "phase": "core_technical",
+    "candidate": "Priya, answered and now waiting",
+    "plan_supplied": "",
+    "active_question": {
+      "id": "q3",
+      "surface": "verbal",
+      "answer_mode": "verbal",
+      "asked": "Explain how the event loop works in JavaScript.",
+      "ground_truth": "next plan question"
+    },
+    "conversation": [
+      {
+        "speaker": "interviewer",
+        "text": "And when would memoising it not help?"
+      },
+      {
+        "speaker": "candidate",
+        "text": "If the parent passes a new object each render the comparison fails, so you stabilise those first."
+      },
+      {
+        "speaker": "interviewer",
+        "text": "Got it."
+      },
+      {
+        "speaker": "candidate",
+        "text": "So\u2026 should I go on to something else?"
+      }
+    ],
+    "candidate_state": {
+      "quality": "strong",
+      "depth": "explained"
+    },
+    "correct_move": "move to the next plan question on your own initiative",
+    "tempting_move": "waiting for her to drive, or asking her what she would like to do next",
+    "expected_behaviour": "The thread is finished and she is waiting on you. You drive the interview, not her. Move to the next plan question through the right tool for its surface. Never ask the candidate what to do next.",
+    "must_not": [
+      "ask her what she would like to do next",
+      "ask whether she is ready to continue",
+      "wait without moving the interview forward"
+    ],
+    "expect": {
+      "tools_required": [
+        "mark_question_started"
+      ],
+      "must_not_match": [
+        "what would you like",
+        "shall we|would you like to (move|continue)",
+        "are you ready"
+      ]
+    }
+  },
+  {
+    "id": "dont_close_before_coding_round",
+    "grounding": "team feedback: 'Closing after verbal session, not moving to coding or machine code'",
+    "setup": "mid \u00b7 react \u00b7 core technical \u00b7 resume given \u00b7 plan given",
+    "phase": "core_technical",
+    "candidate": "Priya, verbal questions done, two coding questions still in the plan",
+    "plan_supplied": "1. [id: q3] (verbal) Explain how the event loop works in JavaScript.\n2. [id: q4] (code editor, javascript, written answer) Write a closure that returns a counter.\n3. [id: q9] (code editor, javascript, written answer) Implement a debounce function.",
+    "active_question": {
+      "id": "q4",
+      "surface": "code editor",
+      "answer_mode": "surface",
+      "asked": "Write a closure that returns a function which increments a counter each time it is called.",
+      "ground_truth": "next plan question is a coding task"
+    },
+    "conversation": [
+      {
+        "speaker": "interviewer",
+        "text": "Explain how the event loop works in JavaScript."
+      },
+      {
+        "speaker": "candidate",
+        "text": "Stack runs sync work, then the loop pulls from the task queue, microtasks first."
+      },
+      {
+        "speaker": "interviewer",
+        "text": "Good good."
+      },
+      {
+        "speaker": "candidate",
+        "text": "That's all I have on that one."
+      }
+    ],
+    "candidate_state": {
+      "quality": "strong",
+      "depth": "explained"
+    },
+    "correct_move": "move to the next plan question, which is a coding task",
+    "tempting_move": "handing off to the evaluator because the spoken questions are finished",
+    "expected_behaviour": "The verbal questions are done but the plan still has coding questions. The interview is not over. Move to the next plan item and open the editor for it. finish_interview is only for when the plan is complete or time has run out.",
+    "must_not": [
+      "call finish_interview",
+      "tell her the interview is finished",
+      "summarise or give feedback"
+    ],
+    "expect": {
+      "tools_forbidden": [
+        "finish_interview",
+        "end_call"
+      ],
+      "tools_required": [
+        "open_question_editor"
+      ]
+    }
+  },
+  {
+    "id": "agent_answers_its_own_question",
+    "grounding": "team feedback: 'Agent answering its own question (same as we faced earlier)'",
+    "setup": "mid \u00b7 javascript \u00b7 core technical \u00b7 resume given \u00b7 plan given",
+    "phase": "core_technical",
+    "candidate": "Anand, who has not answered yet",
+    "plan_supplied": "",
+    "active_question": {
+      "id": "q2",
+      "surface": "code viewer",
+      "answer_mode": "verbal",
+      "asked": "Look at the code shown on your screen. What will it output, and why?",
+      "starter_code": "console.log(a);\nvar a = 5;",
+      "ground_truth": "undefined \u2014 the declaration is hoisted, the assignment is not"
+    },
+    "conversation": [
+      {
+        "speaker": "interviewer",
+        "text": "Look at the code shown on your screen. What will it output, and why?"
+      },
+      {
+        "speaker": "candidate",
+        "text": "Hmm, let me think about it for a second."
+      }
+    ],
+    "candidate_state": {
+      "quality": "silent",
+      "depth": "surface"
+    },
+    "correct_move": "wait \u2014 he is still thinking",
+    "tempting_move": "filling the pause by explaining the answer yourself",
+    "expected_behaviour": "He has asked for a moment to think. Say nothing, or acknowledge and leave the space. Silence is normal and he has not had a chance to answer. Filling it with the explanation ends the question before he attempts it.",
+    "must_not": [
+      "explain what the code does",
+      "state the output",
+      "ask a different question",
+      "give a hint before he has attempted anything"
+    ],
+    "expect": {
+      "max_sentences": 3,
+      "max_words": 25,
+      "must_not_match": [
+        "\\bundefined\\b",
+        "hoist",
+        "\\bfive\\b|\\b5\\b"
+      ]
+    }
   }
 ]

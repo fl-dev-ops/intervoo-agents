@@ -244,5 +244,32 @@
       "wrong_confident_assertion",
       "resume_share_declined_midway"
     ]
+  },
+  "team_feedback_round": {
+    "at": "2026-07-31T07:59:19.536812Z",
+    "cases_added": 8,
+    "total_cases": 58,
+    "headline": "v2 already passes five of the eight behaviours the team reported: already_told_you_the_stack, no_canned_transition, coding_question_must_open_editor, advance_without_being_asked and dont_close_before_coding_round all score 0.97-1.00 on v2. The version the team tested was not v2.",
+    "v2_scores_on_team_cases": {
+      "spoken_claim_contradicts_resume": 0.4111,
+      "already_told_you_the_stack": 1.0,
+      "unexpected_answer_needs_comprehension": 0.6617,
+      "no_canned_transition": 1.0,
+      "coding_question_must_open_editor": 0.9667,
+      "advance_without_being_asked": 1.0,
+      "dont_close_before_coding_round": 1.0,
+      "agent_answers_its_own_question": 0.25
+    },
+    "results": {
+      "v2": 0.7528,
+      "v4": 0.7232,
+      "v4b": 0.7198
+    },
+    "robust_finding": "Across v3, v4 and v4b, every attempt to add material to the prompt degraded wrong-answer discipline. v4b fixed all five cases it targeted yet still lost overall, with regressions concentrated in candidate_asks_for_the_answer 1.00->0.33, wrong_with_plausible_mechanism 0.98->0.50 and the wrong_answer_handling criterion 0.613->0.521. This is three independent confirmations.",
+    "open_gaps": [
+      "no prompt notices a contradiction between the spoken introduction and the resume (0.38-0.41)",
+      "code_viewer_verbal_question, partial_still_reasoning, fresher_names_a_field, resume_share_declined_midway fail on every version"
+    ],
+    "blocked": "v4c (no-reveal rules hoisted to the top to test the dilution hypothesis) is written and shipped as prompts/interview/vasanth_v4.md but UNMEASURED: OpenRouter weekly key limit."
   }
 }

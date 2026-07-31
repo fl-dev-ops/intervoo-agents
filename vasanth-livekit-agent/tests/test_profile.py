@@ -16,7 +16,12 @@ CONFIG_PATH = Path(__file__).resolve().parents[1] / "config" / "agents.json"
 def test_catalog_loads_mock_interview_variants() -> None:
     catalog = load_profile_catalog(CONFIG_PATH)
 
-    assert set(catalog) == {"mock_interview", "mock_interview_v2", "mock_interview_v3"}
+    assert set(catalog) == {
+        "mock_interview",
+        "mock_interview_v2",
+        "mock_interview_v3",
+        "mock_interview_v4",
+    }
 
 
 def test_prompt_variants_differ_only_by_prompt() -> None:
@@ -28,6 +33,7 @@ def test_prompt_variants_differ_only_by_prompt() -> None:
     for key, expected in [
         ("mock_interview_v2", "prompts/interview/vasanth_v2.md"),
         ("mock_interview_v3", "prompts/interview/vasanth_v3.md"),
+        ("mock_interview_v4", "prompts/interview/vasanth_v4.md"),
     ]:
         variant = catalog[key]
         assert variant.prompt_url == expected

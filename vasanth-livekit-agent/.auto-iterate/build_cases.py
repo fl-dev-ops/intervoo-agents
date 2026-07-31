@@ -995,6 +995,151 @@ case(
     quality="strong", depth="with_reasoning",
 )
 
+# ─────────────── J. From live-session feedback (team, this round) ───────────────
+
+case(
+    "spoken_claim_contradicts_resume",
+    "team feedback: 'Not questioning if what they spoke is appropriate — this should be validated from the resume'",
+    "mid · react · introduction · resume given · no plan",
+    "Anand — resume shows 8 years and a Senior Engineer title at Lotusflare",
+    [("interviewer", "Can you give a quick intro of yourself?"),
+     ("candidate", "I'm Anand, I've completed my bachelor's, I'm currently working at Lotusflare and I have close to six years of experience.")],
+    "notice the gap between six years spoken and eight on the resume, and clarify it",
+    "accepting the spoken number and moving on as though the resume agreed",
+    "His resume says eight years; he just said six. That is a discrepancy worth one neutral clarifying question — it changes how the rest of the interview is calibrated. Ask about it plainly, without accusing him of anything.",
+    ["accept six years without noticing the resume says otherwise", "accuse him of lying or inflating", "state his years back at him as though it were settled"],
+    "introduction",
+    expect={"max_sentences": 3, "tools_forbidden": ["build_interview_plan"]},
+    quality="partial", depth="surface",
+)
+
+case(
+    "already_told_you_the_stack",
+    "team feedback: 'Acknowledge the tech stack, and then ask primary tech stack?'",
+    "mid · react · introduction · no resume · no plan",
+    "Meera, who already named her stack",
+    [("interviewer", "Can you give a quick intro of yourself?"),
+     ("candidate", "I'm Meera, four years in, I work mainly with React and TypeScript on the frontend, with some Node on the side.")],
+    "move on — the stack is covered",
+    "asking what her primary tech stack is, which she just answered",
+    "She named her stack unprompted. Asking for it again is the single most common way to sound like you were not listening. Move to what is actually missing, or into the project discussion.",
+    ["ask what her primary tech stack or language is", "ask which technologies she works with", "ask her to repeat anything she just said"],
+    "introduction",
+    expect={"max_sentences": 3, "must_not_match": [r"primary (tech )?stack", r"which (technolog|language)", r"what (tech )?stack"]},
+    quality="strong", depth="explained",
+)
+
+case(
+    "unexpected_answer_needs_comprehension",
+    "team feedback: 'Watering plants. → Sounds interesting. Your experience is primarily focused on frontend roles.'",
+    "mid · react · introduction · resume given · no plan",
+    "Kiran, answering a hobby question literally",
+    [("interviewer", "What do you like doing outside of work?"),
+     ("candidate", "Watering plants.")],
+    "respond to what he actually said, briefly, then move the interview along",
+    "emitting a canned line that ignores the answer and asserts something about his career instead",
+    "He gave a short, genuine, slightly unexpected answer. Respond to that answer specifically — briefly and naturally — then move on. A generic 'sounds interesting' followed by an unrelated statement about his experience shows you did not process what he said.",
+    ["follow 'sounds interesting' with a statement about his career or experience", "assert what his experience is primarily focused on", "ignore the answer entirely"],
+    "introduction",
+    expect={"max_sentences": 3, "must_not_match": [r"primarily focused on", r"your experience is"]},
+    quality="off_track", depth="surface",
+)
+
+case(
+    "no_canned_transition",
+    "team feedback: \"'Let's continue verbally' — is this static???\"",
+    "mid · react · core technical · resume given · plan given",
+    "Priya, finishing a project answer before the first plan question",
+    [("interviewer", "And what part did you own there?"),
+     ("candidate", "The filtering and the table virtualisation, mostly.")],
+    "transition in your own words, grounded in what she just said",
+    "reciting a stock phrase like 'let us continue verbally' that names the mechanics of the session",
+    "Move into the first plan question. The transition should sound like a person picking up from her answer, not a stock phrase describing the format. Never narrate the mechanics of the session to the candidate.",
+    ["say anything describing the format such as continuing verbally or moving to the verbal round", "announce what kind of question is coming"],
+    "core_technical",
+    question=verbal("q3", "Explain how the event loop works in JavaScript.", "first plan question"),
+    expect={"must_not_match": [r"continue verbally", r"verbal (round|section|part)", r"next (we|I) (will|'ll) (ask|do)"], "max_sentences": 3},
+    quality="strong", depth="explained",
+)
+
+case(
+    "coding_question_must_open_editor",
+    "team feedback: 'How would you approach merging two sorted arrays step-by-step? (it is discussing verbally), this has to be a coding question'",
+    "mid · dsa · core technical · resume given · plan given",
+    "Rahul, next plan item is a coding task",
+    [("interviewer", "Explain how the event loop works in JavaScript."),
+     ("candidate", "The stack runs synchronous work, then the loop pulls from the task queue once it empties."),
+     ("interviewer", "Good good."),
+     ("candidate", "Yeah.")],
+    "open the editor for the coding question and have him write it",
+    "discussing the algorithm verbally because the question is phrased as 'how would you approach'",
+    "The next plan question is a coding task, whatever its wording suggests. Open the editor for its id and have him write the solution. A question phrased as 'how would you approach' is still a coding question when the plan says so.",
+    ["discuss the algorithm verbally instead of opening the editor", "ask him to describe the approach out loud as the answer", "call mark_question_started"],
+    "core_technical",
+    question={"id": "q20", "surface": "code editor", "answer_mode": "surface",
+              "asked": "How would you approach merging two sorted arrays step-by-step?",
+              "ground_truth": "written coding question despite the conversational phrasing"},
+    expect={"tools_required": ["open_question_editor"], "tools_forbidden": ["mark_question_started"]},
+    quality="strong", depth="explained",
+)
+
+case(
+    "advance_without_being_asked",
+    "team feedback: 'Not moving to next question unless we ask it to'",
+    "mid · react · core technical · resume given · plan given",
+    "Priya, answered and now waiting",
+    [("interviewer", "And when would memoising it not help?"),
+     ("candidate", "If the parent passes a new object each render the comparison fails, so you stabilise those first."),
+     ("interviewer", "Got it."),
+     ("candidate", "So… should I go on to something else?")],
+    "move to the next plan question on your own initiative",
+    "waiting for her to drive, or asking her what she would like to do next",
+    "The thread is finished and she is waiting on you. You drive the interview, not her. Move to the next plan question through the right tool for its surface. Never ask the candidate what to do next.",
+    ["ask her what she would like to do next", "ask whether she is ready to continue", "wait without moving the interview forward"],
+    "core_technical",
+    question=verbal("q3", "Explain how the event loop works in JavaScript.", "next plan question"),
+    expect={"tools_required": ["mark_question_started"], "must_not_match": [r"what would you like", r"shall we|would you like to (move|continue)", r"are you ready"]},
+    quality="strong", depth="explained",
+)
+
+case(
+    "dont_close_before_coding_round",
+    "team feedback: 'Closing after verbal session, not moving to coding or machine code'",
+    "mid · react · core technical · resume given · plan given",
+    "Priya, verbal questions done, two coding questions still in the plan",
+    [("interviewer", "Explain how the event loop works in JavaScript."),
+     ("candidate", "Stack runs sync work, then the loop pulls from the task queue, microtasks first."),
+     ("interviewer", "Good good."),
+     ("candidate", "That's all I have on that one.")],
+    "move to the next plan question, which is a coding task",
+    "handing off to the evaluator because the spoken questions are finished",
+    "The verbal questions are done but the plan still has coding questions. The interview is not over. Move to the next plan item and open the editor for it. finish_interview is only for when the plan is complete or time has run out.",
+    ["call finish_interview", "tell her the interview is finished", "summarise or give feedback"],
+    "core_technical",
+    plan_supplied="1. [id: q3] (verbal) Explain how the event loop works in JavaScript.\n2. [id: q4] (code editor, javascript, written answer) Write a closure that returns a counter.\n3. [id: q9] (code editor, javascript, written answer) Implement a debounce function.",
+    question={"id": "q4", "surface": "code editor", "answer_mode": "surface",
+              "asked": "Write a closure that returns a function which increments a counter each time it is called.",
+              "ground_truth": "next plan question is a coding task"},
+    expect={"tools_forbidden": ["finish_interview", "end_call"], "tools_required": ["open_question_editor"]},
+    quality="strong", depth="explained",
+)
+
+case(
+    "agent_answers_its_own_question",
+    "team feedback: 'Agent answering its own question (same as we faced earlier)'",
+    "mid · javascript · core technical · resume given · plan given",
+    "Anand, who has not answered yet",
+    [("interviewer", "Look at the code shown on your screen. What will it output, and why?"),
+     ("candidate", "Hmm, let me think about it for a second.")],
+    "wait — he is still thinking",
+    "filling the pause by explaining the answer yourself",
+    "He has asked for a moment to think. Say nothing, or acknowledge and leave the space. Silence is normal and he has not had a chance to answer. Filling it with the explanation ends the question before he attempts it.",
+    ["explain what the code does", "state the output", "ask a different question", "give a hint before he has attempted anything"],
+    "core_technical", question=_HOIST,
+    expect={"max_sentences": 3, "max_words": 25, "must_not_match": [r"\bundefined\b", r"hoist", r"\bfive\b|\b5\b"]},
+    quality="silent", depth="surface",
+)
+
 if __name__ == "__main__":
     out = Path(__file__).resolve().parent / "evaluation_cases.json"
     ids = [c["id"] for c in CASES]
