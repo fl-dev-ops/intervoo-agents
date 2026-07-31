@@ -71,11 +71,37 @@
       ],
       "decision": "discard",
       "note": "Flat within noise (0.8435 vs 0.8447). strong_answer +0.08 and code_question +0.08 but stuck_after_one_rescue -0.12 and build_plan -0.12. self_contradiction unmoved."
+    },
+    {
+      "run": 4,
+      "timestamp": "2026-07-31T07:01:25.946938Z",
+      "experiment": "v3: question source abstracted (static {interview_plan} or dynamic build_interview_plan) plus the macro interview loop, calibration, anchors, and turn-into-evidence from the behaviour analysis",
+      "score": 0.784,
+      "stdev": 0.0471,
+      "replicates": [
+        0.8206,
+        0.7108,
+        0.7623,
+        0.8105,
+        0.816
+      ],
+      "comparison": {
+        "v2_on_same_17_cases": 0.748,
+        "v2_stdev": 0.0321
+      },
+      "decision": "keep, but measured against buggy cases",
+      "note": "v3 0.784 vs v2 0.748 overall. Behaviour gains are large: strong_answer_with_reasoning 0.68->1.00, code_question_opens_editor 0.78->0.99, unsupported_optimization_claim 0.77->0.93, return_to_breadth 0.96. The three plan-source cases regressed, but diagnosis showed that was a case bug: they were labelled phase=introduction while their conversation shows the introduction finished, so the model correctly followed v3's stronger 'Opening. Start with exactly...' rule and produced the greeting. Phase labels corrected and anchor_from_fundamentals dropped (anchor selection happens in build_interview_plan's arguments, not in a spoken turn). The re-run on the corrected 16 cases did not complete: OpenRouter weekly key limit."
     }
   ],
   "notes": [
     "v2 beats v1 by +0.178 (0.845 vs 0.667) and is far more consistent (stdev 0.031 vs 0.076).",
     "self_contradiction is the one case no experiment moved: the generated turn is byte-identical across runs 2 and 3, and run 3 placed the exact contradiction pattern in the prompt verbatim without effect. This reads as a move-selection limit of the generator, not a missing instruction.",
     "code_question_opens_editor still flags: the prompt calls open_question_editor correctly but paraphrases the returned question_text instead of speaking it verbatim."
-  ]
+  ],
+  "blocked": {
+    "at": "2026-07-31T07:01:25.946938Z",
+    "reason": "OpenRouter key weekly limit exceeded (403)",
+    "unmeasured": "v3 on the 16 corrected cases, and v2 re-run for a like-for-like comparison",
+    "expectation": "v3 should rise, since three of its four flagged cases were depressed by the phase-label bug. Unverified."
+  }
 }

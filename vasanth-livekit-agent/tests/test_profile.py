@@ -16,18 +16,26 @@ CONFIG_PATH = Path(__file__).resolve().parents[1] / "config" / "agents.json"
 def test_catalog_loads_mock_interview_variants() -> None:
     catalog = load_profile_catalog(CONFIG_PATH)
 
-    assert set(catalog) == {"mock_interview", "mock_interview_v2"}
+    assert set(catalog) == {"mock_interview", "mock_interview_v2", "mock_interview_v3"}
 
 
-def test_v2_profile_differs_only_by_prompt() -> None:
+def test_prompt_variants_differ_only_by_prompt() -> None:
     catalog = load_profile_catalog(CONFIG_PATH)
-    v1, v2 = catalog["mock_interview"], catalog["mock_interview_v2"]
+    v1 = catalog["mock_interview"]
 
-    # v2 is an A/B of the prompt alone: same agent, same voice, same tools.
-    assert v2.prompt_url == "prompts/interview/vasanth_v2.md"
     assert v1.prompt_url == "prompts/interview/vasanth.md"
-    assert v2.agent_type == v1.agent_type
-    assert (v2.voice_speaker, v2.voice_dict_id) == (v1.voice_speaker, v1.voice_dict_id)
+    # Each variant is an A/B of the prompt alone: same agent, same voice, same tools.
+    for key, expected in [
+        ("mock_interview_v2", "prompts/interview/vasanth_v2.md"),
+        ("mock_interview_v3", "prompts/interview/vasanth_v3.md"),
+    ]:
+        variant = catalog[key]
+        assert variant.prompt_url == expected
+        assert variant.agent_type == v1.agent_type
+        assert (variant.voice_speaker, variant.voice_dict_id) == (
+            v1.voice_speaker,
+            v1.voice_dict_id,
+        )
 
 
 def test_mock_interview_profile_enables_required_tools() -> None:

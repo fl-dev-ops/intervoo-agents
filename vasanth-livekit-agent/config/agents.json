@@ -25,6 +25,19 @@
                 "end_call": true,
                 "editor_events": true
             }
+        },
+        "mock_interview_v3": {
+            "agent_type": "mock-interview-agent",
+            "prompt_url": "prompts/interview/vasanth_v3.md",
+            "initial_reply": "Follow the Opening in your system instructions now. Use the candidate's actual name, then ask the exact introduction question specified there.",
+            "voice": {
+                "speaker": "rohan",
+                "dict_id": "p_fcfdd23b"
+            },
+            "tools": {
+                "end_call": true,
+                "editor_events": true
+            }
         }
     }
 }

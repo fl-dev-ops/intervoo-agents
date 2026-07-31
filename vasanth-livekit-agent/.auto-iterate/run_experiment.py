@@ -156,6 +156,16 @@ def fill_placeholders(prompt: str) -> str:
     )
 
 
+def apply_case_plan(prompt: str, case: dict[str, Any]) -> str:
+    """Fill the supplied-plan placeholder for this case.
+
+    Two cases differ only in whether the session handed the agent a plan, so this cannot
+    be substituted once for the whole run. A prompt with no placeholder is left alone and
+    simply cannot see a supplied plan, which is exactly what the cases are there to catch.
+    """
+    return prompt.replace("{interview_plan}", case.get("plan_supplied", ""))
+
+
 def render_case(case: dict[str, Any]) -> str:
     question = case["active_question"]
     lines = [
@@ -197,7 +207,7 @@ async def generate_turn(
         temperature=0,
         seed=seed,
         messages=[
-            {"role": "system", "content": prompt},
+            {"role": "system", "content": apply_case_plan(prompt, case)},
             {"role": "user", "content": render_case(case)},
         ],
         response_format={

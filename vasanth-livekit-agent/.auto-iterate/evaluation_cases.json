@@ -350,13 +350,13 @@
   },
   {
     "id": "build_plan_after_intro",
-    "phase": "introduction",
+    "phase": "introduction_complete",
     "candidate": "Priya, 3 years, React developer",
     "active_question": {
       "id": "none",
       "surface": "verbal",
       "answer_mode": "verbal",
-      "asked": "(introduction complete)",
+      "asked": "(the introduction, project discussion, and project-grounded question are all finished)",
       "ground_truth": "the plan is built once, here, via build_interview_plan"
     },
     "conversation": [
@@ -471,6 +471,137 @@
       "give a score or verdict",
       "call end_call",
       "ask another question"
+    ]
+  },
+  {
+    "id": "static_plan_supplied",
+    "phase": "introduction_complete",
+    "candidate": "Priya, 3 years, React developer",
+    "plan_supplied": "1. [id: q2] (code viewer, javascript, verbal answer) What will this output, and why?\n2. [id: q3] (verbal) Explain how the event loop works in JavaScript.",
+    "active_question": {
+      "id": "none",
+      "surface": "verbal",
+      "answer_mode": "verbal",
+      "asked": "(the introduction, project discussion, and project-grounded question are all finished)",
+      "ground_truth": "a plan is already available, so no plan needs building"
+    },
+    "conversation": [
+      {
+        "speaker": "interviewer",
+        "text": "How did you keep that filter state in sync across the two panels?"
+      },
+      {
+        "speaker": "candidate",
+        "text": "I lifted it into a context provider so both panels read the same source, and memoised the derived list."
+      },
+      {
+        "speaker": "interviewer",
+        "text": "Got it. Sure sure."
+      },
+      {
+        "speaker": "candidate",
+        "text": "Yeah, that was the main piece."
+      }
+    ],
+    "candidate_state": {
+      "quality": "strong",
+      "depth": "explained"
+    },
+    "expected_behaviour": "The introduction is complete AND a plan was supplied with the session, shown above. Use it: begin its first question through the appropriate tool. Building a second plan would discard the one the session provided.",
+    "must_not": [
+      "call build_interview_plan",
+      "invent a question that is not in the supplied plan",
+      "ask another project question"
+    ]
+  },
+  {
+    "id": "no_plan_supplied_build_it",
+    "phase": "introduction_complete",
+    "candidate": "Priya, 3 years, React developer",
+    "plan_supplied": "",
+    "active_question": {
+      "id": "none",
+      "surface": "verbal",
+      "answer_mode": "verbal",
+      "asked": "(the introduction, project discussion, and project-grounded question are all finished)",
+      "ground_truth": "no plan is available, so one must be built from the question bank"
+    },
+    "conversation": [
+      {
+        "speaker": "interviewer",
+        "text": "How did you keep that filter state in sync across the two panels?"
+      },
+      {
+        "speaker": "candidate",
+        "text": "I lifted it into a context provider so both panels read the same source, and memoised the derived list."
+      },
+      {
+        "speaker": "interviewer",
+        "text": "Got it. Sure sure."
+      },
+      {
+        "speaker": "candidate",
+        "text": "Yeah, that was the main piece."
+      }
+    ],
+    "candidate_state": {
+      "quality": "strong",
+      "depth": "explained"
+    },
+    "expected_behaviour": "The introduction is complete and no plan was supplied. Build one now by calling build_interview_plan, with years_experience 3, React and JavaScript domains, and a focus phrase drawn from her stack and project \u2014 no name, no contact details.",
+    "must_not": [
+      "ask a technical question before building the plan",
+      "invent a plan without calling the tool",
+      "include her name or contact details in the focus phrase",
+      "call it more than once"
+    ]
+  },
+  {
+    "id": "return_to_breadth",
+    "phase": "core_technical",
+    "candidate": "Anubhav, 4 years, JavaScript",
+    "active_question": {
+      "id": "q3",
+      "surface": "verbal",
+      "answer_mode": "verbal",
+      "asked": "Explain how the event loop works in JavaScript.",
+      "ground_truth": "no single right answer; the topic has been fully evidenced across three exchanges"
+    },
+    "conversation": [
+      {
+        "speaker": "interviewer",
+        "text": "Explain how the event loop works in JavaScript."
+      },
+      {
+        "speaker": "candidate",
+        "text": "The stack runs synchronous work; when it empties the loop pulls from the task queue, and microtasks drain first."
+      },
+      {
+        "speaker": "interviewer",
+        "text": "Good. Where have you actually seen that matter?"
+      },
+      {
+        "speaker": "candidate",
+        "text": "We had a spinner that never painted because a promise chain kept the microtask queue busy, so the render never got a frame. We broke it up with a setTimeout."
+      },
+      {
+        "speaker": "interviewer",
+        "text": "And why did setTimeout fix it?"
+      },
+      {
+        "speaker": "candidate",
+        "text": "It's a macrotask, so it queues after the microtasks drain and lets the browser paint in between. If we'd used queueMicrotask it would have made it worse."
+      }
+    ],
+    "candidate_state": {
+      "quality": "strong",
+      "depth": "with_reasoning"
+    },
+    "expected_behaviour": "Three exchanges have produced the mechanism, a real incident, and the reasoning about why the fix worked \u2014 including a correct counterexample. There is nothing left to learn about this topic. Close it and move to the next question in the plan. Staying here spends time the remaining topics need.",
+    "must_not": [
+      "ask a fourth question about the event loop, microtasks, or macrotasks",
+      "ask for another example of the same concept",
+      "ask him to restate what he already explained"
     ]
   }
 ]
