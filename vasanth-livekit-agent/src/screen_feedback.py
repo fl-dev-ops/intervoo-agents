@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -50,11 +51,12 @@ DEVIATION_ANALYSIS_PROMPT = (
     "when the visible approach has no credible path to a correct solution without "
     "changing strategy, or shows a clear conceptual misconception. Incomplete code, "
     "ordinary syntax mistakes, missing edge cases, inefficiency, and viable "
-    "alternative approaches do not qualify. If should_speak is true, briefly point "
-    "out the strategic concern and ask them to consider a different technique. Never "
-    "give the full answer. Use one or two short Socratic sentences under thirty words "
-    "with plain spoken text and no code or formatting. Do not repeat the last visual "
-    "nudge."
+    "alternative approaches do not qualify. If should_speak is true, briefly name the "
+    "strategic concern as a statement so they can reconsider their technique. Never "
+    "give the full answer. Never ask the candidate a question and never end feedback "
+    "with a question mark; this is an aside while they keep working, not a turn in the "
+    "interview. Use one or two short sentences under thirty words with plain spoken "
+    "text and no code or formatting. Do not repeat the last visual nudge."
 )
 STALL_ANALYSIS_PROMPT = (
     "You are a silent technical interview observer. The candidate has made no code "
@@ -269,10 +271,12 @@ class ScreenFeedbackRuntime:
         room: rtc.Room,
         participant_identity: str,
         timer_enabled: bool = True,
+        note_sink: Callable[[str], Awaitable[None]] | None = None,
     ) -> None:
         self._room = room
         self._participant_identity = participant_identity
         self._timer_enabled = timer_enabled
+        self._note_sink = note_sink
         self._llm = openai.LLM.with_openrouter(model=DEFAULT_OPENROUTER_MODEL)
         self._session: AgentSession | None = None
         self._active_question: dict[str, str] | None = None
@@ -1250,9 +1254,26 @@ class ScreenFeedbackRuntime:
         if not should_speak:
             return
 
-        session.say(feedback, allow_interruptions=True, add_to_chat_ctx=True)
+        # The nudge must not enter the main context as an assistant turn: the
+        # interviewer would read it as its own probe, and a candidate reply to it as
+        # the answer to the live question. It goes in as an internal note instead.
+        session.say(feedback, allow_interruptions=True, add_to_chat_ctx=False)
         self._last_feedback = feedback
         self._last_spoken_at = decision_time
+        if self._note_sink is not None:
+            question_id = snapshot.question.get("id")
+            try:
+                await self._note_sink(
+                    f'[Internal: a separate screen observer said aloud: "{feedback}". '
+                    "This was not your turn and does not open a thread. Question "
+                    f"{question_id} is still unanswered.]"
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to record screen nudge note room=%s question_id=%s",
+                    self._room.name,
+                    question_id,
+                )
 
 
 def build_screen_inspection_tool(runtime: ScreenFeedbackRuntime):

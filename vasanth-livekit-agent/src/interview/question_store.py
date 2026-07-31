@@ -119,8 +119,11 @@ class QuestionStore:
         self._questions: list[dict[str, Any]] = []
         self._by_id: dict[str, dict[str, Any]] = {}
         self._next_index = 0
+        self._last_started_id: str | None = None
         self._started_ids: set[str] = set()
-        self._reserved_ids: set[str] = set()
+        self._submitted_ids: set[str] = set()
+        self._skipped_ids: set[str] = set()
+        self._reserved_indexes: dict[str, int] = {}
         self._delivery_failed_ids: set[str] = set()
         self._initialized = False
         self._lock = RLock()
@@ -151,7 +154,12 @@ class QuestionStore:
         with self._lock:
             return [candidate_safe_question(question) for question in self._questions]
 
-    def reserve_next(self, question_id: str) -> dict[str, Any]:
+    def reserve_next(
+        self,
+        question_id: str,
+        *,
+        previous_question_abandoned: bool = False,
+    ) -> dict[str, Any]:
         """Atomically reserve the exact next question before any delivery await."""
         identifier = question_id.strip() if isinstance(question_id, str) else ""
         with self._lock:
@@ -165,7 +173,7 @@ class QuestionStore:
                     "already_started",
                     "This question has already started. Continue with the candidate's answer.",
                 )
-            if identifier in self._reserved_ids:
+            if identifier in self._reserved_indexes:
                 raise QuestionStoreError(
                     "already_starting",
                     "This question is already being presented.",
@@ -180,26 +188,66 @@ class QuestionStore:
                     "plan_complete",
                     "All planned questions have already started.",
                 )
-            expected = self._questions[self._next_index]
-            if expected["id"] != identifier:
+            index = self._index_of(identifier)
+            # Forward jumps are legal and record the passed-over questions as skipped;
+            # going backwards is not, because those questions are already behind the
+            # cursor and would reorder the plan.
+            if index < self._next_index:
+                expected = self._questions[self._next_index]
                 raise QuestionStoreError(
                     "out_of_order",
                     f"Start the next planned question using id {expected['id']}.",
                 )
-            self._reserved_ids.add(identifier)
-            return deepcopy(expected)
+            if not previous_question_abandoned and self._last_started_id is not None:
+                previous = self._by_id[self._last_started_id]
+                # Keyed off the last question actually started, not position, so a
+                # forward skip cannot gate on a question that was never asked.
+                # Whiteboard is excluded on purpose: no submit stream exists for it
+                # (evidence.store_code_answer accepts surface "code" only), so gating
+                # it would force the override on every whiteboard question.
+                if (
+                    previous.get("surface") in {"code", "choice"}
+                    and previous.get("answerMode") == "surface"
+                    and previous["id"] not in self._submitted_ids
+                ):
+                    raise QuestionStoreError(
+                        "answer_pending",
+                        "The previous written question has no submitted answer yet. Ask "
+                        "the candidate whether they have finished and submitted it, and "
+                        "have them walk through it. Only if they cannot finish, call "
+                        "start_question again with previous_question_abandoned set to true.",
+                    )
+            self._reserved_indexes[identifier] = index
+            return deepcopy(self._questions[index])
+
+    def _index_of(self, question_id: str) -> int:
+        for index, question in enumerate(self._questions):
+            if question["id"] == question_id:
+                return index
+        raise QuestionStoreError(
+            "not_found",
+            "Question id was not found in the active interview plan.",
+        )
 
     def mark_started(self, question_id: str) -> None:
         with self._lock:
-            if question_id not in self._reserved_ids:
+            index = self._reserved_indexes.pop(question_id, None)
+            if index is None:
                 raise ValueError("Question must be reserved before it is started")
-            self._reserved_ids.remove(question_id)
+            for passed_over in self._questions[self._next_index : index]:
+                self._skipped_ids.add(passed_over["id"])
             self._started_ids.add(question_id)
-            self._next_index += 1
+            self._last_started_id = question_id
+            self._next_index = index + 1
+
+    def mark_answer_submitted(self, question_id: str) -> None:
+        with self._lock:
+            if question_id in self._started_ids:
+                self._submitted_ids.add(question_id)
 
     def mark_delivery_failed(self, question_id: str) -> None:
         with self._lock:
-            self._reserved_ids.discard(question_id)
+            self._reserved_indexes.pop(question_id, None)
             self._delivery_failed_ids.add(question_id)
 
     def has_started_final_question(self) -> bool:

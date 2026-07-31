@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from typing import Any
 
@@ -36,8 +37,15 @@ def _message_turn(item: object) -> dict[str, str] | None:
 class InterviewEvidenceTracker:
     """Collect planned turns and submitted surface answers outside chat history."""
 
-    def __init__(self, *, questions: object, participant_identity: str) -> None:
+    def __init__(
+        self,
+        *,
+        questions: object,
+        participant_identity: str,
+        on_answer_submitted: Callable[[str], Awaitable[None]] | None = None,
+    ) -> None:
         self._participant_identity = participant_identity
+        self._on_answer_submitted = on_answer_submitted
         self._questions: list[dict[str, Any]] = []
         self._questions_by_id: dict[str, dict[str, Any]] = {}
         self._active_question_id: str | None = None
@@ -313,6 +321,18 @@ class InterviewEvidenceTracker:
         )
         if not stored:
             logger.warning("Ignored invalid candidate %s answer", kind)
+            return
+        if payload.get("submitted") is not True or self._on_answer_submitted is None:
+            return
+        question_id = payload.get("questionId")
+        try:
+            await self._on_answer_submitted(question_id)
+        except Exception:
+            logger.exception(
+                "Answer-submitted callback failed question_id=%s kind=%s",
+                question_id,
+                kind,
+            )
 
 
 def conversation_turns(chat_ctx: ChatContext) -> list[dict[str, str]]:

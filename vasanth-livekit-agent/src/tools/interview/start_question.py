@@ -44,15 +44,24 @@ def build_start_question_tool(
             "MCQ, or whiteboard question. The tool presents the complete question on "
             "the correct candidate surface and speaks its TTS-safe wording exactly "
             "once. Call it as a silent tool-only action: do not say the question or "
-            "an acknowledgement before or after the call."
+            "an acknowledgement before or after the call. A status of answer_pending "
+            "means the previous written question was never submitted: ask the "
+            "candidate whether they have finished and submitted it, and only when "
+            "they say they cannot finish, call this again with "
+            "previous_question_abandoned set to true. Never set that flag while the "
+            "candidate is still working."
         ),
     )
     async def start_question(
         context: RunContext,
         question_id: str,
+        previous_question_abandoned: bool = False,
     ) -> dict[str, object] | None:
         try:
-            internal_question = question_store.reserve_next(question_id)
+            internal_question = question_store.reserve_next(
+                question_id,
+                previous_question_abandoned=previous_question_abandoned,
+            )
         except QuestionStoreError as exc:
             return {"status": exc.status, "message": exc.message}
 

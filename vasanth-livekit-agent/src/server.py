@@ -84,6 +84,8 @@ EVIDENCE_TRACKER_CLOSE_TIMEOUT_SECONDS = 5
 DEFAULT_AGENT_NAME = "intervoo-agent"
 MAX_CONCURRENT_SESSIONS = 10
 
+MOCK_INTERVIEW_AGENT_TYPE = "mock-interview-agent"
+
 END_CALL_EXTRA_DESCRIPTION = (
     "Only end the call when the user clearly indicates the conversation is complete. "
     "A disabled screen share, unavailable editor frame, hint request, tool recovery "
@@ -171,6 +173,20 @@ def prewarm(proc: agents.JobProcess) -> None:
         profile_config_path=_resolve_profile_config_path(),
     )
     prewarm_chroma(proc.userdata)
+
+
+def _plan_line(question: Mapping[str, Any]) -> str:
+    """Describe one planned question by shape only, never by its wording."""
+    topics = question.get("topics")
+    fields = [
+        question["id"],
+        question["questionType"],
+        question["surface"],
+        question["answerMode"],
+        str(question.get("difficulty") or ""),
+        ", ".join(topics) if isinstance(topics, list) else "",
+    ]
+    return " | ".join(field for field in fields if field)
 
 
 def parse_room_metadata(metadata: str | None) -> dict[str, object]:
@@ -817,17 +833,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     userdata = ctx.proc.userdata
     room_metadata = ctx.job.room.metadata or ctx.room.metadata
     metadata = parse_room_metadata(room_metadata)
-    # `lk agent simulate` sets no room metadata; a scenario carries the equivalent
-    # payload in its userdata. Production jobs have no simulation context, so this
-    # is inert outside a simulation.
-    simulation_ctx = ctx.simulation_context()
-    if simulation_ctx is not None:
-        metadata = {**metadata, **simulation_ctx.userdata()}
-        logger.info(
-            "Simulation scenario userdata merged into metadata room=%s keys=%s",
-            ctx.room.name,
-            sorted(metadata.keys()),
-        )
     profile_catalog = get_profile_catalog(
         userdata,
         fallback_path=_resolve_profile_config_path(),
@@ -893,17 +898,15 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         return
 
     prompt_context = build_prompt_context(metadata)
+    question_store = QuestionStore()
+    supplied_questions = normalize_supplied_questions(metadata.get("questions"))
+    if supplied_questions:
+        question_store.load(supplied_questions)
+        # The wording is deliberately absent. With the question text in the prompt the
+        # agent can ask a planned question itself, which never advances the store's
+        # cursor and deadlocks every later start_question call with out_of_order.
         prompt_context["interview_plan"] = "\n".join(
-            " | ".join(
-                (
-                    question["id"],
-                    question["questionType"],
-                    question["surface"],
-                    question["answerMode"],
-                    question["text"],
-                )
-            )
-            for question in question_store.public_plan()
+            _plan_line(question) for question in question_store.public_plan()
         )
     elif isinstance(metadata.get("questions"), list):
         prompt_context["interview_plan"] = ""
@@ -927,9 +930,36 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     except Exception as e:
         logger.warning("Langfuse trace enrichment failed: %s", e)
 
+    # `agent` is constructed further down, once every tool exists. These producers
+    # only fire during a live session, so a late-bound read of the closure variable
+    # is enough and avoids reordering construction.
+    agent: UnifiedAgent | None = None
+
+    async def _inject_internal_note(text: str, extra: dict[str, Any]) -> None:
+        if agent is None:
+            return
+        try:
+            await agent.inject_internal_note(text, extra=extra)
+        except Exception:
+            logger.exception("Failed to inject internal note room=%s", ctx.room.name)
+
+    async def _on_answer_submitted(question_id: str) -> None:
+        question_store.mark_answer_submitted(question_id)
+        await _inject_internal_note(
+            f"[Internal: the candidate submitted their written answer for question "
+            f"{question_id}. Ask them to walk through it before moving on.]",
+            {"internal_answer_submitted": question_id},
+        )
+
+    async def _on_screen_nudge(text: str) -> None:
+        await _inject_internal_note(text, {"internal_screen_nudge": True})
+
     evidence_tracker: InterviewEvidenceTracker | None = None
     evaluator_prompt: str | None = None
-    if profile.id == "mock_interview":
+    # Every mock_interview profile is the same agent behind a different prompt
+    # revision, so they all need the evaluator handoff and the evidence tracker.
+    is_mock_interview = profile.agent_type == MOCK_INTERVIEW_AGENT_TYPE
+    if is_mock_interview:
         try:
             evaluator_prompt = load_prompt(
                 "prompts/interview/vasanth_evaluator.md"
@@ -942,6 +972,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         evidence_tracker = InterviewEvidenceTracker(
             questions=question_store.internal_questions(),
             participant_identity=participant_identity,
+            on_answer_submitted=_on_answer_submitted,
         )
         evidence_tracker.start(ctx.room)
 
@@ -964,7 +995,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     screen_feedback_mode = metadata.get("screen_feedback_mode")
     timer_screen_feedback_enabled = screen_feedback_mode == "timer"
-    resume_inspection_enabled = profile.id == "mock_interview"
+    resume_inspection_enabled = is_mock_interview
     screen_feedback: ScreenFeedbackRuntime | None = None
     if profile.editor_events_enabled and (
         timer_screen_feedback_enabled or resume_inspection_enabled
@@ -973,6 +1004,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             room=ctx.room,
             participant_identity=participant_identity,
             timer_enabled=timer_screen_feedback_enabled,
+            note_sink=_on_screen_nudge,
         )
 
     session = build_agent_session(

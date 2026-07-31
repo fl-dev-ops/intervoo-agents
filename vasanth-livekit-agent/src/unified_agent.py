@@ -39,17 +39,25 @@ class UnifiedAgent(Agent):
             "unless explicitly relevant.]"
         )
 
-    async def _inject_elapsed_time_context(self, elapsed_minutes: int) -> None:
+    async def inject_internal_note(
+        self,
+        text: str,
+        *,
+        extra: dict[str, Any],
+    ) -> None:
+        """Add an internal, non-spoken note to the agent's own context."""
         chat_ctx = self.chat_ctx.copy()
-        chat_ctx.add_message(
-            role=SESSION_TIMER_ROLE,
-            content=self._build_elapsed_time_context(elapsed_minutes),
+        chat_ctx.add_message(role=SESSION_TIMER_ROLE, content=text, extra=extra)
+        await self.update_chat_ctx(chat_ctx)
+
+    async def _inject_elapsed_time_context(self, elapsed_minutes: int) -> None:
+        await self.inject_internal_note(
+            self._build_elapsed_time_context(elapsed_minutes),
             extra={
                 "internal_timer": True,
                 "elapsed_minutes": elapsed_minutes,
             },
         )
-        await self.update_chat_ctx(chat_ctx)
         logger.info(
             "Injected session timing context: elapsed_minutes=%s, role=%s",
             elapsed_minutes,
