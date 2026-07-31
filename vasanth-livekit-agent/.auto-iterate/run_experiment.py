@@ -172,11 +172,16 @@ def render_case(case: dict[str, Any]) -> str:
         f"Candidate: {case['candidate']}",
         f"Interview phase: {case['phase']}",
         "",
-        "Active question from the plan:",
-        f"  id: {question['id']}",
-        f"  surface: {question['surface']} ({question['answer_mode']} answer)",
-        f"  question: {question['asked']}",
     ]
+    if question["id"] == "none":
+        lines += [f"No question is currently active. {question['asked']}"]
+    else:
+        lines += [
+            "Active question:",
+            f"  id: {question['id']}",
+            f"  surface: {question['surface']} ({question['answer_mode']} answer)",
+            f"  question: {question['asked']}",
+        ]
     if "starter_code" in question:
         lines.append("  code shown on the candidate's screen:")
         lines.extend(f"    {line}" for line in question["starter_code"].split("\n"))
@@ -187,7 +192,8 @@ def render_case(case: dict[str, Any]) -> str:
     lines += [
         "",
         "Produce your next action. Put any tools you would call now in tool_calls, in the "
-        "order you would call them, and put what you would say aloud in spoken_turn. "
+        "order you would call them, each written with its arguments like "
+        "finish_interview(session_inconclusive=false). Put what you would say aloud in spoken_turn. "
         "Leave tool_calls empty if you would call none. Leave spoken_turn empty if you "
         "would say nothing. Never put tool syntax or stage directions in spoken_turn.",
     ]

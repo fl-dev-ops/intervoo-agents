@@ -2,8 +2,8 @@
   "task": "vasanth-v2-full-prompt",
   "created_at": "2026-07-31T06:40:22.011102Z",
   "benchmark": "13 decision-point cases (8 probe/depth + 5 flow/tool), deterministic contract gate, 6 criteria, 5 replicates",
-  "best_score": 0.8447,
-  "best_run": 2,
+  "best_score": 0.7915,
+  "best_run": 6,
   "runs": [
     {
       "run": 0,
@@ -91,6 +91,29 @@
       },
       "decision": "keep, but measured against buggy cases",
       "note": "v3 0.784 vs v2 0.748 overall. Behaviour gains are large: strong_answer_with_reasoning 0.68->1.00, code_question_opens_editor 0.78->0.99, unsupported_optimization_claim 0.77->0.93, return_to_breadth 0.96. The three plan-source cases regressed, but diagnosis showed that was a case bug: they were labelled phase=introduction while their conversation shows the introduction finished, so the model correctly followed v3's stronger 'Opening. Start with exactly...' rule and produced the greeting. Phase labels corrected and anchor_from_fundamentals dropped (anchor selection happens in build_interview_plan's arguments, not in a spoken turn). The re-run on the corrected 16 cases did not complete: OpenRouter weekly key limit."
+    },
+    {
+      "run": 5,
+      "timestamp": "2026-07-31T07:11:10.420667Z",
+      "experiment": "v3 with the plan-source branch made dominant, on the fixed harness",
+      "score": 0.7701,
+      "decision": "superseded"
+    },
+    {
+      "run": 6,
+      "timestamp": "2026-07-31T07:11:10.420667Z",
+      "experiment": "v3 plus a worked contrast showing the reveal trap in the wrong-answer path",
+      "score": 0.7915,
+      "stdev": 0.0453,
+      "replicates": [
+        0.8311,
+        0.7949,
+        0.7944,
+        0.7159,
+        0.8215
+      ],
+      "decision": "keep",
+      "note": "wrong_answer_with_plausible_justification 0.50 -> 1.00 and no_reveal_no_lead back to 1.000. v3 had regressed to the exact production reveal: 'Actually, due to hoisting, the variable a is declared but not initialized'."
     }
   ],
   "notes": [
@@ -103,5 +126,25 @@
     "reason": "OpenRouter key weekly limit exceeded (403)",
     "unmeasured": "v3 on the 16 corrected cases, and v2 re-run for a like-for-like comparison",
     "expectation": "v3 should rise, since three of its four flagged cases were depressed by the phase-label bug. Unverified."
+  },
+  "harness_fixes_round2": {
+    "at": "2026-07-31T07:11:10.420667Z",
+    "changes": [
+      "render_case no longer prints 'Active question from the plan: id: none', which told the model no plan existed and contradicted the INTERVIEW_PLAN section in the system prompt",
+      "tool_calls now carry arguments, so cases turning on finish_interview(session_inconclusive=...) and build_interview_plan(...) can be judged",
+      "phase label corrected on the three post-introduction cases; anchor_from_fundamentals dropped"
+    ],
+    "effect": "static_plan_supplied 0.43 -> 1.00 and final_answer_hand_off 0.60 -> 1.00 for v3; both had been false failures"
+  },
+  "head_to_head_same_harness": {
+    "v2": {
+      "score": 0.7722,
+      "stdev": 0.0035
+    },
+    "v3": {
+      "score": 0.7915,
+      "stdev": 0.0453
+    },
+    "verdict": "v3 ahead on the mean but inside the noise band, and markedly less stable (stdev 0.045 vs 0.004). v3 wins decisively on structure: static_plan_supplied 0.33->1.00 (v2 cannot use a supplied plan at all), return_to_breadth 0.79->0.92, strong_answer_with_reasoning 0.60->0.84, code_question_opens_editor 0.92->1.00, flow_and_tool +0.045, advance_discipline +0.087. The two plan-build cases oscillate between runs on unrelated edits, so they are not yet trustworthy signal. The benchmark cannot separate these two prompts on aggregate; a live session should decide."
   }
 }
