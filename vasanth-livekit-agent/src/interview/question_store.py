@@ -1,0 +1,209 @@
+from __future__ import annotations
+
+from copy import deepcopy
+from threading import RLock
+from typing import Any
+
+SUPPORTED_LANGUAGES = ("java", "javascript", "python")
+SUPPORTED_SURFACES = ("verbal", "code", "choice", "whiteboard")
+
+
+class QuestionStoreError(ValueError):
+    """Raised when a question cannot be started from the active plan."""
+
+    def __init__(self, status: str, message: str) -> None:
+        super().__init__(message)
+        self.status = status
+        self.message = message
+
+
+def candidate_safe_question(question: dict[str, Any]) -> dict[str, Any]:
+    """Return the complete public question without private grading data."""
+    safe = {
+        key: deepcopy(value)
+        for key, value in question.items()
+        if key
+        in {
+            "id",
+            "text",
+            "spokenText",
+            "questionType",
+            "responseMode",
+            "surface",
+            "answerMode",
+            "difficulty",
+            "domain",
+            "topics",
+            "options",
+            "language",
+            "starterCode",
+        }
+    }
+    return {key: value for key, value in safe.items() if value not in (None, "")}
+
+
+def normalize_supplied_questions(records: object) -> list[dict[str, Any]]:
+    """Normalize full metadata questions and drop MCQs without private answers."""
+    if not isinstance(records, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        question_id = record.get("id")
+        text = record.get("text") or record.get("question")
+        if not isinstance(question_id, str) or not question_id.strip():
+            continue
+        if not isinstance(text, str) or not text.strip():
+            continue
+        surface = str(record.get("surface") or "verbal").strip().lower()
+        if surface not in SUPPORTED_SURFACES:
+            surface = "verbal"
+        answer_mode = str(record.get("answerMode") or "").strip().lower()
+        if answer_mode not in {"verbal", "surface"}:
+            answer_mode = "verbal" if surface == "verbal" else "surface"
+        question_type = str(record.get("questionType") or "").strip().lower()
+        if not question_type:
+            if surface == "choice":
+                question_type = "mcq"
+            elif surface == "whiteboard":
+                question_type = "whiteboard"
+            elif surface == "code" and answer_mode == "verbal":
+                question_type = "code-output"
+            elif surface == "code":
+                question_type = "coding"
+            else:
+                question_type = "verbal"
+        options = record.get("options")
+        answer = record.get("answer")
+        if question_type == "mcq":
+            if not isinstance(options, list) or not isinstance(answer, dict):
+                continue
+            correct_option = answer.get("correctOption")
+            explanation = answer.get("explanation")
+            if (
+                not isinstance(correct_option, str)
+                or options.count(correct_option) != 1
+                or not isinstance(explanation, str)
+                or not explanation.strip()
+            ):
+                continue
+        question = {
+            "id": question_id.strip(),
+            "text": text.strip(),
+            "spokenText": str(record.get("spokenText") or text).strip(),
+            "questionType": question_type,
+            "responseMode": str(
+                record.get("responseMode")
+                or ("choice" if question_type == "mcq" else answer_mode)
+            ),
+            "surface": surface,
+            "answerMode": answer_mode,
+            "difficulty": str(record.get("difficulty") or ""),
+            "domain": deepcopy(record.get("domain") or []),
+            "topics": deepcopy(record.get("topics") or []),
+        }
+        for optional in ("options", "language", "starterCode"):
+            if optional in record:
+                question[optional] = deepcopy(record[optional])
+        if question_type == "mcq":
+            question["answer"] = deepcopy(answer)
+        normalized.append(question)
+    return normalized
+
+
+class QuestionStore:
+    """Own the ordered private plan and enforce one start per next question."""
+
+    def __init__(self) -> None:
+        self._questions: list[dict[str, Any]] = []
+        self._by_id: dict[str, dict[str, Any]] = {}
+        self._next_index = 0
+        self._started_ids: set[str] = set()
+        self._reserved_ids: set[str] = set()
+        self._delivery_failed_ids: set[str] = set()
+        self._initialized = False
+        self._lock = RLock()
+
+    def load(self, questions: list[dict[str, Any]]) -> None:
+        copied = deepcopy(questions)
+        ids = [question.get("id") for question in copied]
+        if any(not isinstance(question_id, str) or not question_id for question_id in ids):
+            raise ValueError("Every planned question must have a non-empty id")
+        if len(ids) != len(set(ids)):
+            raise ValueError("Planned question ids must be unique")
+        with self._lock:
+            if self._initialized:
+                raise ValueError("The interview plan is already initialized")
+            self._questions = copied
+            self._by_id = {question["id"]: question for question in copied}
+            self._initialized = True
+
+    def is_initialized(self) -> bool:
+        with self._lock:
+            return self._initialized
+
+    def internal_questions(self) -> list[dict[str, Any]]:
+        with self._lock:
+            return deepcopy(self._questions)
+
+    def public_plan(self) -> list[dict[str, Any]]:
+        with self._lock:
+            return [candidate_safe_question(question) for question in self._questions]
+
+    def reserve_next(self, question_id: str) -> dict[str, Any]:
+        """Atomically reserve the exact next question before any delivery await."""
+        identifier = question_id.strip() if isinstance(question_id, str) else ""
+        with self._lock:
+            if not identifier or identifier not in self._by_id:
+                raise QuestionStoreError(
+                    "not_found",
+                    "Question id was not found in the active interview plan.",
+                )
+            if identifier in self._started_ids:
+                raise QuestionStoreError(
+                    "already_started",
+                    "This question has already started. Continue with the candidate's answer.",
+                )
+            if identifier in self._reserved_ids:
+                raise QuestionStoreError(
+                    "already_starting",
+                    "This question is already being presented.",
+                )
+            if identifier in self._delivery_failed_ids:
+                raise QuestionStoreError(
+                    "delivery_failed",
+                    "This question could not be delivered and cannot be started again.",
+                )
+            if self._next_index >= len(self._questions):
+                raise QuestionStoreError(
+                    "plan_complete",
+                    "All planned questions have already started.",
+                )
+            expected = self._questions[self._next_index]
+            if expected["id"] != identifier:
+                raise QuestionStoreError(
+                    "out_of_order",
+                    f"Start the next planned question using id {expected['id']}.",
+                )
+            self._reserved_ids.add(identifier)
+            return deepcopy(expected)
+
+    def mark_started(self, question_id: str) -> None:
+        with self._lock:
+            if question_id not in self._reserved_ids:
+                raise ValueError("Question must be reserved before it is started")
+            self._reserved_ids.remove(question_id)
+            self._started_ids.add(question_id)
+            self._next_index += 1
+
+    def mark_delivery_failed(self, question_id: str) -> None:
+        with self._lock:
+            self._reserved_ids.discard(question_id)
+            self._delivery_failed_ids.add(question_id)
+
+    def has_started_final_question(self) -> bool:
+        with self._lock:
+            return bool(
+                self._questions and self._questions[-1]["id"] in self._started_ids
+            )

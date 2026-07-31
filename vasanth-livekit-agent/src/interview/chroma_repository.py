@@ -1,0 +1,362 @@
+"""Chroma connection and deterministic interview-plan retrieval."""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+import re
+import time
+from collections.abc import MutableMapping
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+LOG_PREFIX = "[EXT-API:chroma]"
+SUPPORTED_LANGUAGES = ("java", "javascript", "python")
+DEFAULT_DOMAINS = ["react", "javascript"]
+
+COUNTS = {
+    "0-3": {"verbal": 6, "coding": 2, "machine": 3},
+    "4-8": {"verbal": 5, "coding": 2, "machine": 2},
+}
+DIFFICULTIES = {
+    "0-3": ["easy", "medium"],
+    "4-8": ["medium", "hard"],
+}
+BUCKET_TYPES = {
+    "verbal": ["verbal", "mcq"],
+    "coding": ["coding", "code-output"],
+    "machine": ["machine-coding"],
+}
+BUCKET_ORDER = ["verbal", "coding", "machine"]
+
+USERDATA_CHROMA_CLIENT = "chroma_client"
+USERDATA_CHROMA_COLLECTION = "chroma_collection"
+
+_FENCE_RE = re.compile(r"```.*?```", re.DOTALL)
+
+
+def _chroma_settings() -> dict[str, str]:
+    return {
+        "api_key": os.getenv("CHROMA_API_KEY", ""),
+        "tenant": os.getenv("CHROMA_TENANT", ""),
+        "database": os.getenv("CHROMA_DATABASE", ""),
+        "collection": os.getenv("CHROMA_COLLECTION", ""),
+    }
+
+
+def _safe_identity() -> str:
+    settings = _chroma_settings()
+    return (
+        f"tenant={settings['tenant']!r} database={settings['database']!r} "
+        f"collection={settings['collection']!r}"
+    )
+
+
+def chroma_runtime_identity() -> str:
+    """Return the non-secret Chroma location used in worker startup logs."""
+    return _safe_identity()
+
+
+def chroma_configured() -> bool:
+    return all(_chroma_settings().values())
+
+
+def get_cached_collection(userdata: MutableMapping[str, Any]) -> Any:
+    """Return a process-cached Chroma collection."""
+    collection = userdata.get(USERDATA_CHROMA_COLLECTION)
+    if collection is not None:
+        return collection
+
+    settings = _chroma_settings()
+    if not all(settings.values()):
+        raise ValueError(
+            "Chroma not configured: set CHROMA_API_KEY, CHROMA_TENANT, "
+            "CHROMA_DATABASE and CHROMA_COLLECTION"
+        )
+
+    import chromadb
+
+    started = time.monotonic()
+    client = userdata.get(USERDATA_CHROMA_CLIENT)
+    if client is None:
+        client = chromadb.CloudClient(
+            api_key=settings["api_key"],
+            tenant=settings["tenant"],
+            database=settings["database"],
+        )
+        userdata[USERDATA_CHROMA_CLIENT] = client
+
+    collection = client.get_collection(settings["collection"])
+    userdata[USERDATA_CHROMA_COLLECTION] = collection
+    logger.info(
+        "%s connected %s count=%d elapsed_ms=%d",
+        LOG_PREFIX,
+        _safe_identity(),
+        collection.count(),
+        int((time.monotonic() - started) * 1000),
+    )
+    return collection
+
+
+def prewarm_chroma(userdata: MutableMapping[str, Any]) -> None:
+    """Connect and query once so the embedder is warm before a session."""
+    if not chroma_configured():
+        return
+    started = time.monotonic()
+    try:
+        collection = get_cached_collection(userdata)
+        collection.query(query_texts=["prewarm"], n_results=1)
+        logger.info(
+            "%s prewarm complete %s elapsed_ms=%d",
+            LOG_PREFIX,
+            _safe_identity(),
+            int((time.monotonic() - started) * 1000),
+        )
+    except Exception as exc:
+        logger.warning(
+            "%s prewarm failed %s elapsed_ms=%d error=%s",
+            LOG_PREFIX,
+            _safe_identity(),
+            int((time.monotonic() - started) * 1000),
+            exc,
+        )
+
+
+def _build_where(
+    types: list[str],
+    difficulties: list[str] | None,
+    domains: list[str] | None,
+) -> dict[str, Any] | None:
+    clauses: list[dict[str, Any]] = []
+    if types:
+        clauses.append({"question_type": {"$in": list(types)}})
+    if difficulties:
+        clauses.append({"difficulty_level": {"$in": list(difficulties)}})
+    if domains:
+        clauses.append({"domain": {"$in": list(domains)}})
+    if not clauses:
+        return None
+    if len(clauses) == 1:
+        return clauses[0]
+    return {"$and": clauses}
+
+
+def _query(
+    collection: Any,
+    *,
+    query_text: str,
+    types: list[str],
+    difficulties: list[str] | None,
+    domains: list[str] | None,
+    n: int,
+    exclude_ids: set[str],
+) -> list[tuple[str, dict[str, Any]]]:
+    where = _build_where(types, difficulties, domains)
+    started = time.monotonic()
+    result = collection.query(
+        query_texts=[query_text or "interview"],
+        n_results=n + len(exclude_ids),
+        where=where,
+        include=["metadatas", "distances"],
+    )
+    ids = (result.get("ids") or [[]])[0]
+    metas = (result.get("metadatas") or [[]])[0]
+    rows = [
+        (qid, meta or {})
+        for qid, meta in zip(ids, metas, strict=False)
+        if isinstance(qid, str) and qid not in exclude_ids
+    ]
+    logger.info(
+        "%s query %s filters=%s requested=%d returned=%d elapsed_ms=%d",
+        LOG_PREFIX,
+        _safe_identity(),
+        where,
+        n,
+        len(rows),
+        int((time.monotonic() - started) * 1000),
+    )
+    return rows
+
+
+def _record(meta: dict[str, Any]) -> dict[str, Any]:
+    raw = meta.get("record_json")
+    if not isinstance(raw, str):
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, ValueError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _string_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [item.strip() for item in value if isinstance(item, str) and item.strip()]
+
+
+def _spoken(text: str) -> str:
+    stripped = _FENCE_RE.sub("", text).strip()
+    return stripped or text.strip()
+
+
+def _language(record: dict[str, Any], meta: dict[str, Any]) -> str:
+    code = record.get("code")
+    raw = code.get("language") if isinstance(code, dict) else meta.get("code_language")
+    language = str(raw or "").lower()
+    if language in SUPPORTED_LANGUAGES:
+        return language
+    if language in {"jsx", "tsx", "ts"}:
+        return "javascript"
+    return "javascript"
+
+
+def _normalize(qid: str, meta: dict[str, Any]) -> dict[str, Any] | None:
+    record = _record(meta)
+    text = str(record.get("question") or meta.get("question") or "").strip()
+    if not text:
+        return None
+
+    question_type = str(
+        record.get("questionType") or meta.get("question_type") or "verbal"
+    ).strip()
+    if question_type in {"coding", "machine-coding"}:
+        surface, answer_mode, response_mode = "code", "surface", "code"
+    elif question_type == "code-output":
+        surface, answer_mode, response_mode = "code", "verbal", "verbal"
+    elif question_type == "mcq":
+        surface, answer_mode, response_mode = "choice", "surface", "choice"
+    else:
+        explicit_surface = str(record.get("surface") or "").strip().lower()
+        surface = explicit_surface if explicit_surface == "whiteboard" else "verbal"
+        answer_mode = "surface" if surface == "whiteboard" else "verbal"
+        response_mode = str(record.get("responseMode") or "verbal")
+
+    options = _string_list(record.get("options"))
+    answer = record.get("answer")
+    normalized_answer: dict[str, str] | None = None
+    if question_type == "mcq":
+        if not isinstance(answer, dict):
+            return None
+        correct_option = answer.get("correctOption")
+        explanation = answer.get("explanation")
+        if (
+            not isinstance(correct_option, str)
+            or options.count(correct_option) != 1
+            or not isinstance(explanation, str)
+            or not explanation.strip()
+        ):
+            return None
+        normalized_answer = {
+            "correctOption": correct_option,
+            "explanation": explanation.strip(),
+        }
+
+    code = record.get("code")
+    starter_code = (
+        code.get("content", "").strip()
+        if isinstance(code, dict) and isinstance(code.get("content"), str)
+        else ""
+    )
+    normalized: dict[str, Any] = {
+        "id": qid,
+        "text": text,
+        "spokenText": _spoken(text),
+        "questionType": question_type,
+        "responseMode": response_mode,
+        "surface": surface,
+        "answerMode": answer_mode,
+        "difficulty": str(
+            record.get("difficulty") or meta.get("difficulty_level") or ""
+        ),
+        "domain": _string_list(record.get("domain")),
+        "topics": _string_list(record.get("topics")),
+    }
+    if surface == "code" or (question_type == "mcq" and starter_code):
+        normalized["language"] = _language(record, meta)
+        normalized["starterCode"] = starter_code
+    if question_type == "mcq":
+        normalized["options"] = options
+        normalized["answer"] = normalized_answer
+    return normalized
+
+
+def _fill_bucket(
+    collection: Any,
+    *,
+    query_text: str,
+    types: list[str],
+    difficulties: list[str],
+    domains: list[str],
+    target: int,
+    exclude_ids: set[str],
+) -> list[dict[str, Any]]:
+    picked: dict[str, dict[str, Any]] = {}
+    for selected_domains, selected_difficulties in (
+        (domains, difficulties),
+        (None, difficulties),
+        (None, None),
+    ):
+        if len(picked) >= target:
+            break
+        rows = _query(
+            collection,
+            query_text=query_text,
+            types=types,
+            difficulties=selected_difficulties,
+            domains=selected_domains,
+            n=max(target * 4, target),
+            exclude_ids=exclude_ids | set(picked),
+        )
+        for question_id, metadata in rows:
+            normalized = _normalize(question_id, metadata)
+            if normalized is None:
+                continue
+            picked[question_id] = normalized
+            if len(picked) >= target:
+                break
+    return list(picked.values())[:target]
+
+
+def _band(years_experience: object) -> str:
+    try:
+        years = int(years_experience)
+    except (ValueError, TypeError):
+        years = 0
+    return "0-3" if years <= 3 else "4-8"
+
+
+def build_plan(
+    collection: Any,
+    *,
+    years_experience: int,
+    domains: list[str] | None,
+    focus: str,
+) -> tuple[str, dict[str, int], list[dict[str, Any]]]:
+    band = _band(years_experience)
+    counts = COUNTS[band]
+    difficulties = DIFFICULTIES[band]
+    selected_domains = [
+        domain.strip().lower()
+        for domain in (domains or DEFAULT_DOMAINS)
+        if isinstance(domain, str) and domain.strip()
+    ] or DEFAULT_DOMAINS
+    query_text = (focus or " ".join(selected_domains)).strip()
+
+    ordered: list[dict[str, Any]] = []
+    used: set[str] = set()
+    for bucket in BUCKET_ORDER:
+        questions = _fill_bucket(
+            collection,
+            query_text=query_text,
+            types=BUCKET_TYPES[bucket],
+            difficulties=difficulties,
+            domains=selected_domains,
+            target=counts[bucket],
+            exclude_ids=used,
+        )
+        ordered.extend(questions)
+        used.update(question["id"] for question in questions)
+    return band, counts, ordered

@@ -137,7 +137,7 @@ def build_agent_session(
         # Structured interviews (e.g. the diagnostic agent) must act only on a
         # completed turn. Preemptive generation runs the LLM on partial
         # transcripts and fires screen-publishing tools like
-        # mark_question_started speculatively, causing question-jumping.
+        # start_question speculatively, causing question-jumping.
         {"enabled": False}
         if disable_preemptive_generation
         else {}

@@ -33,22 +33,20 @@ from livekit.agents.metrics import LLMMetrics, STTMetrics, TTSMetrics
 from livekit.plugins import noise_cancellation
 
 from avatar_provider import start_avatar
-from chroma_tools import (
-    build_interview_plan_tool,
-    chroma_configured,
-    get_cached_collection,
-    prewarm_chroma,
-)
-from editor_tools import build_editor_tools
 from identity import (
     resolve_phone_number_from_call_context,
     resolve_user_id_from_call_context,
     resolve_user_id_from_room_metadata,
 )
-from interview_evaluator import (
-    InterviewEvidenceTracker,
-    build_finish_interview_tool,
+from interview.chroma_repository import (
+    chroma_runtime_identity,
+    chroma_configured,
+    get_cached_collection,
+    prewarm_chroma,
 )
+from interview.evidence import InterviewEvidenceTracker
+from interview.question_store import QuestionStore, normalize_supplied_questions
+from interview_evaluator import build_finish_interview_tool
 from prompt import (
     build_prompt_context,
     extract_prompt_version,
@@ -65,12 +63,14 @@ from runtime_resources import (
     get_recording_config,
     prewarm_runtime_resources,
 )
-from screen_feedback import (
-    ScreenFeedbackRuntime,
+from screen_feedback import ScreenFeedbackRuntime
+from session import InteractionMode, SessionConfig, build_agent_session
+from tools.interview.build_plan import build_interview_plan_tool
+from tools.interview.start_question import build_start_question_tool
+from tools.screen.inspect_screen import (
     build_resume_inspection_tool,
     build_screen_inspection_tool,
 )
-from session import InteractionMode, SessionConfig, build_agent_session
 from tracing import flush_langfuse, setup_langfuse
 from unified_agent import UnifiedAgent
 from watchdog import cancel_idle_room_watchdog, register_idle_room_watchdog
@@ -160,6 +160,12 @@ class StartupTimer:
 
 
 def prewarm(proc: agents.JobProcess) -> None:
+    revision = (os.getenv("AGENT_BUILD_REVISION") or "unknown").strip() or "unknown"
+    logger.info(
+        "worker_start revision=%r chroma=%s",
+        revision[:128],
+        chroma_runtime_identity(),
+    )
     prewarm_runtime_resources(
         proc,
         profile_config_path=_resolve_profile_config_path(),
@@ -811,6 +817,17 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     userdata = ctx.proc.userdata
     room_metadata = ctx.job.room.metadata or ctx.room.metadata
     metadata = parse_room_metadata(room_metadata)
+    # `lk agent simulate` sets no room metadata; a scenario carries the equivalent
+    # payload in its userdata. Production jobs have no simulation context, so this
+    # is inert outside a simulation.
+    simulation_ctx = ctx.simulation_context()
+    if simulation_ctx is not None:
+        metadata = {**metadata, **simulation_ctx.userdata()}
+        logger.info(
+            "Simulation scenario userdata merged into metadata room=%s keys=%s",
+            ctx.room.name,
+            sorted(metadata.keys()),
+        )
     profile_catalog = get_profile_catalog(
         userdata,
         fallback_path=_resolve_profile_config_path(),
@@ -876,6 +893,20 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         return
 
     prompt_context = build_prompt_context(metadata)
+        prompt_context["interview_plan"] = "\n".join(
+            " | ".join(
+                (
+                    question["id"],
+                    question["questionType"],
+                    question["surface"],
+                    question["answerMode"],
+                    question["text"],
+                )
+            )
+            for question in question_store.public_plan()
+        )
+    elif isinstance(metadata.get("questions"), list):
+        prompt_context["interview_plan"] = ""
     agent_instructions = render_prompt(prompt_template, context=prompt_context)
     timer.mark("prompt_render")
 
@@ -909,7 +940,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         # Questions are no longer supplied by the front-end; the plan is fetched
         # at runtime via build_interview_plan, which calls tracker.load_plan.
         evidence_tracker = InterviewEvidenceTracker(
-            questions=None,
+            questions=question_store.internal_questions(),
             participant_identity=participant_identity,
         )
         evidence_tracker.start(ctx.room)
@@ -977,21 +1008,14 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         if screen_feedback is not None:
             await screen_feedback.on_question_started(question)
 
-    async def _end_after_evaluator_feedback() -> None:
+    async def _end_interview_session() -> None:
         session.shutdown(drain=True)
         try:
             await ctx.delete_room()
         finally:
-            ctx.shutdown(reason="Vasanth evaluator feedback delivered")
-
-    # Shared store the runtime-fetched plan is written into; the editor tools read
-    # question ids from it, so it must exist before they are built.
-    plan_by_id: dict[str, dict[str, Any]] = {}
+            ctx.shutdown(reason="Vasanth interview session ended")
 
     def _register_plan(normalized: list[dict[str, Any]]) -> None:
-        plan_by_id.clear()
-        for question in normalized:
-            plan_by_id[question["id"]] = question
         if evidence_tracker is not None:
             evidence_tracker.load_plan(normalized)
 
@@ -1000,10 +1024,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         tools.append(_build_end_call_tool())
 
     if profile.editor_events_enabled:
-        tools.extend(
-            build_editor_tools(
-                ctx.room,
-                question_store=plan_by_id,
+        tools.append(
+            build_start_question_tool(
+                room=ctx.room,
+                question_store=question_store,
                 on_question_started=_on_question_started,
             )
         )
@@ -1012,7 +1036,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         tools.append(
             build_interview_plan_tool(
                 get_collection=lambda: get_cached_collection(userdata),
-                register_plan=_register_plan,
+                question_store=question_store,
+                on_plan_loaded=_register_plan,
+                end_session=_end_interview_session,
             )
         )
     else:
@@ -1026,7 +1052,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 tracker=evidence_tracker,
                 evaluator_prompt=evaluator_prompt,
                 candidate_context=dict(prompt_context),
-                end_session=_end_after_evaluator_feedback,
+                end_session=_end_interview_session,
             )
         )
 

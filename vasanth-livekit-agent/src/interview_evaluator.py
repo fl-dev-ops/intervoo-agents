@@ -97,6 +97,51 @@ class InterviewEvaluation(BaseModel):
     )
 
 
+def enforce_mcq_assessments(
+    evaluation: InterviewEvaluation,
+    mcq_assessments: dict[str, dict[str, Any]],
+) -> None:
+    """Override model MCQ verdicts with private deterministic results."""
+    by_id = {
+        assessment.question_id: assessment for assessment in evaluation.assessments
+    }
+    for question_id, deterministic in mcq_assessments.items():
+        submitted = deterministic.get("submitted") is True
+        if submitted:
+            result = (
+                AssessmentResult.CORRECT
+                if deterministic.get("isCorrect") is True
+                else AssessmentResult.INCORRECT
+            )
+            evidence = (
+                "The submitted option matched the stored answer."
+                if result is AssessmentResult.CORRECT
+                else "The submitted option did not match the stored answer."
+            )
+        else:
+            result = AssessmentResult.NOT_ATTEMPTED
+            evidence = "The candidate did not submit an option."
+        previous = by_id.get(question_id)
+        by_id[question_id] = QuestionAssessment(
+            question_id=question_id,
+            result=result,
+            is_fundamental=(previous.is_fundamental if previous is not None else False),
+            code_result=CodeResult.NOT_APPLICABLE,
+            evidence=evidence,
+        )
+    existing_ids = [assessment.question_id for assessment in evaluation.assessments]
+    evaluation.assessments = [
+        by_id[question_id]
+        for question_id in existing_ids
+        if question_id in by_id
+    ]
+    evaluation.assessments.extend(
+        assessment
+        for question_id, assessment in by_id.items()
+        if question_id not in existing_ids
+    )
+
+
 @dataclass(frozen=True)
 class ClosureDecision:
     route: ClosureRoute
@@ -381,15 +426,18 @@ def _has_usable_answer(question: dict[str, Any]) -> bool:
 def decide_closure(
     evidence: list[dict[str, Any]],
     evaluation: InterviewEvaluation,
+    locally_usable_question_ids: set[str] | None = None,
 ) -> ClosureDecision:
     if not evidence:
         return ClosureDecision(ClosureRoute.FEEDBACK_ONLY)
 
     expected_ids = [question["id"] for question in evidence]
     assessment_ids = [assessment.question_id for assessment in evaluation.assessments]
-    usable_ratio = sum(_has_usable_answer(question) for question in evidence) / len(
-        evidence
-    )
+    local_ids = locally_usable_question_ids or set()
+    usable_ratio = sum(
+        _has_usable_answer(question) or question["id"] in local_ids
+        for question in evidence
+    ) / len(evidence)
     if (
         usable_ratio < 0.5
         or evaluation.confidence < 0.6
@@ -564,6 +612,7 @@ class EvaluatorAgent(Agent):
         chat_ctx: ChatContext,
         evaluator_prompt: str,
         evaluation_payload: dict[str, Any],
+        mcq_assessments: dict[str, dict[str, Any]],
         end_session: EndSessionCallback,
     ) -> None:
         super().__init__(
@@ -579,6 +628,7 @@ class EvaluatorAgent(Agent):
         )
         self._evaluator_prompt = evaluator_prompt
         self._evaluation_payload = evaluation_payload
+        self._mcq_assessments = mcq_assessments
         self._end_session = end_session
         self._evaluator_llm = openai.LLM.with_openrouter(model=DEFAULT_OPENROUTER_MODEL)
 
@@ -601,9 +651,15 @@ class EvaluatorAgent(Agent):
                 self._evaluate(),
                 timeout=EVALUATION_TIMEOUT_SECONDS,
             )
+            enforce_mcq_assessments(evaluation, self._mcq_assessments)
             decision = decide_closure(
                 self._evaluation_payload["planned_questions"],
                 evaluation,
+                locally_usable_question_ids={
+                    question_id
+                    for question_id, assessment in self._mcq_assessments.items()
+                    if assessment.get("submitted") is True
+                },
             )
             closure = render_vasanth_closure(decision, evaluation)
         except Exception:
@@ -684,6 +740,11 @@ def build_finish_interview_tool(
             chat_ctx=evaluator_chat_ctx,
             evaluator_prompt=evaluator_prompt,
             evaluation_payload=evaluation_payload,
+            mcq_assessments=(
+                tracker.build_mcq_assessments()
+                if hasattr(tracker, "build_mcq_assessments")
+                else {}
+            ),
             end_session=end_session,
         )
 
