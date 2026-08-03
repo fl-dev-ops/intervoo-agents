@@ -30,6 +30,7 @@ class PromptContext(TypedDict):
     dynamic keys (e.g. `current_round`) on top of these.
     """
 
+    adaptive_plan: str
     additional_context: str
     interview_plan: str
     resume_markdown: str
@@ -107,6 +108,7 @@ def build_prompt_context(
     user_name: str | None = None,
 ) -> dict[str, str]:
     prompt_context: PromptContext = {
+        "adaptive_plan": "",
         "additional_context": "",
         "interview_plan": "",
         "resume_markdown": "",
@@ -136,6 +138,7 @@ def build_prompt_context(
                 if (
                     key
                     not in {
+                        "adaptive_plan",
                         "agent_name",
                         "interview_plan",
                         "resume_markdown",

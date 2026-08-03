@@ -26,6 +26,7 @@ def _reset_prompt_cache():
 
 def test_build_prompt_context_uses_defaults_when_metadata_missing() -> None:
     assert build_prompt_context(None) == {
+        "adaptive_plan": "",
         "additional_context": "",
         "interview_plan": "",
         "resume_markdown": "",
