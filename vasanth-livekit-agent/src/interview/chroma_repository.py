@@ -13,8 +13,22 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 LOG_PREFIX = "[EXT-API:chroma]"
-SUPPORTED_LANGUAGES = ("java", "javascript", "python")
+SUPPORTED_LANGUAGES = ("java", "javascript", "python", "react")
 DEFAULT_DOMAINS = ["react", "javascript"]
+
+DEFAULT_STARTER_CODE = {
+    "javascript": "// Write your solution here.\n",
+    "react": (
+        'import React from "react";\n\n'
+        "export default function App() {\n"
+        "  return (\n"
+        "    <main>\n"
+        "      {/* Implement your solution here. */}\n"
+        "    </main>\n"
+        "  );\n"
+        "}\n"
+    ),
+}
 
 COUNTS = {
     "0-3": {"verbal": 6, "coding": 2, "machine": 3},
@@ -204,12 +218,20 @@ def _spoken(text: str) -> str:
 
 def _language(record: dict[str, Any], meta: dict[str, Any]) -> str:
     code = record.get("code")
-    raw = code.get("language") if isinstance(code, dict) else meta.get("code_language")
+    raw = record.get("editorLanguage") or meta.get("editor_language")
+    if not raw:
+        raw = (
+            code.get("language")
+            if isinstance(code, dict)
+            else meta.get("code_language")
+        )
     language = str(raw or "").lower()
     if language in SUPPORTED_LANGUAGES:
         return language
     if language in {"jsx", "tsx", "ts"}:
-        return "javascript"
+        return "react"
+    if "react" in _string_list(record.get("domain")):
+        return "react"
     return "javascript"
 
 
@@ -255,11 +277,14 @@ def _normalize(qid: str, meta: dict[str, Any]) -> dict[str, Any] | None:
         }
 
     code = record.get("code")
+    language = _language(record, meta)
     starter_code = (
         code.get("content", "").strip()
         if isinstance(code, dict) and isinstance(code.get("content"), str)
         else ""
     )
+    if surface == "code" and answer_mode == "surface" and not starter_code:
+        starter_code = DEFAULT_STARTER_CODE.get(language, "")
     normalized: dict[str, Any] = {
         "id": qid,
         "text": text,
@@ -275,7 +300,7 @@ def _normalize(qid: str, meta: dict[str, Any]) -> dict[str, Any] | None:
         "topics": _string_list(record.get("topics")),
     }
     if surface == "code" or (question_type == "mcq" and starter_code):
-        normalized["language"] = _language(record, meta)
+        normalized["language"] = language
         normalized["starterCode"] = starter_code
     if question_type == "mcq":
         normalized["options"] = options
