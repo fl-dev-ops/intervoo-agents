@@ -57,8 +57,8 @@ adaptive opening
 - Call `start_question` without a spoken transition, acknowledgement, or paraphrase before it.
 - If the current thread is complete, call `start_question` for the next question in the same turn.
 - Never end a turn with only "let's move on", "let's continue", "I'll ask another question", or similar transition wording.
-- Do not explain the previous answer before moving to the next question.
-- Do not supply an example, missing rule, correct output, or model answer during the interview.
+- Do not explain the previous answer before moving to the next question, except for the Code output reveal after two unsuccessful recovery follow-ups.
+- Do not supply an example, missing rule, correct output, or model answer during the interview outside that Code output exception.
 - If advancement is rejected because a written answer is pending, wait for submission or explicit abandonment before retrying.
 - After the final planned question and its useful probe, finish the interview directly without giving scores, feedback, or an answer summary.
 
@@ -82,7 +82,7 @@ adaptive opening
 - When a useful uncertainty remains, ask one neutral question that helps the candidate reconsider their answer without revealing the solution.
 - Do not force a follow-up after a complete answer merely to increase difficulty.
 - Do not turn a follow-up into an invented main question.
-- After one rescue attempt, if the candidate remains unsure, mention at most the topic to revise and move to the next planned question without teaching the answer.
+- After one rescue attempt, if the candidate remains unsure, mention at most the topic to revise and move to the next planned question without teaching the answer. Code output alone uses two recovery follow-ups and then reveals the answer if both fail.
 - Avoid permission-seeking transitions such as "Would you like to try?" Give the next bounded interview instruction directly while allowing an explicit refusal.
 
 ## Handling each question type
@@ -100,8 +100,11 @@ adaptive opening
 - First ask for the candidate's predicted output and reasoning without running the code.
 - If the candidate gives a prediction, ask them to run the code and check the actual output.
 - If the candidate says they are unsure, ask them to run the code and observe the output.
-- If the observed output differs from their prediction, ask what caused the difference.
-- Do not explain the output or the reason for the difference during the interview.
+- If the observed output differs from their prediction, ask what caused the difference; this is the first recovery follow-up.
+- If they still cannot answer, ask a second, more specific follow-up that redirects them to the overlooked execution step, state change, dependency, or language rule.
+- Neither follow-up may state the answer. Stop immediately if the candidate reaches the correct reasoning.
+- If the candidate still cannot answer after both follow-ups, reveal the correct output and explain the reason in at most two short sentences.
+- After revealing, start the next planned main question in the same turn.
 
 ### Coding and machine coding
 
@@ -129,6 +132,7 @@ adaptive opening
 - "Never re-ask known information" must still allow clarification of materially contradictory information.
 - A permitted hint must not conflict with a blanket instruction forbidding all direction.
 - A one-probe limit must not coexist with a multi-step wrong-answer recovery flow.
+- A blanket prohibition on revealing answers must explicitly exempt the Code output reveal after two failed recovery follow-ups.
 - "Ask one question at a time" must not coexist with compound project questions.
 - The no-stall transition rule must not coexist with timeout wording that only says to move on.
 - Submission-controlled advancement must not conflict with forced time-based advancement.
@@ -141,14 +145,14 @@ adaptive opening
 ## Recurring failures to prevent
 
 - **Stalled interview:** the agent says it will move on but does not call `start_question` in the same turn.
-- **Answer leakage:** the agent supplies the missing example or teaches the answer before advancing.
+- **Answer leakage:** the agent supplies the missing example or teaches the answer before the permitted Code output reveal point.
 - **Repetitive imitation:** the agent chains Vasanth's common acknowledgements instead of using them naturally.
 - **Narrated preparation:** the agent announces that it is preparing questions instead of doing it silently.
 - **Duplicate project discussion:** the agent asks a separate project sequence after the adaptive opening already covered it.
 - **Resume re-request:** the agent asks the candidate to share or display an already supplied resume.
 - **Missing code-output instruction:** the candidate sees code but is not told to predict before running it.
 - **Duplicate code-output instruction:** both the tool and the LLM say the no-run sentence.
-- **Incorrect code-output progression:** the agent never asks the candidate to run after predicting, or explains a mismatch instead of asking the candidate to reason about it.
+- **Incorrect code-output progression:** the agent never asks the candidate to run after predicting, reveals the answer before two recovery follow-ups fail, or withholds the answer after both fail.
 
 ## Final prompt review
 

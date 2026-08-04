@@ -13,10 +13,28 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 LOG_PREFIX = "[EXT-API:chroma]"
-SUPPORTED_LANGUAGES = ("java", "javascript", "python", "react")
+SUPPORTED_LANGUAGES = ("html", "java", "javascript", "python", "react")
 DEFAULT_DOMAINS = ["react", "javascript"]
 
 DEFAULT_STARTER_CODE = {
+    "html": (
+        "<!doctype html>\n"
+        '<html lang="en">\n'
+        "  <head>\n"
+        '    <meta charset="UTF-8" />\n'
+        '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n'
+        "    <title>Frontend coding question</title>\n"
+        "  </head>\n"
+        "  <body>\n"
+        '    <main id="app">\n'
+        "      <!-- Build your interface here. -->\n"
+        "    </main>\n"
+        "    <script>\n"
+        "      // Add your JavaScript here.\n"
+        "    </script>\n"
+        "  </body>\n"
+        "</html>\n"
+    ),
     "javascript": "// Write your solution here.\n",
     "react": (
         'import React from "react";\n\n'
