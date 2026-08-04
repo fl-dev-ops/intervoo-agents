@@ -44,6 +44,7 @@ BUCKET_TYPES = {
     "machine": ["machine-coding"],
 }
 BUCKET_ORDER = ["verbal", "coding", "machine"]
+MACHINE_CODING_SOURCE_CONTEXT = "mock-interview"
 
 USERDATA_CHROMA_CLIENT = "chroma_client"
 USERDATA_CHROMA_COLLECTION = "chroma_collection"
@@ -146,6 +147,8 @@ def _build_where(
     clauses: list[dict[str, Any]] = []
     if types:
         clauses.append({"question_type": {"$in": list(types)}})
+    if types == BUCKET_TYPES["machine"]:
+        clauses.append({"source_context": MACHINE_CODING_SOURCE_CONTEXT})
     if difficulties:
         clauses.append({"difficulty_level": {"$in": list(difficulties)}})
     if domains:
