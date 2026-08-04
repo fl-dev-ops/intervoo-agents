@@ -4,7 +4,7 @@ from copy import deepcopy
 from threading import RLock
 from typing import Any
 
-SUPPORTED_LANGUAGES = ("java", "javascript", "python")
+SUPPORTED_LANGUAGES = ("java", "javascript", "python", "react")
 SUPPORTED_SURFACES = ("verbal", "code", "choice", "whiteboard")
 
 

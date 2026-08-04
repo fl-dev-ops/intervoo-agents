@@ -29,7 +29,7 @@ EVALUATOR_HANDOFF_MESSAGE = "Please wait while I prepare my feedback."
 MAX_CODE_ANSWER_CHARS = 20_000
 EVALUATION_TIMEOUT_SECONDS = 30
 CODE_ANSWER_DRAIN_TIMEOUT_SECONDS = 1
-SUPPORTED_CODE_LANGUAGES = {"java", "javascript", "python"}
+SUPPORTED_CODE_LANGUAGES = {"java", "javascript", "python", "react"}
 
 
 class AssessmentResult(str, Enum):

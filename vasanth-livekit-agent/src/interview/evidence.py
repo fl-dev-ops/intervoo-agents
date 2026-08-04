@@ -18,7 +18,7 @@ CODE_ANSWER_TOPIC = "candidate.code_answer"
 MCQ_ANSWER_TOPIC = "candidate.mcq_answer"
 MAX_CODE_ANSWER_CHARS = 20_000
 ANSWER_DRAIN_TIMEOUT_SECONDS = 1
-SUPPORTED_CODE_LANGUAGES = {"java", "javascript", "python"}
+SUPPORTED_CODE_LANGUAGES = {"java", "javascript", "python", "react"}
 
 
 def _message_turn(item: object) -> dict[str, str] | None:

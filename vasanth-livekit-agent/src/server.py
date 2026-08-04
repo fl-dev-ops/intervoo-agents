@@ -39,8 +39,8 @@ from identity import (
     resolve_user_id_from_room_metadata,
 )
 from interview.chroma_repository import (
-    chroma_runtime_identity,
     chroma_configured,
+    chroma_runtime_identity,
     get_cached_collection,
     prewarm_chroma,
 )
@@ -67,10 +67,7 @@ from screen_feedback import ScreenFeedbackRuntime
 from session import InteractionMode, SessionConfig, build_agent_session
 from tools.interview.build_plan import build_interview_plan_tool
 from tools.interview.start_question import build_start_question_tool
-from tools.screen.inspect_screen import (
-    build_resume_inspection_tool,
-    build_screen_inspection_tool,
-)
+from tools.screen.inspect_screen import build_screen_inspection_tool
 from tracing import flush_langfuse, setup_langfuse
 from unified_agent import UnifiedAgent
 from watchdog import cancel_idle_room_watchdog, register_idle_room_watchdog
@@ -995,11 +992,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     screen_feedback_mode = metadata.get("screen_feedback_mode")
     timer_screen_feedback_enabled = screen_feedback_mode == "timer"
-    resume_inspection_enabled = is_mock_interview
     screen_feedback: ScreenFeedbackRuntime | None = None
-    if profile.editor_events_enabled and (
-        timer_screen_feedback_enabled or resume_inspection_enabled
-    ):
+    if profile.editor_events_enabled and timer_screen_feedback_enabled:
         screen_feedback = ScreenFeedbackRuntime(
             room=ctx.room,
             participant_identity=participant_identity,
@@ -1100,23 +1094,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             "and continue the interview. Treat screen_share_required, "
             "surface_unavailable, and loading as normal recoverable states; never call "
             "end_call because of them. Do not call it for verbal questions."
-        )
-
-    if screen_feedback is not None and resume_inspection_enabled:
-        tools.append(build_resume_inspection_tool(screen_feedback))
-        agent_instructions = (
-            f"{agent_instructions}\n\n"
-            "During the introduction, ask whether the candidate has their resume "
-            "available and is comfortable sharing it. If they agree, ask them to "
-            "share their screen, open the resume, and say when the current view is "
-            "ready. Call inspect_resume_screen for every visible viewport and follow "
-            "its candidate_message exactly. Never assume the resume is complete. "
-            "After apparent_end, ask whether this is the last page or end of the "
-            "resume, then call inspect_resume_screen with end_of_document_confirmed "
-            "set to true only after explicit confirmation. Do not begin project "
-            "questions until the tool returns complete. If resume sharing is declined "
-            "or repeatedly unavailable, gather the same professional and project "
-            "context verbally and continue."
         )
 
     timer.mark("tool_build")

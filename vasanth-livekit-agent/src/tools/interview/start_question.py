@@ -16,6 +16,8 @@ from interview.question_store import (
 
 logger = logging.getLogger(__name__)
 
+CODE_OUTPUT_NO_RUN_INSTRUCTION = "Don't run the code until you arrive at an answer."
+
 QuestionStartedCallback = Callable[[dict[str, Any]], Awaitable[None]]
 
 
@@ -43,8 +45,10 @@ def build_start_question_tool(
             "Use this for every planned verbal, code-output, coding, machine-coding, "
             "MCQ, or whiteboard question. The tool presents the complete question on "
             "the correct candidate surface and speaks its TTS-safe wording exactly "
-            "once. Call it as a silent tool-only action: do not say the question or "
-            "an acknowledgement before or after the call. A status of answer_pending "
+            "once. For a code-output question, that utterance also tells the candidate "
+            "not to run it before predicting the answer. Call it as a silent "
+            "tool-only action: do not say the question or an acknowledgement before or "
+            "after the call. A status of answer_pending "
             "means the previous written question was never submitted: ask the "
             "candidate whether they have finished and submitted it, and only when "
             "they say they cannot finish, call this again with "
@@ -92,7 +96,13 @@ def build_start_question_tool(
                         "Question-start callback failed question_id=%s",
                         internal_question["id"],
                     )
-            speech_handle = context.session.say(internal_question["spokenText"])
+            spoken_text = internal_question["spokenText"]
+            if (
+                internal_question.get("questionType") == "code-output"
+                and CODE_OUTPUT_NO_RUN_INSTRUCTION not in spoken_text
+            ):
+                spoken_text = f"{spoken_text.rstrip()} {CODE_OUTPUT_NO_RUN_INSTRUCTION}"
+            speech_handle = context.session.say(spoken_text)
             await speech_handle
         except Exception:
             logger.exception(
