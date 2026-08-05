@@ -32,7 +32,7 @@ _SARVAM_POOL_MAX_SESSION_DURATION = 50.0  # seconds, below Sarvam's 60s idle tim
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_OPENROUTER_MODEL = "openai/gpt-4o"
+DEFAULT_OPENROUTER_MODEL = "openai/gpt-5.5"
 DEFAULT_SARVAM_LANGUAGE = "en-IN"
 DEFAULT_SARVAM_TTS_MODEL = "bulbul:v3"
 DEFAULT_ASSEMBLYAI_STT_MODEL = "universal-3-5-pro"

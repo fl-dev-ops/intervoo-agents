@@ -20,12 +20,11 @@ from livekit.agents import (
 from livekit.plugins import openai
 from pydantic import BaseModel, Field
 
-from session import DEFAULT_OPENROUTER_MODEL
-
 logger = logging.getLogger(__name__)
 
 CODE_ANSWER_TOPIC = "candidate.code_answer"
 EVALUATOR_HANDOFF_MESSAGE = "Please wait while I prepare my feedback."
+EVALUATOR_OPENROUTER_MODEL = "openai/gpt-4o"
 MAX_CODE_ANSWER_CHARS = 20_000
 EVALUATION_TIMEOUT_SECONDS = 30
 CODE_ANSWER_DRAIN_TIMEOUT_SECONDS = 1
@@ -630,7 +629,9 @@ class EvaluatorAgent(Agent):
         self._evaluation_payload = evaluation_payload
         self._mcq_assessments = mcq_assessments
         self._end_session = end_session
-        self._evaluator_llm = openai.LLM.with_openrouter(model=DEFAULT_OPENROUTER_MODEL)
+        self._evaluator_llm = openai.LLM.with_openrouter(
+            model=EVALUATOR_OPENROUTER_MODEL
+        )
 
     async def _evaluate(self) -> InterviewEvaluation:
         chat_ctx = ChatContext()
