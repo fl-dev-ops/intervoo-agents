@@ -167,3 +167,43 @@ def upload_verbose_json(
     url = build_s3_url(config.s3_bucket, s3_key, config.s3_region, config.s3_endpoint)
     logger.info(f"Uploaded verbose report to s3://{config.s3_bucket}/{s3_key}")
     return url
+
+
+def upload_json(
+    config: RecordingConfig,
+    s3_key: str,
+    data: dict,
+) -> str:
+    client = _get_s3_client(config)
+    client.put_object(
+        Bucket=config.s3_bucket,
+        Key=s3_key,
+        Body=json.dumps(data, indent=2, default=str).encode("utf-8"),
+        ContentType="application/json",
+    )
+    return build_s3_url(
+        config.s3_bucket,
+        s3_key,
+        config.s3_region,
+        config.s3_endpoint,
+    )
+
+
+def upload_png(
+    config: RecordingConfig,
+    s3_key: str,
+    image_bytes: bytes,
+) -> str:
+    client = _get_s3_client(config)
+    client.put_object(
+        Bucket=config.s3_bucket,
+        Key=s3_key,
+        Body=image_bytes,
+        ContentType="image/png",
+    )
+    return build_s3_url(
+        config.s3_bucket,
+        s3_key,
+        config.s3_region,
+        config.s3_endpoint,
+    )

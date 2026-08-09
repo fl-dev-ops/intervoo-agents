@@ -414,6 +414,12 @@ def _has_usable_answer(question: dict[str, Any]) -> bool:
                 and turn["text"].strip()
             ):
                 return True
+    whiteboard_answer = question.get("whiteboard_answer")
+    if (
+        isinstance(whiteboard_answer, dict)
+        and isinstance(whiteboard_answer.get("visual_assessment"), dict)
+    ):
+        return True
     code_answer = question.get("code_answer")
     return bool(
         isinstance(code_answer, dict)
@@ -704,12 +710,18 @@ def build_finish_interview_tool(
         context: RunContext,
         session_inconclusive: bool = False,
     ) -> Agent | dict[str, str]:
-        if not session_inconclusive and not tracker.has_started_final_question():
+        final_question_ready = (
+            tracker.is_final_question_ready()
+            if hasattr(tracker, "is_final_question_ready")
+            else tracker.has_started_final_question()
+        )
+        if not session_inconclusive and not final_question_ready:
             return {
                 "status": "not_ready",
                 "message": (
-                    "The final planned question has not started. Continue the "
-                    "interview before requesting evaluation."
+                    "The final planned question has not started or its required "
+                    "whiteboard image has not been accepted. Continue the interview "
+                    "before requesting evaluation."
                 ),
             }
 

@@ -10,59 +10,20 @@ import time
 from collections.abc import MutableMapping
 from typing import Any
 
+from interview.config import (
+    BUCKET_ORDER,
+    BUCKET_TYPES,
+    COUNTS,
+    DEFAULT_DOMAINS,
+    DEFAULT_STARTER_CODE,
+    DIFFICULTIES,
+    MACHINE_CODING_SOURCE_CONTEXT,
+    SUPPORTED_LANGUAGES,
+)
+
 logger = logging.getLogger(__name__)
 
 LOG_PREFIX = "[EXT-API:chroma]"
-SUPPORTED_LANGUAGES = ("html", "java", "javascript", "python", "react")
-DEFAULT_DOMAINS = ["react", "javascript"]
-
-DEFAULT_STARTER_CODE = {
-    "html": (
-        "<!doctype html>\n"
-        '<html lang="en">\n'
-        "  <head>\n"
-        '    <meta charset="UTF-8" />\n'
-        '    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n'
-        "    <title>Frontend coding question</title>\n"
-        "  </head>\n"
-        "  <body>\n"
-        '    <main id="app">\n'
-        "      <!-- Build your interface here. -->\n"
-        "    </main>\n"
-        "    <script>\n"
-        "      // Add your JavaScript here.\n"
-        "    </script>\n"
-        "  </body>\n"
-        "</html>\n"
-    ),
-    "javascript": "// Write your solution here.\n",
-    "react": (
-        'import React from "react";\n\n'
-        "export default function App() {\n"
-        "  return (\n"
-        "    <main>\n"
-        "      {/* Implement your solution here. */}\n"
-        "    </main>\n"
-        "  );\n"
-        "}\n"
-    ),
-}
-
-COUNTS = {
-    "0-3": {"verbal": 6, "coding": 2, "machine": 3},
-    "4-8": {"verbal": 5, "coding": 2, "machine": 2},
-}
-DIFFICULTIES = {
-    "0-3": ["easy", "medium"],
-    "4-8": ["medium", "hard"],
-}
-BUCKET_TYPES = {
-    "verbal": ["verbal", "mcq"],
-    "coding": ["coding", "code-output"],
-    "machine": ["machine-coding"],
-}
-BUCKET_ORDER = ["verbal", "coding", "machine"]
-MACHINE_CODING_SOURCE_CONTEXT = "mock-interview"
 
 USERDATA_CHROMA_CLIENT = "chroma_client"
 USERDATA_CHROMA_COLLECTION = "chroma_collection"
@@ -161,16 +122,20 @@ def _build_where(
     types: list[str],
     difficulties: list[str] | None,
     domains: list[str] | None,
+    surface: str | None = None,
 ) -> dict[str, Any] | None:
     clauses: list[dict[str, Any]] = []
     if types:
         clauses.append({"question_type": {"$in": list(types)}})
+    # This is for excluding questions from assigment notes
     if types == BUCKET_TYPES["machine"]:
         clauses.append({"source_context": MACHINE_CODING_SOURCE_CONTEXT})
     if difficulties:
         clauses.append({"difficulty_level": {"$in": list(difficulties)}})
     if domains:
         clauses.append({"domain": {"$in": list(domains)}})
+    if surface:
+        clauses.append({"surface": surface})
     if not clauses:
         return None
     if len(clauses) == 1:
@@ -185,10 +150,11 @@ def _query(
     types: list[str],
     difficulties: list[str] | None,
     domains: list[str] | None,
+    surface: str | None,
     n: int,
     exclude_ids: set[str],
 ) -> list[tuple[str, dict[str, Any]]]:
-    where = _build_where(types, difficulties, domains)
+    where = _build_where(types, difficulties, domains, surface)
     started = time.monotonic()
     result = collection.query(
         query_texts=[query_text or "interview"],
@@ -338,13 +304,16 @@ def _fill_bucket(
     domains: list[str],
     target: int,
     exclude_ids: set[str],
+    required_surface: str | None = None,
+    allow_domain_fallback: bool = True,
 ) -> list[dict[str, Any]]:
     picked: dict[str, dict[str, Any]] = {}
-    for selected_domains, selected_difficulties in (
-        (domains, difficulties),
-        (None, difficulties),
-        (None, None),
-    ):
+    fallbacks = (
+        [(domains, difficulties), (None, difficulties), (None, None)]
+        if allow_domain_fallback
+        else [(domains, difficulties), (domains, None)]
+    )
+    for selected_domains, selected_difficulties in fallbacks:
         if len(picked) >= target:
             break
         rows = _query(
@@ -353,12 +322,17 @@ def _fill_bucket(
             types=types,
             difficulties=selected_difficulties,
             domains=selected_domains,
+            surface=required_surface,
             n=max(target * 4, target),
             exclude_ids=exclude_ids | set(picked),
         )
         for question_id, metadata in rows:
             normalized = _normalize(question_id, metadata)
             if normalized is None:
+                continue
+            if required_surface is not None and normalized.get("surface") != required_surface:
+                continue
+            if required_surface is None and normalized.get("surface") == "whiteboard":
                 continue
             picked[question_id] = normalized
             if len(picked) >= target:
@@ -382,26 +356,40 @@ def build_plan(
     focus: str,
 ) -> tuple[str, dict[str, int], list[dict[str, Any]]]:
     band = _band(years_experience)
-    counts = COUNTS[band]
     difficulties = DIFFICULTIES[band]
     selected_domains = [
         domain.strip().lower()
         for domain in (domains or DEFAULT_DOMAINS)
         if isinstance(domain, str) and domain.strip()
     ] or DEFAULT_DOMAINS
+    configured_counts = COUNTS[band]
+    counts = {
+        **configured_counts,
+        "system-design": (
+            configured_counts["system-design"]
+            if "system-design" in selected_domains
+            else 0
+        ),
+    }
     query_text = (focus or " ".join(selected_domains)).strip()
 
     ordered: list[dict[str, Any]] = []
     used: set[str] = set()
     for bucket in BUCKET_ORDER:
+        target = counts[bucket]
+        if target == 0:
+            continue
+        is_system_design = bucket == "system-design"
         questions = _fill_bucket(
             collection,
             query_text=query_text,
             types=BUCKET_TYPES[bucket],
             difficulties=difficulties,
-            domains=selected_domains,
-            target=counts[bucket],
+            domains=["system-design"] if is_system_design else selected_domains,
+            target=target,
             exclude_ids=used,
+            required_surface="whiteboard" if is_system_design else None,
+            allow_domain_fallback=not is_system_design,
         )
         ordered.extend(questions)
         used.update(question["id"] for question in questions)

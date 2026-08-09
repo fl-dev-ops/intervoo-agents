@@ -951,6 +951,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     async def _on_screen_nudge(text: str) -> None:
         await _inject_internal_note(text, {"internal_screen_nudge": True})
 
+    rec_cfg = get_recording_config(userdata)
     evidence_tracker: InterviewEvidenceTracker | None = None
     evaluator_prompt: str | None = None
     # Every mock_interview profile is the same agent behind a different prompt
@@ -969,11 +970,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         evidence_tracker = InterviewEvidenceTracker(
             questions=question_store.internal_questions(),
             participant_identity=participant_identity,
+            room_name=ctx.room.name,
+            agent_type=profile.agent_type,
+            recording_config=rec_cfg if rec_cfg.enabled else None,
             on_answer_submitted=_on_answer_submitted,
         )
         evidence_tracker.start(ctx.room)
 
-    rec_cfg = get_recording_config(userdata)
     recording_task: asyncio.Task[RecordingStartState] | None = None
     if rec_cfg.enabled:
         recording_task = asyncio.create_task(

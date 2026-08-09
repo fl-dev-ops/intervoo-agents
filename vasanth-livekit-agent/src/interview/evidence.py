@@ -11,6 +11,8 @@ from livekit import rtc
 from livekit.agents import ChatContext, llm
 
 from interview.question_store import candidate_safe_question
+from interview.whiteboard_evidence import WhiteboardEvidence
+from recording_config import RecordingConfig
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,9 @@ class InterviewEvidenceTracker:
         *,
         questions: object,
         participant_identity: str,
+        room_name: str = "",
+        agent_type: str = "mock-interview-agent",
+        recording_config: RecordingConfig | None = None,
         on_answer_submitted: Callable[[str], Awaitable[None]] | None = None,
     ) -> None:
         self._participant_identity = participant_identity
@@ -55,6 +60,13 @@ class InterviewEvidenceTracker:
         self._mcq_answers: dict[str, dict[str, Any]] = {}
         self._stream_tasks: set[asyncio.Task[None]] = set()
         self._room: rtc.Room | None = None
+        self._whiteboards = WhiteboardEvidence(
+            participant_identity=participant_identity,
+            room_name=room_name,
+            agent_type=agent_type,
+            recording_config=recording_config,
+            on_answer_submitted=on_answer_submitted,
+        )
         self.load_plan(questions)
 
     def load_plan(self, questions: object) -> None:
@@ -74,10 +86,12 @@ class InterviewEvidenceTracker:
         self._active_question_id = None
         self._code_answers.clear()
         self._mcq_answers.clear()
+        self._whiteboards.load_plan(self._questions)
 
     def start(self, room: rtc.Room) -> None:
         room.register_text_stream_handler(CODE_ANSWER_TOPIC, self._on_code_stream)
         room.register_text_stream_handler(MCQ_ANSWER_TOPIC, self._on_mcq_stream)
+        self._whiteboards.start(room)
         self._room = room
 
     async def close(self) -> None:
@@ -92,6 +106,7 @@ class InterviewEvidenceTracker:
         if self._stream_tasks:
             await asyncio.gather(*self._stream_tasks, return_exceptions=True)
             self._stream_tasks.clear()
+        await self._whiteboards.close()
 
     async def wait_for_pending_answers(self) -> None:
         await asyncio.sleep(0.25)
@@ -100,6 +115,7 @@ class InterviewEvidenceTracker:
                 set(self._stream_tasks),
                 timeout=ANSWER_DRAIN_TIMEOUT_SECONDS,
             )
+        await self._whiteboards.wait_for_pending()
 
     async def wait_for_pending_code_answers(self) -> None:
         """Compatibility name used by the existing evaluator handoff."""
@@ -111,6 +127,7 @@ class InterviewEvidenceTracker:
             return
         self._active_question_id = question_id
         self._started_question_ids.add(question_id)
+        self._whiteboards.on_question_started(question_id)
 
     def on_conversation_item(self, item: object) -> None:
         question_id = self._active_question_id
@@ -125,6 +142,14 @@ class InterviewEvidenceTracker:
             self._questions
             and self._questions[-1]["id"] in self._started_question_ids
         )
+
+    def is_final_question_ready(self) -> bool:
+        if not self.has_started_final_question():
+            return False
+        final_question = self._questions[-1]
+        if final_question.get("surface") != "whiteboard":
+            return True
+        return self._whiteboards.has_accepted(final_question["id"])
 
     def store_code_answer(
         self,
@@ -251,6 +276,7 @@ class InterviewEvidenceTracker:
                 **candidate_safe_question(question),
                 "turns": list(self._turns[question["id"]]),
                 "code_answer": deepcopy(self._code_answers.get(question["id"])),
+                "whiteboard_answer": self._whiteboards.evidence_for(question["id"]),
             }
             for question in self._questions
         ]

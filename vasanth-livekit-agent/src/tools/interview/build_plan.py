@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from copy import deepcopy
 from collections.abc import Awaitable, Callable
+from copy import deepcopy
 from typing import Any
 
 from livekit.agents import RunContext, function_tool
@@ -50,7 +50,9 @@ def build_interview_plan_tool(
         description=(
             "Build the interview plan from the question bank once the candidate's "
             "experience and primary technologies are known. Pass years_experience, "
-            "domains such as [\"react\", \"javascript\"], and a focus summary that "
+            "domains such as [\"react\", \"javascript\"] and include "
+            "\"system-design\" only when a whiteboard design question is intended. "
+            "Pass a focus summary that "
             "contains no candidate name. If successful, start every returned id in "
             "order using start_question. Never invent or substitute a question."
         ),
@@ -123,7 +125,9 @@ def build_interview_plan_tool(
             for question in ordered:
                 question_type = question["questionType"]
                 type_counts[question_type] = type_counts.get(question_type, 0) + 1
-                if question_type == "machine-coding":
+                if question.get("surface") == "whiteboard":
+                    got["system-design"] += 1
+                elif question_type == "machine-coding":
                     got["machine"] += 1
                 elif question_type in {"coding", "code-output"}:
                     got["coding"] += 1

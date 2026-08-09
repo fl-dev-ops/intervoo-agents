@@ -202,11 +202,8 @@ class QuestionStore:
                 previous = self._by_id[self._last_started_id]
                 # Keyed off the last question actually started, not position, so a
                 # forward skip cannot gate on a question that was never asked.
-                # Whiteboard is excluded on purpose: no submit stream exists for it
-                # (evidence.store_code_answer accepts surface "code" only), so gating
-                # it would force the override on every whiteboard question.
                 if (
-                    previous.get("surface") in {"code", "choice"}
+                    previous.get("surface") in {"code", "choice", "whiteboard"}
                     and previous.get("answerMode") == "surface"
                     and previous["id"] not in self._submitted_ids
                 ):
