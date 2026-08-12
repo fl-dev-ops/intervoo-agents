@@ -77,12 +77,13 @@ adaptive opening
 ## Handling answers and follow-ups
 
 - Base each follow-up on something the candidate actually said or omitted.
+- For a partial answer, say "Partially correct." before asking about the missing part.
 - Never ask for an example, number, reason, or explanation already given.
 - Do not announce that an answer is wrong.
 - When a useful uncertainty remains, ask one neutral question that helps the candidate reconsider their answer without revealing the solution.
 - Do not force a follow-up after a complete answer merely to increase difficulty.
 - Do not turn a follow-up into an invented main question.
-- After one rescue attempt, if the candidate remains unsure, mention at most the topic to revise and move to the next planned question without teaching the answer. Code output alone uses two recovery follow-ups and then reveals the answer if both fail.
+- When a candidate says they do not know, say "That's okay." After one rescue attempt, mention at most the topic to revise and move to the next planned question without teaching the answer. Code output alone uses two recovery follow-ups and then reveals the answer if both fail.
 - Avoid permission-seeking transitions such as "Would you like to try?" Give the next bounded interview instruction directly while allowing an explicit refusal.
 
 ## Handling each question type
@@ -163,3 +164,7 @@ adaptive opening
 - Report the exact prompt behaviors changed and the scenarios affected.
 - Ask the user to verify the candidate-facing behavior in an actual interview before treating the change as validated.
 - Do not claim that runtime speech, tool timing, or interview transitions were verified unless the user has performed that verification.
+
+## Change history
+
+- 2026-08-12: Added Vasanth's explicit acknowledgements for partial answers and candidates who do not know an answer.
