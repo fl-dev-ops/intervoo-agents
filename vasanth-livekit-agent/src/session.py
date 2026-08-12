@@ -61,18 +61,18 @@ def build_agent_session(
     turn_detector: Any | None = None,
     disable_preemptive_generation: bool = False,
 ) -> AgentSession:
-    # stt = sarvam.STT(
-    #     language=DEFAULT_SARVAM_LANGUAGE,
-    #     model="saaras:v3",
-    #     mode="transcribe",
-    # )
-    stt = assemblyai.STT(
-        model=DEFAULT_ASSEMBLYAI_STT_MODEL,
-        language_codes=["en"],
-        min_turn_silence=100,
-        max_turn_silence=1000,
-        vad_threshold=0.3,
+    stt = sarvam.STT(
+        language=DEFAULT_SARVAM_LANGUAGE,
+        model="saaras:v3",
+        mode="transcribe",
     )
+    # stt = assemblyai.STT(
+    #     model=DEFAULT_ASSEMBLYAI_STT_MODEL,
+    #     language_codes=["en"],
+    #     min_turn_silence=100,
+    #     max_turn_silence=1000,
+    #     vad_threshold=0.3,
+    # )
 
     llm = openai.LLM.with_openrouter(model=openrouter_model)
 
@@ -159,5 +159,8 @@ def build_agent_session(
                 "resume_false_interruption": True,
             },
             preemptive_generation=preemptive_generation,
+            user_turn_limit={
+                "max_duration": 60.0,
+            },
         ),
     )

@@ -36,8 +36,22 @@ DEFAULT_STARTER_CODE = {
 }
 
 COUNTS = {
-    "0-3": {"verbal": 6, "coding": 2, "machine": 3, "system-design": 1},
-    "4-8": {"verbal": 5, "coding": 2, "machine": 2, "system-design": 1},
+    "0-3": {
+        "verbal": 3,
+        "mcq": 1,
+        "coding": 1,
+        "code-output": 1,
+        "machine": 1,
+        "system-design": 1,
+    },
+    "4-8": {
+        "verbal": 3,
+        "mcq": 1,
+        "coding": 1,
+        "code-output": 2,
+        "machine": 1,
+        "system-design": 1,
+    },
 }
 
 DIFFICULTIES = {
@@ -45,12 +59,36 @@ DIFFICULTIES = {
     "4-8": ["medium", "hard"],
 }
 
-BUCKET_TYPES = {
-    "verbal": ["verbal", "mcq"],
-    "coding": ["coding", "code-output"],
-    "machine": ["machine-coding"],
-    "system-design": ["verbal"],
+BUCKETS = {
+    "verbal": {"question_types": ["verbal"]},
+    "mcq": {"question_types": ["mcq"]},
+    "coding": {"question_types": ["coding"]},
+    "code-output": {"question_types": ["code-output"]},
+    "machine": {
+        "question_types": ["machine-coding"],
+        "source_context": "mock-interview",
+    },
+    "system-design": {
+        "question_types": ["verbal"],
+        "domains": ["system-design"],
+        "surface": "whiteboard",
+        "allow_domain_fallback": False,
+    },
 }
 
-BUCKET_ORDER = ["verbal", "coding", "machine", "system-design"]
-MACHINE_CODING_SOURCE_CONTEXT = "mock-interview"
+BUCKET_ORDER = [
+    "verbal",
+    "mcq",
+    "code-output",
+    "coding",
+    "machine",
+    "system-design",
+]
+
+QUESTION_TYPE_BUCKET = {
+    "verbal": "verbal",
+    "mcq": "mcq",
+    "coding": "coding",
+    "code-output": "code-output",
+    "machine-coding": "machine",
+}

@@ -9,6 +9,7 @@ from typing import Any
 from livekit.agents import RunContext, function_tool
 
 from interview.question_store import (
+    InterviewPhase,
     QuestionStore,
     QuestionStoreError,
     candidate_safe_question,
@@ -87,6 +88,11 @@ def build_start_question_tool(
             }
 
         question_store.mark_started(internal_question["id"])
+
+        if question_store.phase == InterviewPhase.INTRODUCTION:
+            question_store.transition_phase(InterviewPhase.INTERVIEW_QUESTIONS)
+            context.session.options.turn_handling.get("user_turn_limit", {})["max_duration"] = None
+
         try:
             if on_question_started is not None:
                 try:

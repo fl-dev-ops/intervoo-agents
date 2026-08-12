@@ -63,8 +63,6 @@ class InterviewEvidenceTracker:
         self._whiteboards = WhiteboardEvidence(
             participant_identity=participant_identity,
             room_name=room_name,
-            agent_type=agent_type,
-            recording_config=recording_config,
             on_answer_submitted=on_answer_submitted,
         )
         self.load_plan(questions)

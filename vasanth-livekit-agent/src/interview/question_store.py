@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from enum import Enum
 from threading import RLock
 from typing import Any
 
 SUPPORTED_LANGUAGES = ("html", "java", "javascript", "python", "react")
 SUPPORTED_SURFACES = ("verbal", "code", "choice", "whiteboard")
+
+
+class InterviewPhase(str, Enum):
+    INTRODUCTION = "INTRODUCTION"
+    INTERVIEW_QUESTIONS = "INTERVIEW_QUESTIONS"
+    EVALUATION = "EVALUATION"
+    CONCLUSION = "CONCLUSION"
 
 
 class QuestionStoreError(ValueError):
@@ -126,6 +134,7 @@ class QuestionStore:
         self._reserved_indexes: dict[str, int] = {}
         self._delivery_failed_ids: set[str] = set()
         self._initialized = False
+        self._phase = InterviewPhase.INTRODUCTION
         self._lock = RLock()
 
     def load(self, questions: list[dict[str, Any]]) -> None:
@@ -141,6 +150,15 @@ class QuestionStore:
             self._questions = copied
             self._by_id = {question["id"]: question for question in copied}
             self._initialized = True
+
+    @property
+    def phase(self) -> InterviewPhase:
+        with self._lock:
+            return self._phase
+
+    def transition_phase(self, new_phase: InterviewPhase) -> None:
+        with self._lock:
+            self._phase = new_phase
 
     def is_initialized(self) -> bool:
         with self._lock:

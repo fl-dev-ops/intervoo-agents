@@ -8,7 +8,8 @@ from typing import Any
 
 from livekit.agents import RunContext, function_tool
 
-from interview.chroma_repository import BUCKET_ORDER, LOG_PREFIX, build_plan
+from interview.chroma_repository import LOG_PREFIX, build_plan
+from interview.config import BUCKET_ORDER, QUESTION_TYPE_BUCKET
 from interview.question_store import QuestionStore
 
 logger = logging.getLogger(__name__)
@@ -50,9 +51,7 @@ def build_interview_plan_tool(
         description=(
             "Build the interview plan from the question bank once the candidate's "
             "experience and primary technologies are known. Pass years_experience, "
-            "domains such as [\"react\", \"javascript\"] and include "
-            "\"system-design\" only when a whiteboard design question is intended. "
-            "Pass a focus summary that "
+            "domains such as [\"react\", \"javascript\"], and a focus summary that "
             "contains no candidate name. If successful, start every returned id in "
             "order using start_question. Never invent or substitute a question."
         ),
@@ -127,12 +126,8 @@ def build_interview_plan_tool(
                 type_counts[question_type] = type_counts.get(question_type, 0) + 1
                 if question.get("surface") == "whiteboard":
                     got["system-design"] += 1
-                elif question_type == "machine-coding":
-                    got["machine"] += 1
-                elif question_type in {"coding", "code-output"}:
-                    got["coding"] += 1
                 else:
-                    got["verbal"] += 1
+                    got[QUESTION_TYPE_BUCKET[question_type]] += 1
 
             logger.info(
                 "%s plan band=%s target=%s got=%s types=%s total=%d",

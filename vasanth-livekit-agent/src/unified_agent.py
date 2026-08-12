@@ -7,6 +7,7 @@ import time
 from typing import Any
 
 from livekit.agents import Agent
+from livekit.agents.voice.events import UserTurnExceededEvent
 
 logger = logging.getLogger(__name__)
 
@@ -109,3 +110,12 @@ class UnifiedAgent(Agent):
     async def on_exit(self) -> None:
         await self._stop_session_timer()
         await super().on_exit()
+
+    async def on_user_turn_exceeded(self, ev: UserTurnExceededEvent) -> None:
+        """Called when the user speaks continuously for too long."""
+        await self.session.generate_reply(
+            user_input=ev.transcript,
+            instructions="The user has been speaking too long. Interrupt them by saying exactly: 'I could get where you are heading to, let’s move to next question now'. Do not say anything else.",
+            allow_interruptions=False,
+            tool_choice="none",
+        )

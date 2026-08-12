@@ -12,12 +12,11 @@ from typing import Any
 
 from interview.config import (
     BUCKET_ORDER,
-    BUCKET_TYPES,
+    BUCKETS,
     COUNTS,
     DEFAULT_DOMAINS,
     DEFAULT_STARTER_CODE,
     DIFFICULTIES,
-    MACHINE_CODING_SOURCE_CONTEXT,
     SUPPORTED_LANGUAGES,
 )
 
@@ -123,13 +122,13 @@ def _build_where(
     difficulties: list[str] | None,
     domains: list[str] | None,
     surface: str | None = None,
+    source_context: str | None = None,
 ) -> dict[str, Any] | None:
     clauses: list[dict[str, Any]] = []
     if types:
         clauses.append({"question_type": {"$in": list(types)}})
-    # This is for excluding questions from assigment notes
-    if types == BUCKET_TYPES["machine"]:
-        clauses.append({"source_context": MACHINE_CODING_SOURCE_CONTEXT})
+    if source_context:
+        clauses.append({"source_context": source_context})
     if difficulties:
         clauses.append({"difficulty_level": {"$in": list(difficulties)}})
     if domains:
@@ -151,10 +150,11 @@ def _query(
     difficulties: list[str] | None,
     domains: list[str] | None,
     surface: str | None,
+    source_context: str | None,
     n: int,
     exclude_ids: set[str],
 ) -> list[tuple[str, dict[str, Any]]]:
-    where = _build_where(types, difficulties, domains, surface)
+    where = _build_where(types, difficulties, domains, surface, source_context)
     started = time.monotonic()
     result = collection.query(
         query_texts=[query_text or "interview"],
@@ -306,6 +306,7 @@ def _fill_bucket(
     exclude_ids: set[str],
     required_surface: str | None = None,
     allow_domain_fallback: bool = True,
+    source_context: str | None = None,
 ) -> list[dict[str, Any]]:
     picked: dict[str, dict[str, Any]] = {}
     fallbacks = (
@@ -323,6 +324,7 @@ def _fill_bucket(
             difficulties=selected_difficulties,
             domains=selected_domains,
             surface=required_surface,
+            source_context=source_context,
             n=max(target * 4, target),
             exclude_ids=exclude_ids | set(picked),
         )
@@ -362,15 +364,7 @@ def build_plan(
         for domain in (domains or DEFAULT_DOMAINS)
         if isinstance(domain, str) and domain.strip()
     ] or DEFAULT_DOMAINS
-    configured_counts = COUNTS[band]
-    counts = {
-        **configured_counts,
-        "system-design": (
-            configured_counts["system-design"]
-            if "system-design" in selected_domains
-            else 0
-        ),
-    }
+    counts = COUNTS[band]
     query_text = (focus or " ".join(selected_domains)).strip()
 
     ordered: list[dict[str, Any]] = []
@@ -379,17 +373,18 @@ def build_plan(
         target = counts[bucket]
         if target == 0:
             continue
-        is_system_design = bucket == "system-design"
+        bucket_config = BUCKETS[bucket]
         questions = _fill_bucket(
             collection,
             query_text=query_text,
-            types=BUCKET_TYPES[bucket],
+            types=bucket_config["question_types"],
             difficulties=difficulties,
-            domains=["system-design"] if is_system_design else selected_domains,
+            domains=bucket_config.get("domains", selected_domains),
             target=target,
             exclude_ids=used,
-            required_surface="whiteboard" if is_system_design else None,
-            allow_domain_fallback=not is_system_design,
+            required_surface=bucket_config.get("surface"),
+            allow_domain_fallback=bucket_config.get("allow_domain_fallback", True),
+            source_context=bucket_config.get("source_context"),
         )
         ordered.extend(questions)
         used.update(question["id"] for question in questions)
