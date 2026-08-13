@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from copy import deepcopy
 from typing import Any
 
@@ -16,10 +16,9 @@ logger = logging.getLogger(__name__)
 
 TECHNICAL_INCONCLUSIVE_MESSAGE = (
     "I'm sorry, but the technical question set is unavailable right now, so I "
-    "can't conduct a fair interview. I'll end this session as inconclusive."
+    "can't conduct a fair interview. Please go ahead and end the call."
 )
 
-EndSessionCallback = Callable[[], Awaitable[None]]
 PlanLoadedCallback = Callable[[list[dict[str, Any]]], None]
 
 
@@ -28,22 +27,18 @@ def build_interview_plan_tool(
     get_collection: Callable[[], Any],
     question_store: QuestionStore,
     on_plan_loaded: PlanLoadedCallback | None,
-    end_session: EndSessionCallback,
 ):
-    """Build a deterministic plan or terminate without model improvisation."""
+    """Build a deterministic plan without model improvisation."""
     plan_lock = asyncio.Lock()
     cached_result: dict[str, object] | None = None
 
-    async def terminate_inconclusive(context: RunContext, status: str) -> dict[str, str]:
-        try:
-            speech_handle = context.session.say(
-                TECHNICAL_INCONCLUSIVE_MESSAGE,
-                allow_interruptions=False,
-                add_to_chat_ctx=True,
-            )
-            await speech_handle
-        finally:
-            await end_session()
+    async def report_inconclusive(context: RunContext, status: str) -> dict[str, str]:
+        speech_handle = context.session.say(
+            TECHNICAL_INCONCLUSIVE_MESSAGE,
+            allow_interruptions=False,
+            add_to_chat_ctx=True,
+        )
+        await speech_handle
         return {"status": status}
 
     @function_tool(
@@ -113,7 +108,7 @@ def build_interview_plan_tool(
                 last_status = "empty"
             else:
                 cached_result = {"status": last_status}
-                return await terminate_inconclusive(context, last_status)
+                return await report_inconclusive(context, last_status)
 
             question_store.load(ordered)
             if on_plan_loaded is not None:

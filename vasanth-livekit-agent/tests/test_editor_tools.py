@@ -8,6 +8,7 @@ import pytest
 
 from interview.question_store import QuestionStore
 from tools.interview.start_question import build_start_question_tool
+from tools.interview.whiteboard_highlight import build_whiteboard_highlight_tools
 
 
 @pytest.mark.asyncio
@@ -71,3 +72,37 @@ def test_interviewer_prompt_does_not_repeat_tool_spoken_question() -> None:
     assert "use `start_question` with its id as a silent tool action" in text
     assert "speaks the complete TTS-safe question exactly once" in text
     assert "Never ask a planned question in your own words" in text
+
+
+@pytest.mark.asyncio
+async def test_whiteboard_tools_read_assessment_then_highlight_component() -> None:
+    rpc_calls: list[dict[str, object]] = []
+
+    async def read_assessment() -> dict[str, object]:
+        return {
+            "questionId": "q1",
+            "drawingSummary": {"components": ["API Gateway"]},
+            "visualEvaluation": {"gaps": ["No failure path is shown"]},
+        }
+
+    class FakeLocalParticipant:
+        async def perform_rpc(self, **kwargs: object) -> str:
+            rpc_calls.append(kwargs)
+            return json.dumps({"ok": True, "componentLabel": "API Gateway"})
+
+    read_tool, highlight_tool = build_whiteboard_highlight_tools(
+        room=SimpleNamespace(local_participant=FakeLocalParticipant()),
+        participant_identity="candidate-1",
+        read_assessment=read_assessment,
+    )
+
+    assessment = await read_tool._func(SimpleNamespace())
+    highlighted = await highlight_tool._func(SimpleNamespace(), "API Gateway")
+
+    assert assessment["status"] == "ok"
+    assert highlighted["ok"] is True
+    assert rpc_calls[0]["method"] == "workspace.whiteboard"
+    assert json.loads(str(rpc_calls[0]["payload"])) == {
+        "action": "highlight_component",
+        "payload": {"componentLabel": "API Gateway"},
+    }

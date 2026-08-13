@@ -4,7 +4,6 @@ import asyncio
 import json
 import logging
 import math
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -14,6 +13,7 @@ from livekit.agents import (
     Agent,
     ChatContext,
     RunContext,
+    StopResponse,
     function_tool,
     llm,
 )
@@ -24,6 +24,10 @@ logger = logging.getLogger(__name__)
 
 CODE_ANSWER_TOPIC = "candidate.code_answer"
 EVALUATOR_HANDOFF_MESSAGE = "Please wait while I prepare my feedback."
+EVALUATOR_ENDING_MESSAGE = (
+    "Do you have any questions. If nothing, go ahead and end the call"
+)
+EVALUATOR_MAX_QUESTION_TURNS = 4
 EVALUATOR_OPENROUTER_MODEL = "openai/gpt-4o"
 MAX_CODE_ANSWER_CHARS = 20_000
 EVALUATION_TIMEOUT_SECONDS = 30
@@ -549,7 +553,7 @@ def render_vasanth_closure(
                 "Overall, it was a clean interview.",
                 "If I were interviewing you, I would definitely select you.",
                 "You should be able to clear the interview with the preparation you have shown.",
-                "Nice talking to you. Have a good day. All the best.",
+                EVALUATOR_ENDING_MESSAGE,
             ]
         )
         return " ".join(part for part in parts if part)
@@ -564,7 +568,7 @@ def render_vasanth_closure(
                 "I was expecting more.",
                 calibration,
                 improvement,
-                "That's my honest feedback. Nice talking to you. All the best.",
+                EVALUATOR_ENDING_MESSAGE,
             ]
             if part
         )
@@ -580,7 +584,7 @@ def render_vasanth_closure(
                 f"Out of five, I would rate this interview around {rating}.",
                 "For me to select you, the minimum I would expect is around three to three point five.",
                 improvement,
-                "Nice talking to you. Have a good day.",
+                EVALUATOR_ENDING_MESSAGE,
             ]
             if part
         )
@@ -593,7 +597,7 @@ def render_vasanth_closure(
             gap,
             improvement,
             "I don't want to force a verdict from an incomplete session.",
-            "Nice talking to you. Have a good day.",
+            EVALUATOR_ENDING_MESSAGE,
         ]
         if part
     )
@@ -603,11 +607,8 @@ def render_evaluation_failure() -> str:
     return (
         "Okay, considering the time, I'll give my honest feedback. "
         "I don't have enough reliable evidence to give you a fair verdict today, "
-        "so I don't want to force one. Nice talking to you. Have a good day."
+        f"so I don't want to force one. {EVALUATOR_ENDING_MESSAGE}"
     )
-
-
-EndSessionCallback = Callable[[], Awaitable[None]]
 
 
 class EvaluatorAgent(Agent):
@@ -618,15 +619,15 @@ class EvaluatorAgent(Agent):
         evaluator_prompt: str,
         evaluation_payload: dict[str, Any],
         mcq_assessments: dict[str, dict[str, Any]],
-        end_session: EndSessionCallback,
     ) -> None:
         super().__init__(
             instructions=(
-                "Evaluate the completed mock interview and deliver Vasanth's final "
-                "feedback directly to the candidate. Keep it natural, specific, "
-                "constructive, and in second-person language using 'you' and 'your'. "
-                "Never read internal labels or fragment notes aloud. End the session "
-                "after the feedback."
+                "You have delivered Vasanth's final mock-interview feedback. Answer "
+                "only the candidate's questions about that feedback or interview, "
+                "concisely and constructively. Allow at most four candidate question "
+                "turns. Never end the session, disconnect, delete the room, or claim "
+                "that you ended the call. When the candidate has no questions, say "
+                f'exactly: "{EVALUATOR_ENDING_MESSAGE}"'
             ),
             chat_ctx=chat_ctx,
             tools=[],
@@ -634,7 +635,7 @@ class EvaluatorAgent(Agent):
         self._evaluator_prompt = evaluator_prompt
         self._evaluation_payload = evaluation_payload
         self._mcq_assessments = mcq_assessments
-        self._end_session = end_session
+        self._candidate_question_turns = 0
         self._evaluator_llm = openai.LLM.with_openrouter(
             model=EVALUATOR_OPENROUTER_MODEL
         )
@@ -673,15 +674,47 @@ class EvaluatorAgent(Agent):
             logger.exception("Interview evaluation failed")
             closure = render_evaluation_failure()
 
-        try:
-            speech_handle = self.session.say(
-                closure,
+        speech_handle = self.session.say(
+            closure,
+            allow_interruptions=False,
+            add_to_chat_ctx=True,
+        )
+        await speech_handle
+
+    async def on_user_turn_completed(
+        self,
+        turn_ctx: ChatContext,
+        new_message: llm.ChatMessage,
+    ) -> None:
+        self._candidate_question_turns += 1
+        if self._candidate_question_turns > EVALUATOR_MAX_QUESTION_TURNS:
+            await self.session.say(
+                EVALUATOR_ENDING_MESSAGE,
                 allow_interruptions=False,
                 add_to_chat_ctx=True,
             )
-            await speech_handle
-        finally:
-            await self._end_session()
+            raise StopResponse()
+
+        if self._candidate_question_turns == EVALUATOR_MAX_QUESTION_TURNS:
+            turn_ctx.add_message(
+                role="developer",
+                content=(
+                    "This is the fourth and final evaluator question turn. Answer the "
+                    "candidate's current question briefly, then end exactly with: "
+                    f'"{EVALUATOR_ENDING_MESSAGE}" Never ask another question.'
+                ),
+            )
+            return
+
+        turn_ctx.add_message(
+            role="developer",
+            content=(
+                "Answer the candidate's current interview-feedback question briefly. "
+                "If they indicate they have no questions, reply exactly with: "
+                f'"{EVALUATOR_ENDING_MESSAGE}" Otherwise ask only whether they have '
+                "another question. Never end or disconnect the session."
+            ),
+        )
 
 
 def build_finish_interview_tool(
@@ -689,19 +722,19 @@ def build_finish_interview_tool(
     tracker: InterviewEvidenceTracker,
     evaluator_prompt: str,
     candidate_context: dict[str, Any],
-    end_session: EndSessionCallback,
 ):
     @function_tool(
         name="finish_interview",
         description=(
-            "Required terminal handoff after the candidate completes the final "
+            "Required evaluator handoff after the candidate completes the final "
             "planned question and any useful probe or walkthrough. Continue normal "
             "clarification and guidance while the final answer is still active; then "
             "call this immediately as your next and only action. Do not first announce "
             "that the interview is done, summarize, score, thank the candidate, or "
             "wait for another candidate message. The tool says 'Please wait while I "
             "prepare my feedback.' and then hands the completed interview to Vasanth's "
-            "evaluator for final feedback. Set session_inconclusive to true only when "
+            "evaluator for feedback and up to four candidate question turns. It never "
+            "ends the room; the candidate ends the call. Set session_inconclusive to true only when "
             "time expired or the candidate could not continue before the final "
             "planned question."
         ),
@@ -758,7 +791,6 @@ def build_finish_interview_tool(
                 if hasattr(tracker, "build_mcq_assessments")
                 else {}
             ),
-            end_session=end_session,
         )
 
     return finish_interview

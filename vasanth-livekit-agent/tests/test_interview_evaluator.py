@@ -2,14 +2,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from livekit.agents import llm
 
 from interview_evaluator import (
+    EVALUATOR_ENDING_MESSAGE,
     EVALUATOR_HANDOFF_MESSAGE,
+    EVALUATOR_MAX_QUESTION_TURNS,
     AssessmentResult,
     ClosureDecision,
     ClosureRoute,
     CodeResult,
+    EvaluatorAgent,
     InterviewEvaluation,
     InterviewEvidenceTracker,
     QuestionAssessment,
@@ -196,7 +200,7 @@ def test_strong_candidate_routes_to_accept_at_eighty_percent() -> None:
     assert decision.route is ClosureRoute.ACCEPT
     assert "I'll just pass on my honest feedback" in closure
     assert "I would definitely select you" in closure
-    assert "Nice talking to you. Have a good day. All the best." in closure
+    assert closure.endswith(EVALUATOR_ENDING_MESSAGE)
 
 
 def test_fundamental_misses_route_to_clear_reject() -> None:
@@ -226,7 +230,7 @@ def test_fundamental_misses_route_to_clear_reject() -> None:
 
     assert decision.route is ClosureRoute.REJECT
     assert "I was expecting more" in closure
-    assert "All the best." in closure
+    assert closure.endswith(EVALUATOR_ENDING_MESSAGE)
 
 
 def test_mixed_performance_gets_rating_without_hard_verdict() -> None:
@@ -302,45 +306,68 @@ def test_evaluator_prompt_keeps_vasanth_closure_contract() -> None:
     )
     assert "You explained the event loop clearly" in text
     assert 'using "you" or "your"' in text
+    assert EVALUATOR_ENDING_MESSAGE in text
+    assert "up to four candidate question turns" in text
+    assert "never ends the session" in text
 
 
-def test_interviewer_prompt_requires_handoff_after_adaptive_final_followups() -> None:
+def test_interviewer_prompt_requires_whiteboard_followup_before_handoff() -> None:
     prompt = Path(__file__).parents[1] / "prompts/interview/vasanth.md"
     text = prompt.read_text(encoding="utf-8")
 
-    assert "clarification, guidance, a neutral probe" in text
-    assert "Do not manufacture an unnecessary follow-up" in text
-    assert "your next and only action must be to call finish_interview" in text
-    assert (
-        'never improvise a transition such as "let me handle the rest from here."'
-        in text
-    )
-    assert EVALUATOR_HANDOFF_MESSAGE.removesuffix(".") in text
-    assert "wait for another candidate message" in text
+    assert "silently call `read_whiteboard_assessment`" in text
+    assert "Silently call `highlight_whiteboard` with that label" in text
+    assert "never call `finish_interview` until the candidate answers" in text
+    assert "The mock-interview agent never ends the session itself" in text
 
 
-def test_finish_interview_tool_reinforces_required_terminal_handoff() -> None:
+def test_finish_interview_tool_reinforces_non_terminal_evaluator_handoff() -> None:
     tracker = InterviewEvidenceTracker(
         questions=[_question("q1")],
         participant_identity="candidate-1",
     )
 
-    async def end_session() -> None:
-        return None
-
     tool = build_finish_interview_tool(
         tracker=tracker,
         evaluator_prompt="Evaluate the interview.",
         candidate_context={},
-        end_session=end_session,
     )
     description = tool.info.description or ""
 
-    assert "Required terminal handoff" in description
+    assert "Required evaluator handoff" in description
     assert "Continue normal clarification and guidance" in description
     assert "next and only action" in description
     assert "wait for another candidate message" in description
     assert EVALUATOR_HANDOFF_MESSAGE in description
+    assert "up to four candidate question turns" in description
+    assert "never ends the room" in description
+
+
+@pytest.mark.asyncio
+async def test_evaluator_allows_four_question_turns_without_end_session_tool(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    agent = EvaluatorAgent(
+        chat_ctx=llm.ChatContext.empty(),
+        evaluator_prompt="Evaluate the interview.",
+        evaluation_payload={"planned_questions": []},
+        mcq_assessments={},
+    )
+
+    for turn_number in range(1, EVALUATOR_MAX_QUESTION_TURNS + 1):
+        turn_ctx = llm.ChatContext.empty()
+        await agent.on_user_turn_completed(
+            turn_ctx,
+            llm.ChatMessage(role="user", content=["Can you explain the feedback?"]),
+        )
+        guidance = turn_ctx.items[-1].text_content
+        if turn_number == EVALUATOR_MAX_QUESTION_TURNS:
+            assert EVALUATOR_ENDING_MESSAGE in guidance
+            assert "fourth and final" in guidance
+
+    assert agent.tools == []
+    assert "Never end the session" in str(agent.instructions)
 
 
 def test_closure_addresses_the_candidate_in_natural_language() -> None:

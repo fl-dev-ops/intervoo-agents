@@ -119,6 +119,10 @@ class InterviewEvidenceTracker:
         """Compatibility name used by the existing evaluator handoff."""
         await self.wait_for_pending_answers()
 
+    async def active_whiteboard_assessment(self) -> dict[str, Any] | None:
+        await self.wait_for_pending_answers()
+        return self._whiteboards.active_assessment()
+
     def on_question_started(self, question: dict[str, Any]) -> None:
         question_id = question.get("id")
         if not isinstance(question_id, str) or question_id not in self._questions_by_id:

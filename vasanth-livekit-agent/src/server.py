@@ -73,6 +73,7 @@ from session import (
 from tools.interview.build_plan import build_interview_plan_tool
 from tools.interview.code_highlight import build_code_highlight_tools
 from tools.interview.start_question import build_start_question_tool
+from tools.interview.whiteboard_highlight import build_whiteboard_highlight_tools
 from tools.screen.inspect_screen import build_screen_inspection_tool
 from tracing import flush_langfuse, setup_langfuse
 from unified_agent import UnifiedAgent
@@ -1044,19 +1045,12 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         if screen_feedback is not None:
             await screen_feedback.on_question_started(question)
 
-    async def _end_interview_session() -> None:
-        session.shutdown(drain=True)
-        try:
-            await ctx.delete_room()
-        finally:
-            ctx.shutdown(reason="Vasanth interview session ended")
-
     def _register_plan(normalized: list[dict[str, Any]]) -> None:
         if evidence_tracker is not None:
             evidence_tracker.load_plan(normalized)
 
     tools: list[Any] = []
-    if profile.end_call_enabled:
+    if profile.end_call_enabled and not is_mock_interview:
         tools.append(_build_end_call_tool())
 
     if profile.editor_events_enabled:
@@ -1073,6 +1067,14 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 participant_identity=participant_identity,
             )
         )
+        if evidence_tracker is not None:
+            tools.extend(
+                build_whiteboard_highlight_tools(
+                    room=ctx.room,
+                    participant_identity=participant_identity,
+                    read_assessment=evidence_tracker.active_whiteboard_assessment,
+                )
+            )
 
     if chroma_configured():
         tools.append(
@@ -1080,7 +1082,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 get_collection=lambda: get_cached_collection(userdata),
                 question_store=question_store,
                 on_plan_loaded=_register_plan,
-                end_session=_end_interview_session,
             )
         )
     else:
@@ -1094,7 +1095,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 tracker=evidence_tracker,
                 evaluator_prompt=evaluator_prompt,
                 candidate_context=dict(prompt_context),
-                end_session=_end_interview_session,
             )
         )
 

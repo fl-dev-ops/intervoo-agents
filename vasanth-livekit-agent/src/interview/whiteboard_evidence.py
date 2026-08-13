@@ -93,6 +93,19 @@ class WhiteboardEvidence:
     def has_accepted(self, question_id: str) -> bool:
         return question_id in self._answers
 
+    def active_assessment(self) -> dict[str, Any] | None:
+        question_id = self._active_question_id
+        if question_id is None:
+            return None
+        answer = self._answers.get(question_id)
+        assessment = answer.get("visual_assessment") if answer is not None else None
+        if not isinstance(assessment, dict):
+            return None
+        return {
+            "questionId": question_id,
+            **deepcopy(assessment),
+        }
+
     def _track_stream(self, coroutine: Any, *, name: str) -> None:
         task = asyncio.create_task(coroutine, name=name)
         self._stream_tasks.add(task)

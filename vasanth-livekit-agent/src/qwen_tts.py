@@ -1,13 +1,11 @@
-"""Custom Qwen voice-clone TTS backed by a non-streaming HTTP endpoint.
-
-Wraps the JarvisLabs-hosted "vasanth-best" voice clone. The endpoint accepts a
-JSON body ``{"text": ..., "language": ...}`` and streams back raw PCM audio,
-which we forward to LiveKit's AudioEmitter chunk by chunk.
-"""
+"""LiveKit TTS adapter for the vLLM-Omni Qwen3-TTS Speech API."""
 
 from __future__ import annotations
 
+import logging
+import time
 import uuid
+from urllib.parse import urlsplit
 
 import aiohttp
 from livekit.agents import (
@@ -16,26 +14,96 @@ from livekit.agents import (
     APIConnectOptions,
     APIStatusError,
     APITimeoutError,
+    get_job_context,
     tts,
 )
 
 _SAMPLE_RATE = 24_000
 _NUM_CHANNELS = 1
+_PCM_CONTENT_TYPE = "audio/pcm"
+_PREFIX_INSPECTION_BYTES = 8
+
+logger = logging.getLogger(__name__)
+
+
+def _container_format(prefix: bytes) -> str | None:
+    if prefix.startswith(b"RIFF"):
+        return "WAV"
+    if prefix.startswith(b"ID3"):
+        return "MP3"
+    if prefix.startswith(b"OggS"):
+        return "Ogg"
+    if prefix.startswith(b"fLaC"):
+        return "FLAC"
+    if len(prefix) >= 8 and prefix[4:8] == b"ftyp":
+        return "ISO BMFF"
+    return None
 
 
 class QwenTTS(tts.TTS):
-    def __init__(self, endpoint: str) -> None:
+    def __init__(
+        self,
+        *,
+        endpoint: str,
+        voice: str,
+        model_label: str,
+        language: str,
+        api_key: str,
+        connect_timeout: float,
+        total_timeout: float,
+        max_retries: int,
+        retry_interval: float,
+    ) -> None:
         super().__init__(
             capabilities=tts.TTSCapabilities(streaming=False),
             sample_rate=_SAMPLE_RATE,
             num_channels=_NUM_CHANNELS,
         )
+        parsed_endpoint = urlsplit(endpoint)
+        if (
+            parsed_endpoint.scheme != "https"
+            or not parsed_endpoint.hostname
+            or parsed_endpoint.path != "/v1/audio/speech"
+            or parsed_endpoint.query
+            or parsed_endpoint.fragment
+        ):
+            raise ValueError(
+                "QWEN_TTS_ENDPOINT must be an HTTPS URL ending at /v1/audio/speech"
+            )
+        if not api_key.strip():
+            raise ValueError("QWEN_TTS_API_KEY is required")
+        if not voice.strip():
+            raise ValueError("QWEN_TTS_VOICE is required")
+        if not language.strip():
+            raise ValueError("QWEN_TTS_LANGUAGE is required")
+        if connect_timeout <= 0 or total_timeout <= 0:
+            raise ValueError("Qwen TTS timeouts must be greater than zero")
+        if max_retries < 0:
+            raise ValueError("QWEN_TTS_MAX_RETRIES must be non-negative")
+        if retry_interval <= 0:
+            raise ValueError("QWEN_TTS_RETRY_INTERVAL_SECONDS must be positive")
+
         self.endpoint = endpoint
+        self.voice = voice
+        self.model_label = model_label
+        self.language = language
+        self.api_key = api_key
+        self.connect_timeout = connect_timeout
+        self.total_timeout = total_timeout
+        self.connect_options = APIConnectOptions(
+            max_retry=max_retries,
+            retry_interval=retry_interval,
+            timeout=connect_timeout,
+        )
         self.http: aiohttp.ClientSession | None = None
+
+        job_context = get_job_context(required=False)
+        if job_context is not None:
+            job_context.add_shutdown_callback(self.aclose)
 
     @property
     def model(self) -> str:
-        return "vasanth-best"
+        return self.model_label
 
     @property
     def provider(self) -> str:
@@ -47,7 +115,11 @@ class QwenTTS(tts.TTS):
         *,
         conn_options: APIConnectOptions = DEFAULT_API_CONNECT_OPTIONS,
     ) -> tts.ChunkedStream:
-        return QwenStream(tts=self, input_text=text, conn_options=conn_options)
+        return QwenStream(
+            tts=self,
+            input_text=text,
+            conn_options=self.connect_options,
+        )
 
     def session(self) -> aiohttp.ClientSession:
         if self.http is None or self.http.closed:
@@ -57,39 +129,189 @@ class QwenTTS(tts.TTS):
     async def aclose(self) -> None:
         if self.http is not None:
             await self.http.close()
+            self.http = None
 
 
 class QwenStream(tts.ChunkedStream):
     async def _run(self, output: tts.AudioEmitter) -> None:
         qwen = self._tts
         assert isinstance(qwen, QwenTTS)
+        request_id = uuid.uuid4().hex
+        started_at = time.perf_counter()
+        emitted_bytes = 0
+        first_audio_at: float | None = None
+
+        logger.info(
+            "[TTS:qwen] start request_id=%s host=%s model=%s",
+            request_id,
+            urlsplit(qwen.endpoint).hostname,
+            qwen.model,
+        )
         try:
             async with qwen.session().post(
                 qwen.endpoint,
-                json={"text": self.input_text, "language": "English"},
+                headers={"Authorization": f"Bearer {qwen.api_key}"},
+                json={
+                    "input": self.input_text,
+                    "voice": qwen.voice,
+                    "language": qwen.language,
+                    "stream": True,
+                    "stream_format": "audio",
+                    "response_format": "pcm",
+                },
                 timeout=aiohttp.ClientTimeout(
-                    total=300, sock_connect=self._conn_options.timeout
+                    total=qwen.total_timeout,
+                    sock_connect=qwen.connect_timeout,
                 ),
             ) as response:
+                server_request_id = response.headers.get("X-Request-ID")
+                if server_request_id:
+                    request_id = server_request_id
                 if response.status != 200:
-                    body = await response.text()
+                    await response.read()
                     raise APIStatusError(
-                        body,
+                        "Qwen TTS request failed",
                         status_code=response.status,
-                        body=body,
-                        retryable=response.status >= 500,
+                        request_id=request_id,
+                        retryable=response.status in {408, 429}
+                        or response.status >= 500,
                     )
 
-                output.initialize(
-                    request_id=uuid.uuid4().hex,
-                    sample_rate=_SAMPLE_RATE,
-                    num_channels=_NUM_CHANNELS,
-                    mime_type="audio/pcm",
+                media_type = (
+                    response.headers.get("Content-Type", "")
+                    .partition(";")[0]
+                    .strip()
+                    .lower()
                 )
+                if media_type != _PCM_CONTENT_TYPE:
+                    raise APIStatusError(
+                        "Qwen TTS returned an unexpected content type",
+                        status_code=502,
+                        request_id=request_id,
+                        retryable=False,
+                    )
+
+                prefix = bytearray()
+                pending_byte = b""
+                initialized = False
+
+                def push_pcm(chunk: bytes) -> None:
+                    nonlocal emitted_bytes, first_audio_at, pending_byte
+                    pcm = pending_byte + chunk
+                    even_length = len(pcm) - (len(pcm) % 2)
+                    if even_length:
+                        if first_audio_at is None:
+                            first_audio_at = time.perf_counter()
+                        output.push(pcm[:even_length])
+                        emitted_bytes += even_length
+                    pending_byte = pcm[even_length:]
+
                 async for chunk in response.content.iter_any():
-                    output.push(chunk)
+                    if not chunk:
+                        continue
+                    if not initialized:
+                        needed = _PREFIX_INSPECTION_BYTES - len(prefix)
+                        prefix.extend(chunk[:needed])
+                        remainder = chunk[needed:]
+                        if len(prefix) < _PREFIX_INSPECTION_BYTES:
+                            continue
+                        if container_format := _container_format(prefix):
+                            raise APIStatusError(
+                                f"Qwen TTS returned {container_format} data instead "
+                                "of headerless PCM",
+                                status_code=502,
+                                request_id=request_id,
+                                retryable=False,
+                            )
+                        output.initialize(
+                            request_id=request_id,
+                            sample_rate=_SAMPLE_RATE,
+                            num_channels=_NUM_CHANNELS,
+                            mime_type=_PCM_CONTENT_TYPE,
+                        )
+                        push_pcm(bytes(prefix))
+                        push_pcm(remainder)
+                        initialized = True
+                        continue
+                    push_pcm(chunk)
+
+                if prefix and not initialized:
+                    if container_format := _container_format(prefix):
+                        raise APIStatusError(
+                            f"Qwen TTS returned {container_format} data instead "
+                            "of headerless PCM",
+                            status_code=502,
+                            request_id=request_id,
+                            retryable=False,
+                        )
+                    output.initialize(
+                        request_id=request_id,
+                        sample_rate=_SAMPLE_RATE,
+                        num_channels=_NUM_CHANNELS,
+                        mime_type=_PCM_CONTENT_TYPE,
+                    )
+                    push_pcm(bytes(prefix))
+                if pending_byte:
+                    raise APIConnectionError(
+                        "Qwen TTS returned incomplete PCM16 audio",
+                        retryable=emitted_bytes == 0,
+                    )
+                if emitted_bytes == 0:
+                    raise APIConnectionError(
+                        "Qwen TTS returned an empty audio stream",
+                        retryable=True,
+                    )
+
                 output.flush()
+                elapsed_ms = (time.perf_counter() - started_at) * 1000
+                ttfa_ms = (
+                    (first_audio_at - started_at) * 1000
+                    if first_audio_at is not None
+                    else -1
+                )
+                logger.info(
+                    "[TTS:qwen] complete request_id=%s elapsed_ms=%.1f "
+                    "ttfa_ms=%.1f audio_bytes=%d",
+                    request_id,
+                    elapsed_ms,
+                    ttfa_ms,
+                    emitted_bytes,
+                )
+        except APIStatusError:
+            logger.exception(
+                "[TTS:qwen] error request_id=%s elapsed_ms=%.1f audio_bytes=%d",
+                request_id,
+                (time.perf_counter() - started_at) * 1000,
+                emitted_bytes,
+            )
+            raise
+        except APIConnectionError:
+            logger.warning(
+                "[TTS:qwen] error request_id=%s elapsed_ms=%.1f audio_bytes=%d",
+                request_id,
+                (time.perf_counter() - started_at) * 1000,
+                emitted_bytes,
+            )
+            raise
         except TimeoutError as error:
-            raise APITimeoutError() from error
+            logger.warning(
+                "[TTS:qwen] error request_id=%s elapsed_ms=%.1f "
+                "audio_bytes=%d error_type=timeout",
+                request_id,
+                (time.perf_counter() - started_at) * 1000,
+                emitted_bytes,
+            )
+            raise APITimeoutError(retryable=emitted_bytes == 0) from error
         except aiohttp.ClientError as error:
-            raise APIConnectionError(str(error)) from error
+            logger.warning(
+                "[TTS:qwen] error request_id=%s elapsed_ms=%.1f "
+                "audio_bytes=%d error_type=%s",
+                request_id,
+                (time.perf_counter() - started_at) * 1000,
+                emitted_bytes,
+                type(error).__name__,
+            )
+            raise APIConnectionError(
+                "Qwen TTS connection failed",
+                retryable=emitted_bytes == 0,
+            ) from error
