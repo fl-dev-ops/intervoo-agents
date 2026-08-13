@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -13,14 +14,7 @@ from livekit.agents import (
 from livekit.agents.inference import TurnDetector
 from livekit.plugins import assemblyai, openai, sarvam
 
-from qwen_tts import QwenTTS  # noqa: F401  # kept live for quick TTS engine toggle
-
-# Custom Qwen voice-clone TTS endpoint ("vasanth-best" voice).
-# NOTE: this is an ephemeral JarvisLabs notebook URL — update it here whenever
-# the notebook restarts and its subdomain rotates.
-QWEN_TTS_ENDPOINT = (
-    "https://13c6184528451.notebooksc.jarvislabs.net/v1/audio/speech/streaming"
-)
+from qwen_tts import QwenTTS
 
 # ---------------------------------------------------------------------------
 # Sarvam TTS pool patch (workaround for livekit/agents#5681)
@@ -36,6 +30,66 @@ DEFAULT_OPENROUTER_MODEL = "openai/gpt-5.5"
 DEFAULT_SARVAM_LANGUAGE = "en-IN"
 DEFAULT_SARVAM_TTS_MODEL = "bulbul:v3"
 DEFAULT_ASSEMBLYAI_STT_MODEL = "universal-3-5-pro"
+
+
+def _required_env(name: str) -> str:
+    value = os.getenv(name, "").strip()
+    if not value:
+        raise ValueError(f"{name} is required when TTS_PROVIDER=qwen")
+    return value
+
+
+def _build_tts(
+    *,
+    tts_speaker: str,
+    tts_dict_id: str | None,
+    tts_model: str,
+    session_config: SessionConfig,
+) -> sarvam.TTS | QwenTTS:
+    provider = os.getenv("TTS_PROVIDER", "sarvam").strip().lower()
+    if provider == "qwen":
+        return _build_qwen_tts()
+    if provider != "sarvam":
+        raise ValueError("TTS_PROVIDER must be either 'sarvam' or 'qwen'")
+
+    tts = sarvam.TTS(
+        target_language_code=DEFAULT_SARVAM_LANGUAGE,
+        model=tts_model,
+        speaker=session_config.voice or tts_speaker,
+        pace=session_config.speaking_speed or 1.0,
+        temperature=0.6,
+        enable_preprocessing=True,
+        output_audio_bitrate="128k",
+        min_buffer_size=50,
+        max_chunk_length=150,
+        dict_id=session_config.dict_id or tts_dict_id,
+    )
+    if hasattr(tts, "prewarm"):
+        tts.prewarm()
+    if hasattr(tts, "_pool"):
+        tts._pool._max_session_duration = _SARVAM_POOL_MAX_SESSION_DURATION
+        tts._pool._mark_refreshed_on_get = True
+    return tts
+
+
+def _build_qwen_tts() -> QwenTTS:
+    return QwenTTS(
+        endpoint=_required_env("QWEN_TTS_ENDPOINT"),
+        voice=_required_env("QWEN_TTS_VOICE"),
+        model_label=os.getenv("QWEN_TTS_MODEL_LABEL", "vasanth-best").strip()
+        or "vasanth-best",
+        language=os.getenv("QWEN_TTS_LANGUAGE", "English").strip() or "English",
+        api_key=_required_env("QWEN_TTS_API_KEY"),
+        connect_timeout=float(os.getenv("QWEN_TTS_CONNECT_TIMEOUT_SECONDS", "10")),
+        total_timeout=float(os.getenv("QWEN_TTS_TOTAL_TIMEOUT_SECONDS", "120")),
+        max_retries=int(os.getenv("QWEN_TTS_MAX_RETRIES", "1")),
+        retry_interval=float(os.getenv("QWEN_TTS_RETRY_INTERVAL_SECONDS", "1")),
+    )
+
+
+def validate_tts_provider_configuration() -> None:
+    if os.getenv("TTS_PROVIDER", "sarvam").strip().lower() == "qwen":
+        _build_qwen_tts()
 
 
 class InteractionMode(str, Enum):
@@ -76,46 +130,13 @@ def build_agent_session(
 
     llm = openai.LLM.with_openrouter(model=openrouter_model)
 
-    # Sarvam TTS (active)
     effective_session_config = session_config or SessionConfig()
-    # tts = sarvam.TTS(
-    #     target_language_code=DEFAULT_SARVAM_LANGUAGE,
-    #     model=tts_model,
-    #     speaker=effective_session_config.voice or tts_speaker,
-    #     pace=effective_session_config.speaking_speed or 1.0,
-    #     temperature=0.6,
-    #     enable_preprocessing=True,
-    #     output_audio_bitrate="128k",
-    #     min_buffer_size=50,
-    #     max_chunk_length=150,
-    #     dict_id=effective_session_config.dict_id or tts_dict_id,
-    # )
-    # if hasattr(tts, "prewarm"):
-    #     tts.prewarm()
-    # # Patch the connection pool so it recycles connections before Sarvam's
-    # # server-side 60s idle timeout evicts them (livekit/agents#5681).
-    # if hasattr(tts, "_pool"):
-    #     tts._pool._max_session_duration = _SARVAM_POOL_MAX_SESSION_DURATION
-    #     tts._pool._mark_refreshed_on_get = True
-
-    tts = sarvam.TTS(
-        target_language_code=DEFAULT_SARVAM_LANGUAGE,
-        model=tts_model,
-        speaker=effective_session_config.voice or tts_speaker,
-        pace=effective_session_config.speaking_speed or 1.0,
-        temperature=0.6,
-        enable_preprocessing=True,
-        output_audio_bitrate="128k",
-        min_buffer_size=50,
-        max_chunk_length=150,
-        dict_id=effective_session_config.dict_id or tts_dict_id,
+    tts = _build_tts(
+        tts_speaker=tts_speaker,
+        tts_dict_id=tts_dict_id,
+        tts_model=tts_model,
+        session_config=effective_session_config,
     )
-    if hasattr(tts, "prewarm"):
-        tts.prewarm()
-    if hasattr(tts, "_pool"):
-        tts._pool._max_session_duration = _SARVAM_POOL_MAX_SESSION_DURATION
-        tts._pool._mark_refreshed_on_get = True
-    # -----------------------------------------------------------------------
 
     if mode is InteractionMode.PTT:
         return AgentSession(

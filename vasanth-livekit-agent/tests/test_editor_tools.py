@@ -6,11 +6,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from editor_tools import build_editor_tools
+from interview.question_store import QuestionStore
+from tools.interview.start_question import build_start_question_tool
 
 
 @pytest.mark.asyncio
-async def test_verbal_question_tool_publishes_and_speaks_once() -> None:
+async def test_start_question_tool_publishes_and_speaks_once() -> None:
     published: list[dict[str, object]] = []
     started: list[dict[str, object]] = []
     spoken: list[str] = []
@@ -21,27 +22,38 @@ async def test_verbal_question_tool_publishes_and_speaks_once() -> None:
             published.append(json.loads(payload))
 
     class FakeSession:
+        options = SimpleNamespace(
+            turn_handling={"user_turn_limit": {"max_duration": 180}}
+        )
+
         async def say(self, text: str) -> None:
             spoken.append(text)
 
     async def on_question_started(question: dict[str, object]) -> None:
         started.append(question)
 
-    room = SimpleNamespace(local_participant=FakeLocalParticipant())
-    mark_question_started, _ = build_editor_tools(
-        room,
-        questions=[
+    question_store = QuestionStore()
+    question_store.load(
+        [
             {
                 "id": "q1",
                 "text": "Explain the event loop.",
                 "spokenText": "Explain the event loop.",
+                "questionType": "verbal",
+                "responseMode": "verbal",
                 "surface": "verbal",
+                "answerMode": "verbal",
             }
-        ],
+        ]
+    )
+    room = SimpleNamespace(local_participant=FakeLocalParticipant())
+    start_question = build_start_question_tool(
+        room=room,
+        question_store=question_store,
         on_question_started=on_question_started,
     )
 
-    result = await mark_question_started._func(
+    result = await start_question._func(
         SimpleNamespace(session=FakeSession()),
         "q1",
     )
@@ -56,6 +68,6 @@ def test_interviewer_prompt_does_not_repeat_tool_spoken_question() -> None:
     prompt = Path(__file__).parents[1] / "prompts/interview/vasanth.md"
     text = prompt.read_text(encoding="utf-8")
 
-    assert "call mark_question_started with its id as a silent tool-only action" in text
-    assert "The tool itself speaks the exact TTS-safe question once" in text
-    assert "never repeat the question" in text
+    assert "use `start_question` with its id as a silent tool action" in text
+    assert "speaks the complete TTS-safe question exactly once" in text
+    assert "Never ask a planned question in your own words" in text

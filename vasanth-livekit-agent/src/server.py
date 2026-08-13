@@ -64,8 +64,14 @@ from runtime_resources import (
     prewarm_runtime_resources,
 )
 from screen_feedback import ScreenFeedbackRuntime
-from session import InteractionMode, SessionConfig, build_agent_session
+from session import (
+    InteractionMode,
+    SessionConfig,
+    build_agent_session,
+    validate_tts_provider_configuration,
+)
 from tools.interview.build_plan import build_interview_plan_tool
+from tools.interview.code_highlight import build_code_highlight_tools
 from tools.interview.start_question import build_start_question_tool
 from tools.screen.inspect_screen import build_screen_inspection_tool
 from tracing import flush_langfuse, setup_langfuse
@@ -165,6 +171,7 @@ def prewarm(proc: agents.JobProcess) -> None:
         revision[:128],
         chroma_runtime_identity(),
     )
+    validate_tts_provider_configuration()
     prewarm_runtime_resources(
         proc,
         profile_config_path=_resolve_profile_config_path(),
@@ -1060,6 +1067,12 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 on_question_started=_on_question_started,
             )
         )
+        tools.extend(
+            build_code_highlight_tools(
+                room=ctx.room,
+                participant_identity=participant_identity,
+            )
+        )
 
     if chroma_configured():
         tools.append(
@@ -1089,12 +1102,14 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         tools.append(build_screen_inspection_tool(screen_feedback))
         agent_instructions = (
             f"{agent_instructions}\n\n"
-            "During an active coding or whiteboard question, call "
-            "inspect_shared_screen before answering any request for a hint, doubt "
-            "clarification, correctness check, description of current work, or next "
-            "step. Base the reply on the tool result. Never claim that you cannot see "
-            "the candidate's screen. If the result includes candidate_message, say it "
-            "and continue the interview. Treat screen_share_required, "
+            "During an active coding question, use read_code_range followed by "
+            "highlight_code, not inspect_shared_screen, before answering uncertainty "
+            "or any request for a hint, doubt clarification, correctness check, or "
+            "next step about editor code. Call inspect_shared_screen for an active "
+            "whiteboard request or a coding request specifically about visual state "
+            "outside the code editor. Base the reply on the tool result. Never claim "
+            "that you cannot see the candidate's screen. If the result includes "
+            "candidate_message, say it and continue the interview. Treat screen_share_required, "
             "surface_unavailable, and loading as normal recoverable states; never call "
             "end_call because of them. Do not call it for verbal questions."
         )
