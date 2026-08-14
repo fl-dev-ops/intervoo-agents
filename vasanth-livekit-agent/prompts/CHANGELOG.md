@@ -126,6 +126,7 @@ adaptive opening
 
 - Wait until the candidate says they are done.
 - Ask them to walk through the design.
+- Read the accepted visual assessment, highlight one exact visible labeled component, and ask the one targeted follow-up about it before evaluator hand-off.
 - Use screen inspection only for help or correctness requests related to the active whiteboard task.
 
 ## Contradictions to check before saving
@@ -169,6 +170,7 @@ adaptive opening
 
 ## Change history
 
+- 2026-08-13: Required an assessment-backed highlighted whiteboard follow-up and made evaluator feedback conversational for up to four candidate turns without agent-owned call termination.
 - 2026-08-13: Made code uncertainty trigger a mandatory read, highlight, and targeted one-question guidance flow.
 - 2026-08-13: Added highlighted code follow-ups and capped every planned question at one response-grounded follow-up.
 - 2026-08-12: Added Vasanth's explicit acknowledgements for partial answers and candidates who do not know an answer.
