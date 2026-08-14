@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 CODE_ANSWER_TOPIC = "candidate.code_answer"
-EVALUATOR_HANDOFF_MESSAGE = "Please wait while I prepare my feedback."
+EVALUATOR_HANDOFF_MESSAGE = "Let me prepare my feedback."
 EVALUATOR_ENDING_MESSAGE = (
     "Do you have any questions. If nothing, go ahead and end the call"
 )
@@ -582,7 +582,7 @@ def render_vasanth_closure(
                 strength,
                 gap,
                 f"Out of five, I would rate this interview around {rating}.",
-                "For me to select you, the minimum I would expect is around three to three point five.",
+                "For me to select you, the minimum I would expect is around three to five.",
                 improvement,
                 EVALUATOR_ENDING_MESSAGE,
             ]
@@ -727,12 +727,15 @@ def build_finish_interview_tool(
         name="finish_interview",
         description=(
             "Required evaluator handoff after the candidate completes the final "
-            "planned question and any useful probe or walkthrough. Continue normal "
+            "planned question and every required probe or walkthrough. A final "
+            "Whiteboard question is not complete until the candidate answers both "
+            "required follow-ups. Continue normal "
             "clarification and guidance while the final answer is still active; then "
-            "call this immediately as your next and only action. Do not first announce "
-            "that the interview is done, summarize, score, thank the candidate, or "
-            "wait for another candidate message. The tool says 'Please wait while I "
-            "prepare my feedback.' and then hands the completed interview to Vasanth's "
+            "follow the system prompt's acknowledgement rule and call this immediately "
+            "in the same turn. Do not first announce that the interview is done, "
+            "summarize, score, thank the candidate, or wait for another candidate "
+            "message. The tool says 'Let me prepare my feedback.' and then hands the "
+            "completed interview to Vasanth's "
             "evaluator for feedback and up to four candidate question turns. It never "
             "ends the room; the candidate ends the call. Set session_inconclusive to true only when "
             "time expired or the candidate could not continue before the final "

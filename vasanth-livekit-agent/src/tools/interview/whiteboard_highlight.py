@@ -23,8 +23,9 @@ def build_whiteboard_highlight_tools(
         name="read_whiteboard_assessment",
         description=(
             "Required after a submitted System design or Whiteboard answer and its "
-            "spoken walkthrough, before asking the one follow-up. Read the verified "
-            "visible components, connections, strengths, gaps, and unclear areas."
+            "spoken walkthrough, and again after the candidate answers the first "
+            "follow-up. Read the verified visible components, connections, strengths, "
+            "gaps, and unclear areas before each of the two required follow-ups."
         ),
     )
     async def read_whiteboard_assessment(
@@ -43,8 +44,10 @@ def build_whiteboard_highlight_tools(
         description=(
             "Required after read_whiteboard_assessment. Pass one exact visible "
             "component label from the assessment. Focus and highlight that labeled "
-            "component, then ask one targeted follow-up about its responsibility, "
-            "connection, bottleneck, failure mode, scale, or trade-off."
+            "component, then ask one targeted response-grounded follow-up about its "
+            "responsibility, connection, bottleneck, failure mode, scale, or trade-off. "
+            "Use this sequence for both required follow-ups, waiting for the candidate's "
+            "answer before starting the second."
         ),
     )
     async def highlight_whiteboard(
