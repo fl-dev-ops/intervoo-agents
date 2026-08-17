@@ -651,6 +651,7 @@ class EvaluatorAgent(Agent):
             chat_ctx=chat_ctx,
             response_format=InterviewEvaluation,
         ).collect()
+        print("InterviewEvaluation", response)
         return InterviewEvaluation.model_validate_json(response.text)
 
     async def on_enter(self) -> None:
