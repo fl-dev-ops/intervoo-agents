@@ -1535,6 +1535,20 @@ wheels = [
 ]
 
 [[package]]
+name = "livekit-plugins-deepgram"
+version = "1.6.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "livekit-agents", extra = ["codecs"] },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0d/3c/fd3f9b2398fa51b410f6dcedd188a72daf92d15b526c042bf47e631e516d/livekit_plugins_deepgram-1.6.6.tar.gz", hash = "sha256:384d38b9098c9262c380208053e07b48e8a4dd1526a42cef889b9d60e76ac0db", size = 22607, upload-time = "2026-07-18T04:17:27.994Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fb/e9/4eb44bfd67bc6b9d5f448639def94016a57b08af2ba532d7343c3627e10a/livekit_plugins_deepgram-1.6.6-py3-none-any.whl", hash = "sha256:c6fb33b397495519089f56f049c564cbc7e1f2a9f1a4f656cfab531f68b9e582", size = 26081, upload-time = "2026-07-18T04:17:26.923Z" },
+]
+
+[[package]]
 name = "livekit-plugins-liveavatar"
 version = "1.6.4"
 source = { registry = "https://pypi.org/simple" }
@@ -3782,6 +3796,7 @@ dependencies = [
     { name = "langfuse" },
     { name = "livekit-agents" },
     { name = "livekit-plugins-assemblyai" },
+    { name = "livekit-plugins-deepgram" },
     { name = "livekit-plugins-liveavatar" },
     { name = "livekit-plugins-noise-cancellation" },
     { name = "livekit-plugins-openai" },
@@ -3807,6 +3822,7 @@ requires-dist = [
     { name = "langfuse", specifier = ">=3.0" },
     { name = "livekit-agents", specifier = "==1.6.6" },
     { name = "livekit-plugins-assemblyai", specifier = "==1.6.6" },
+    { name = "livekit-plugins-deepgram", specifier = "==1.6.6" },
     { name = "livekit-plugins-liveavatar", specifier = "==1.6.4" },
     { name = "livekit-plugins-noise-cancellation", specifier = "~=0.2.6" },
     { name = "livekit-plugins-openai", specifier = "==1.6.6" },

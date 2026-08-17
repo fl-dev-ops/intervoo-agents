@@ -12,7 +12,12 @@ from livekit.agents import (
     TurnHandlingOptions,
 )
 from livekit.agents.inference import TurnDetector
-from livekit.plugins import assemblyai, openai, sarvam
+from livekit.plugins import (
+    assemblyai,  # noqa: F401 - retained as an STT fallback
+    deepgram,
+    openai,
+    sarvam,
+)
 
 from qwen_tts import QwenTTS
 
@@ -27,6 +32,7 @@ _SARVAM_POOL_MAX_SESSION_DURATION = 50.0  # seconds, below Sarvam's 60s idle tim
 logger = logging.getLogger(__name__)
 
 DEFAULT_OPENROUTER_MODEL = "openai/gpt-5.5"
+DEFAULT_DEEPGRAM_STT_MODEL = "flux-general-en"
 DEFAULT_SARVAM_LANGUAGE = "en-IN"
 DEFAULT_SARVAM_TTS_MODEL = "bulbul:v3"
 DEFAULT_ASSEMBLYAI_STT_MODEL = "universal-3-5-pro"
@@ -115,11 +121,14 @@ def build_agent_session(
     turn_detector: Any | None = None,
     disable_preemptive_generation: bool = False,
 ) -> AgentSession:
-    stt = sarvam.STT(
-        language=DEFAULT_SARVAM_LANGUAGE,
-        model="saaras:v3",
-        mode="transcribe",
+    stt = deepgram.STTv2(
+        model=DEFAULT_DEEPGRAM_STT_MODEL,
     )
+    # stt = sarvam.STT(
+    #     language=DEFAULT_SARVAM_LANGUAGE,
+    #     model="saaras:v3",
+    #     mode="transcribe",
+    # )
     # stt = assemblyai.STT(
     #     model=DEFAULT_ASSEMBLYAI_STT_MODEL,
     #     language_codes=["en"],
@@ -173,7 +182,7 @@ def build_agent_session(
             endpointing={
                 "mode": "dynamic",
                 "min_delay": 0.5,
-                "max_delay": 2.0,
+                "max_delay": 1.5,
             },
             interruption={
                 "min_duration": 0.5,
