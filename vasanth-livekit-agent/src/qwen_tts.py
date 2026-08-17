@@ -21,23 +21,8 @@ from livekit.agents import (
 _SAMPLE_RATE = 24_000
 _NUM_CHANNELS = 1
 _PCM_CONTENT_TYPE = "audio/pcm"
-_PREFIX_INSPECTION_BYTES = 8
 
 logger = logging.getLogger(__name__)
-
-
-def _container_format(prefix: bytes) -> str | None:
-    if prefix.startswith(b"RIFF"):
-        return "WAV"
-    if prefix.startswith(b"ID3"):
-        return "MP3"
-    if prefix.startswith(b"OggS"):
-        return "Ogg"
-    if prefix.startswith(b"fLaC"):
-        return "FLAC"
-    if len(prefix) >= 8 and prefix[4:8] == b"ftyp":
-        return "ISO BMFF"
-    return None
 
 
 class QwenTTS(tts.TTS):
@@ -45,7 +30,6 @@ class QwenTTS(tts.TTS):
         self,
         *,
         endpoint: str,
-        voice: str,
         model_label: str,
         language: str,
         api_key: str,
@@ -53,6 +37,7 @@ class QwenTTS(tts.TTS):
         total_timeout: float,
         max_retries: int,
         retry_interval: float,
+        voice: str | None = None,
     ) -> None:
         super().__init__(
             capabilities=tts.TTSCapabilities(streaming=False),
@@ -61,19 +46,18 @@ class QwenTTS(tts.TTS):
         )
         parsed_endpoint = urlsplit(endpoint)
         if (
-            parsed_endpoint.scheme != "https"
+            parsed_endpoint.scheme not in {"http", "https"}
             or not parsed_endpoint.hostname
-            or parsed_endpoint.path != "/v1/audio/speech"
+            or parsed_endpoint.path != "/v1/audio/speech/streaming"
             or parsed_endpoint.query
             or parsed_endpoint.fragment
         ):
             raise ValueError(
-                "QWEN_TTS_ENDPOINT must be an HTTPS URL ending at /v1/audio/speech"
+                "QWEN_TTS_ENDPOINT must be an HTTP(S) URL ending at "
+                "/v1/audio/speech/streaming"
             )
         if not api_key.strip():
             raise ValueError("QWEN_TTS_API_KEY is required")
-        if not voice.strip():
-            raise ValueError("QWEN_TTS_VOICE is required")
         if not language.strip():
             raise ValueError("QWEN_TTS_LANGUAGE is required")
         if connect_timeout <= 0 or total_timeout <= 0:
@@ -84,7 +68,6 @@ class QwenTTS(tts.TTS):
             raise ValueError("QWEN_TTS_RETRY_INTERVAL_SECONDS must be positive")
 
         self.endpoint = endpoint
-        self.voice = voice
         self.model_label = model_label
         self.language = language
         self.api_key = api_key
@@ -151,14 +134,7 @@ class QwenStream(tts.ChunkedStream):
             async with qwen.session().post(
                 qwen.endpoint,
                 headers={"Authorization": f"Bearer {qwen.api_key}"},
-                json={
-                    "input": self.input_text,
-                    "voice": qwen.voice,
-                    "language": qwen.language,
-                    "stream": True,
-                    "stream_format": "audio",
-                    "response_format": "pcm",
-                },
+                json={"text": self.input_text, "language": qwen.language},
                 timeout=aiohttp.ClientTimeout(
                     total=qwen.total_timeout,
                     sock_connect=qwen.connect_timeout,
@@ -183,7 +159,7 @@ class QwenStream(tts.ChunkedStream):
                     .strip()
                     .lower()
                 )
-                if media_type != _PCM_CONTENT_TYPE:
+                if media_type not in {_PCM_CONTENT_TYPE, "application/octet-stream"}:
                     raise APIStatusError(
                         "Qwen TTS returned an unexpected content type",
                         status_code=502,
@@ -191,77 +167,30 @@ class QwenStream(tts.ChunkedStream):
                         retryable=False,
                     )
 
-                prefix = bytearray()
-                pending_byte = b""
-                initialized = False
-
-                def push_pcm(chunk: bytes) -> None:
-                    nonlocal emitted_bytes, first_audio_at, pending_byte
-                    pcm = pending_byte + chunk
-                    even_length = len(pcm) - (len(pcm) % 2)
-                    if even_length:
-                        if first_audio_at is None:
-                            first_audio_at = time.perf_counter()
-                        output.push(pcm[:even_length])
-                        emitted_bytes += even_length
-                    pending_byte = pcm[even_length:]
-
+                output.initialize(
+                    request_id=request_id,
+                    sample_rate=_SAMPLE_RATE,
+                    num_channels=_NUM_CHANNELS,
+                    mime_type=_PCM_CONTENT_TYPE,
+                )
                 async for chunk in response.content.iter_any():
                     if not chunk:
                         continue
-                    if not initialized:
-                        needed = _PREFIX_INSPECTION_BYTES - len(prefix)
-                        prefix.extend(chunk[:needed])
-                        remainder = chunk[needed:]
-                        if len(prefix) < _PREFIX_INSPECTION_BYTES:
-                            continue
-                        if container_format := _container_format(prefix):
-                            raise APIStatusError(
-                                f"Qwen TTS returned {container_format} data instead "
-                                "of headerless PCM",
-                                status_code=502,
-                                request_id=request_id,
-                                retryable=False,
-                            )
-                        output.initialize(
-                            request_id=request_id,
-                            sample_rate=_SAMPLE_RATE,
-                            num_channels=_NUM_CHANNELS,
-                            mime_type=_PCM_CONTENT_TYPE,
+                    if first_audio_at is None:
+                        first_audio_at = time.perf_counter()
+                        logger.info(
+                            "[TTS:qwen] first audio request_id=%s ttfa_ms=%.1f",
+                            request_id,
+                            (first_audio_at - started_at) * 1000,
                         )
-                        push_pcm(bytes(prefix))
-                        push_pcm(remainder)
-                        initialized = True
-                        continue
-                    push_pcm(chunk)
+                    output.push(chunk)
+                    emitted_bytes += len(chunk)
 
-                if prefix and not initialized:
-                    if container_format := _container_format(prefix):
-                        raise APIStatusError(
-                            f"Qwen TTS returned {container_format} data instead "
-                            "of headerless PCM",
-                            status_code=502,
-                            request_id=request_id,
-                            retryable=False,
-                        )
-                    output.initialize(
-                        request_id=request_id,
-                        sample_rate=_SAMPLE_RATE,
-                        num_channels=_NUM_CHANNELS,
-                        mime_type=_PCM_CONTENT_TYPE,
-                    )
-                    push_pcm(bytes(prefix))
-                if pending_byte:
-                    raise APIConnectionError(
-                        "Qwen TTS returned incomplete PCM16 audio",
-                        retryable=emitted_bytes == 0,
-                    )
                 if emitted_bytes == 0:
                     raise APIConnectionError(
                         "Qwen TTS returned an empty audio stream",
                         retryable=True,
                     )
-
                 output.flush()
                 elapsed_ms = (time.perf_counter() - started_at) * 1000
                 ttfa_ms = (
