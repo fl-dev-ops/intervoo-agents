@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import math
@@ -639,6 +640,27 @@ class EvaluatorAgent(Agent):
         self._evaluator_llm = openai.LLM.with_openrouter(
             model=EVALUATOR_OPENROUTER_MODEL
         )
+        self._pending_evaluation_task: asyncio.Task[InterviewEvaluation] | None = None
+
+    def attach_pending_evaluation(
+        self,
+        task: asyncio.Task[InterviewEvaluation],
+    ) -> None:
+        """Attach an evaluation that was started before the handoff speech.
+
+        ``finish_interview`` starts the LLM evaluation before speaking "Let me
+        prepare my feedback." so the evaluation runs in parallel with the handoff
+        playout. ``on_enter`` awaits this task instead of starting a fresh one,
+        which removes the dead air between the handoff line and the closure.
+        """
+        self._pending_evaluation_task = task
+
+    async def _await_evaluation(self) -> InterviewEvaluation:
+        """Await the pre-started evaluation task, or evaluate on demand."""
+        task = self._pending_evaluation_task
+        if task is not None:
+            return await task
+        return await self._evaluate()
 
     async def _evaluate(self) -> InterviewEvaluation:
         chat_ctx = ChatContext()
@@ -651,13 +673,12 @@ class EvaluatorAgent(Agent):
             chat_ctx=chat_ctx,
             response_format=InterviewEvaluation,
         ).collect()
-        print("InterviewEvaluation", response)
         return InterviewEvaluation.model_validate_json(response.text)
 
     async def on_enter(self) -> None:
         try:
             evaluation = await asyncio.wait_for(
-                self._evaluate(),
+                self._await_evaluation(),
                 timeout=EVALUATION_TIMEOUT_SECONDS,
             )
             enforce_mcq_assessments(evaluation, self._mcq_assessments)
@@ -681,6 +702,16 @@ class EvaluatorAgent(Agent):
             add_to_chat_ctx=True,
         )
         await speech_handle
+
+    async def on_exit(self) -> None:
+        task = self._pending_evaluation_task
+        if task is not None and not task.done():
+            # The evaluation never completed (e.g. the session was torn down
+            # mid-handoff). Cancel it so an in-flight LLM call is not leaked.
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+        await super().on_exit()
 
     async def on_user_turn_completed(
         self,
@@ -781,12 +812,7 @@ def build_finish_interview_tool(
             "conversation": conversation_turns(evaluator_chat_ctx),
             "planned_questions": tracker.build_evidence(),
         }
-        await context.session.say(
-            EVALUATOR_HANDOFF_MESSAGE,
-            allow_interruptions=False,
-            add_to_chat_ctx=True,
-        )
-        return EvaluatorAgent(
+        evaluator = EvaluatorAgent(
             chat_ctx=evaluator_chat_ctx,
             evaluator_prompt=evaluator_prompt,
             evaluation_payload=evaluation_payload,
@@ -796,5 +822,26 @@ def build_finish_interview_tool(
                 else {}
             ),
         )
+        # Start the evaluation now so it runs in parallel with the handoff
+        # playout, eliminating the dead air between "Let me prepare my feedback."
+        # and the spoken closure. on_enter awaits this task; on_exit cancels it
+        # if the session is torn down before it completes.
+        evaluation_task = asyncio.create_task(
+            evaluator._evaluate(),
+            name="interview-evaluation",
+        )
+        evaluator.attach_pending_evaluation(evaluation_task)
+        try:
+            await context.session.say(
+                EVALUATOR_HANDOFF_MESSAGE,
+                allow_interruptions=False,
+                add_to_chat_ctx=True,
+            )
+        except BaseException:
+            # Handoff speech failed or was cancelled; never leak an in-flight
+            # evaluation task.
+            evaluation_task.cancel()
+            raise
+        return evaluator
 
     return finish_interview

@@ -9,7 +9,7 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from profile import (
+from agent_profile import (
     AgentProfile,
     ProfileError,
     pick_profile,

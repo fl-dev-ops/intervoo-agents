@@ -277,7 +277,10 @@ class ScreenFeedbackRuntime:
         self._participant_identity = participant_identity
         self._timer_enabled = timer_enabled
         self._note_sink = note_sink
-        self._llm = openai.LLM.with_openrouter(model=DEFAULT_OPENROUTER_MODEL)
+        self._llm = openai.LLM.with_openrouter(
+            model=DEFAULT_OPENROUTER_MODEL,
+            parallel_tool_calls=True,
+        )
         self._session: AgentSession | None = None
         self._active_question: dict[str, str] | None = None
         self._surface_visible = False

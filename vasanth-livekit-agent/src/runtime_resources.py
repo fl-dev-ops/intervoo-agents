@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import MutableMapping
 from pathlib import Path
-from profile import AgentProfile, load_profile_catalog
+from agent_profile import AgentProfile, load_profile_catalog
 from typing import Any
 
 from livekit.agents import JobProcess

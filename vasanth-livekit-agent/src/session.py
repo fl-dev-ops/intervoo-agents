@@ -137,7 +137,10 @@ def build_agent_session(
     #     vad_threshold=0.3,
     # )
 
-    llm = openai.LLM.with_openrouter(model=openrouter_model)
+    llm = openai.LLM.with_openrouter(
+        model=openrouter_model,
+        parallel_tool_calls=True,
+    )
 
     effective_session_config = session_config or SessionConfig()
     tts = _build_tts(
