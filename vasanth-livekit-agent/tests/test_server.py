@@ -4,7 +4,9 @@ import asyncio
 
 import pytest
 
-from server import CALLER_LOOKUP_TIMEOUT_SECONDS, _resolve_call_state, server
+from app.config import CALLER_LOOKUP_TIMEOUT_SECONDS
+from app.server import server
+from app.session import resolve_call_state
 
 
 def test_agent_server_memory_thresholds_are_configured() -> None:
@@ -36,10 +38,10 @@ async def test_resolve_call_state_waits_five_minutes_before_timing_out(
         async def wait_for_participant(self):
             return None
 
-    monkeypatch.setattr("server.asyncio.wait_for", fake_wait_for)
+    monkeypatch.setattr("app.session.asyncio.wait_for", fake_wait_for)
 
     resolved_user_id, participant_identity, phone_number, attributes = (
-        await _resolve_call_state(FakeContext(), "user-123")
+        await resolve_call_state(FakeContext(), "user-123")
     )
 
     assert captured_timeout == CALLER_LOOKUP_TIMEOUT_SECONDS == 300

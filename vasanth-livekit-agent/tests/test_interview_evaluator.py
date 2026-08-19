@@ -5,22 +5,24 @@ from pathlib import Path
 import pytest
 from livekit.agents import llm
 
-from interview_evaluator import (
+from domains.interview.evaluation.evaluator import (
     EVALUATOR_ENDING_MESSAGE,
     EVALUATOR_HANDOFF_MESSAGE,
     EVALUATOR_MAX_QUESTION_TURNS,
-    AssessmentResult,
     ClosureDecision,
     ClosureRoute,
-    CodeResult,
     EvaluatorAgent,
-    InterviewEvaluation,
-    InterviewEvidenceTracker,
-    QuestionAssessment,
     build_finish_interview_tool,
     decide_closure,
     render_vasanth_closure,
 )
+from domains.interview.evaluation.models import (
+    AssessmentResult,
+    CodeResult,
+    InterviewEvaluation,
+    QuestionAssessment,
+)
+from domains.interview.evidence.tracker import InterviewEvidenceTracker
 
 
 def _question(

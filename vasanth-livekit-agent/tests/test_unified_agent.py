@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from unified_agent import SESSION_TIMER_ROLE, UnifiedAgent
+from services.agent.unified import SESSION_TIMER_ROLE, UnifiedAgent
 
 
 @pytest.mark.asyncio
