@@ -35,7 +35,7 @@ def _schema(
     surfaces: tuple[str, ...],
     tools: tuple[str, ...],
     evaluation: str,
-    limits: dict[str, int],
+    config: dict[str, int],
     round_angles: dict[str, tuple[str, ...]],
     defaults: MockInterviewConfig | ResumeMasteryConfig,
 ) -> InterviewModeSchema:
@@ -46,7 +46,7 @@ def _schema(
         surfaces=surfaces,
         tools=tools,
         evaluation=evaluation,
-        limits=MappingProxyType(limits),
+        config=MappingProxyType(config),
         round_angles=MappingProxyType(round_angles),
         defaults=defaults,
     )
@@ -77,7 +77,7 @@ MODE_SCHEMAS: Mapping[
                 "finish_interview",
             ),
             evaluation="mock_interview",
-            limits={"max_follow_ups_per_main": 1, "min_whiteboard_follow_ups": 2},
+            config={"max_follow_ups_per_main": 1, "min_whiteboard_follow_ups": 2},
             round_angles={},
             defaults=MockInterviewConfig(),
         ),
@@ -121,7 +121,7 @@ MODE_SCHEMAS: Mapping[
                 "finish_resume_mastery",
             ),
             evaluation="none",
-            limits={
+            config={
                 "main_questions_per_session": 3,
                 "optional_main_questions_per_session": 1,
                 "max_follow_ups_per_main": 3,
@@ -231,13 +231,13 @@ def _parse_adapters(value: Any) -> InterviewAdapters:
     )
 
 
-def _parse_limits(value: Any) -> Mapping[str, int]:
-    raw = _as_mapping(value, "interview definition.limits")
+def _parse_definition_config(value: Any) -> Mapping[str, int]:
+    raw = _as_mapping(value, "interview definition.config")
     parsed: dict[str, int] = {}
     for key, item in raw.items():
         if isinstance(item, bool) or not isinstance(item, int) or item < 0:
             raise InterviewConfigError(
-                f"interview definition.limits.{key} must be a non-negative integer"
+                f"interview definition.config.{key} must be a non-negative integer"
             )
         parsed[key] = item
     return MappingProxyType(parsed)
@@ -288,7 +288,7 @@ def parse_interview_definition(value: Any) -> InterviewDefinition:
         "surfaces",
         "tools",
         "evaluation",
-        "limits",
+        "config",
         "rounds",
         "defaults",
     }
@@ -330,7 +330,7 @@ def parse_interview_definition(value: Any) -> InterviewDefinition:
         evaluation=_catalog_str(
             raw["evaluation"], "interview definition.evaluation"
         ),
-        limits=_parse_limits(raw["limits"]),
+        config=_parse_definition_config(raw["config"]),
         rounds=rounds,
         defaults=defaults,
     )
@@ -348,7 +348,7 @@ def parse_interview_definition(value: Any) -> InterviewDefinition:
     _require_exact(
         "interview definition.evaluation", definition.evaluation, schema.evaluation
     )
-    _require_exact("interview definition.limits", definition.limits, schema.limits)
+    _require_exact("interview definition.config", definition.config, schema.config)
     _require_exact("interview definition.rounds", round_angles, expected_round_angles)
     _require_exact("interview definition.defaults", definition.defaults, schema.defaults)
     return definition

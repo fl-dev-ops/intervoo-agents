@@ -99,7 +99,7 @@ class ResumeMasteryRuntime:
 
         reference = parse_resume_artifact_reference(metadata)
         limits = ResumeDocumentLimits.from_config_limits(
-            resolved.definition.limits
+            resolved.definition.config
         )
         s3_config = build_s3_json_read_config()
         self.repository = ResumeDocumentRepository(
@@ -110,11 +110,11 @@ class ResumeMasteryRuntime:
         self.progress = SelectedRoundProgress.from_limits(
             selected_round=self.selected_round,
             angle_ids=policy.angles,
-            limits=resolved.definition.limits,
+            limits=resolved.definition.config,
             max_follow_ups=resolved.request.config.max_follow_ups,
         )
         self._scripts = resolved.definition.scripts
-        self._max_question_characters = resolved.definition.limits[
+        self._max_question_characters = resolved.definition.config[
             "max_question_characters"
         ]
         self._controller: ResumeQuestionController | None = None

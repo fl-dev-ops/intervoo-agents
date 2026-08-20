@@ -25,7 +25,7 @@
         "finish_interview"
     ],
     "evaluation": "mock_interview",
-    "limits": {
+    "config": {
         "max_follow_ups_per_main": 1,
         "min_whiteboard_follow_ups": 2
     },

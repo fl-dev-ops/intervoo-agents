@@ -68,7 +68,7 @@ class InterviewModeSchema:
     surfaces: tuple[str, ...]
     tools: tuple[str, ...]
     evaluation: str
-    limits: Mapping[str, int]
+    config: Mapping[str, int]
     round_angles: Mapping[str, tuple[str, ...]]
     defaults: ModeConfig
 
@@ -83,7 +83,7 @@ class InterviewDefinition:
     surfaces: tuple[str, ...]
     tools: tuple[str, ...]
     evaluation: str
-    limits: Mapping[str, int]
+    config: Mapping[str, int]
     rounds: tuple[ResumeRoundPolicy, ...]
     defaults: ModeConfig
 

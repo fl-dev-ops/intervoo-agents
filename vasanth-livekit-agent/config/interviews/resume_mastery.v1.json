@@ -28,7 +28,7 @@
         "finish_resume_mastery"
     ],
     "evaluation": "none",
-    "limits": {
+    "config": {
         "main_questions_per_session": 3,
         "optional_main_questions_per_session": 1,
         "max_follow_ups_per_main": 3,
