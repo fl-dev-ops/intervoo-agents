@@ -10,6 +10,7 @@ from typing import Any
 from livekit.agents import JobProcess
 from livekit.agents.inference import TurnDetector
 
+from domains.interview.runtime import InterviewCatalog, load_interview_catalog
 from domains.recording.config import RecordingConfig, build_recording_config
 from infrastructure.config.profiles import AgentProfile, load_profile_catalog
 from infrastructure.prompt.loader import load_prompt
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 USERDATA_TURN_DETECTOR = "turn_detector"
 USERDATA_PROFILE_CATALOG = "profile_catalog"
+USERDATA_INTERVIEW_CATALOG = "interview_catalog"
 USERDATA_RECORDING_CONFIG = "recording_config"
 
 
@@ -34,7 +36,9 @@ def prewarm_runtime_resources(
         logger.info("Turn detector prewarm deferred until job context: %s", e)
 
     profile_catalog = load_profile_catalog(profile_config_path)
+    interview_catalog = load_interview_catalog(profile_config_path.parent / "interviews")
     userdata[USERDATA_PROFILE_CATALOG] = profile_catalog
+    userdata[USERDATA_INTERVIEW_CATALOG] = interview_catalog
     userdata[USERDATA_RECORDING_CONFIG] = build_recording_config()
 
     for profile in profile_catalog.values():
@@ -47,9 +51,24 @@ def prewarm_runtime_resources(
                 e,
             )
 
+    for definition in interview_catalog.definitions.values():
+        try:
+            load_prompt(definition.prompt_url)
+        except Exception as e:
+            logger.warning(
+                "Failed to prewarm interview prompt for type=%s version=%s: %s",
+                definition.type.value,
+                definition.version,
+                e,
+            )
+
     logger.info(
-        "Runtime resources prewarmed: profiles=%s",
+        "Runtime resources prewarmed: profiles=%s interviews=%s",
         sorted(profile_catalog.keys()),
+        sorted(
+            f"{interview_type.value}/{version}"
+            for interview_type, version in interview_catalog.definitions
+        ),
     )
 
 
@@ -73,6 +92,19 @@ def get_recording_config(userdata: MutableMapping[str, Any]) -> RecordingConfig:
     config = build_recording_config()
     userdata[USERDATA_RECORDING_CONFIG] = config
     return config
+
+
+def get_interview_catalog(
+    userdata: MutableMapping[str, Any],
+    *,
+    fallback_path: Path,
+) -> InterviewCatalog:
+    catalog = userdata.get(USERDATA_INTERVIEW_CATALOG)
+    if isinstance(catalog, InterviewCatalog):
+        return catalog
+    catalog = load_interview_catalog(fallback_path)
+    userdata[USERDATA_INTERVIEW_CATALOG] = catalog
+    return catalog
 
 
 def get_prewarmed_turn_detector(userdata: MutableMapping[str, Any]) -> Any | None:

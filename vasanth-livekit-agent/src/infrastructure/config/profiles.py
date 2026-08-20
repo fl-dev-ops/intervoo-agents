@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from domains.interview.runtime.models import InterviewRequest, parse_interview_request
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,6 +30,7 @@ class AgentProfile:
     editor_events_enabled: bool
     screen_inspection_enabled: bool
     screen_feedback_timer_enabled: bool
+    default_interview: InterviewRequest | None
 
 
 def _required_str(value: Any, field: str) -> str:
@@ -54,6 +57,16 @@ def _parse_profile(agent_id: str, value: Any) -> AgentProfile:
     if not isinstance(tools, Mapping):
         raise ProfileError(f"agents.{agent_id}.tools must be an object")
 
+    raw_default_interview = value.get("default_interview")
+    try:
+        default_interview = (
+            parse_interview_request(raw_default_interview)
+            if raw_default_interview is not None
+            else None
+        )
+    except ValueError as e:
+        raise ProfileError(f"agents.{agent_id}.default_interview is invalid: {e}") from e
+
     return AgentProfile(
         id=agent_id,
         agent_type=_required_str(
@@ -75,6 +88,7 @@ def _parse_profile(agent_id: str, value: Any) -> AgentProfile:
         screen_feedback_timer_enabled=bool(
             tools.get("screen_feedback_timer", False)
         ),
+        default_interview=default_interview,
     )
 
 
