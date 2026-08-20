@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from profile import (
+from infrastructure.config.profiles import (
     ProfileError,
     load_profile_catalog,
     parse_profile_catalog,
@@ -29,7 +29,6 @@ def test_prompt_variants_differ_only_by_prompt() -> None:
     v1 = catalog["mock_interview"]
 
     assert v1.prompt_url == "prompts/interview/vasanth.md"
-    # Each variant is an A/B of the prompt alone: same agent, same voice, same tools.
     for key, expected in [
         ("mock_interview_v2", "prompts/interview/vasanth_v2.md"),
         ("mock_interview_v3", "prompts/interview/vasanth_v3.md"),

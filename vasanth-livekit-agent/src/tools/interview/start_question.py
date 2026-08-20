@@ -8,7 +8,7 @@ from typing import Any
 
 from livekit.agents import RunContext, function_tool
 
-from interview.question_store import (
+from domains.interview.questions.store import (
     InterviewPhase,
     QuestionStore,
     QuestionStoreError,

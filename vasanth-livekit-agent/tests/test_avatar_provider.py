@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-import avatar_provider
-from avatar_provider import (
+import services.agent.avatar as avatar_module
+from services.agent.avatar import (
     AvatarConfigurationError,
     create_avatar_session,
     start_avatar,
@@ -26,7 +26,7 @@ def test_create_avatar_session_uses_liveavatar_provider(
     monkeypatch.setenv("LIVEAVATAR_API_KEY", "liveavatar-key")
     monkeypatch.setenv("LIVEAVATAR_AVATAR_ID", "avatar-id")
     monkeypatch.setattr(
-        avatar_provider.liveavatar,
+        avatar_module.liveavatar,
         "AvatarSession",
         fake_avatar_session,
     )
@@ -54,7 +54,7 @@ def test_create_avatar_session_uses_simli_provider(
     monkeypatch.setenv("SIMLI_FACE_ID", "face-id")
     monkeypatch.setenv("SIMLI_EMOTION_ID", "emotion-id")
     monkeypatch.setattr(
-        avatar_provider.simli,
+        avatar_module.simli,
         "AvatarSession",
         fake_avatar_session,
     )
@@ -79,7 +79,7 @@ async def test_avatar_failure_preserves_audio_only_session(
 ) -> None:
     start = AsyncMock(side_effect=RuntimeError("provider unavailable"))
     monkeypatch.setattr(
-        avatar_provider,
+        avatar_module,
         "create_avatar_session",
         lambda: ("simli", SimpleNamespace(start=start)),
     )

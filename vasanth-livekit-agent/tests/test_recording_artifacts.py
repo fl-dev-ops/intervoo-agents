@@ -5,11 +5,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from recording_config import RecordingConfig, build_recording_config
-from recording_db import CREATE_TABLE_SQL
-from recording_runtime import finalize_recording, start_recording
-from recording_store import build_verbose_s3_key, build_video_s3_key
-from recording_transcript import normalize_session_report, normalize_verbose_payload
+from domains.recording.config import RecordingConfig, build_recording_config
+from domains.recording.storage.db import CREATE_TABLE_SQL
+from domains.recording.egress.manager import finalize_recording, start_recording
+from domains.recording.storage.url_builder import build_verbose_s3_key, build_video_s3_key
+from domains.recording.transcript.normalizer import normalize_session_report, normalize_verbose_payload
 
 
 def test_build_verbose_s3_key_uses_verbose_filename() -> None:
@@ -126,15 +126,15 @@ async def test_finalize_marks_missing_audio_egress_as_failed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "recording_runtime.upload_transcript_json",
+        "domains.recording.storage.store.upload_transcript_json",
         lambda *_args: "https://example.com/transcript.json",
     )
     monkeypatch.setattr(
-        "recording_runtime.upload_metrics_json",
+        "domains.recording.storage.store.upload_metrics_json",
         lambda *_args: "https://example.com/metrics.json",
     )
     monkeypatch.setattr(
-        "recording_runtime.upload_verbose_json",
+        "domains.recording.storage.store.upload_verbose_json",
         lambda *_args: "https://example.com/verbose.json",
     )
 

@@ -45,14 +45,31 @@ async def _call(
     return result
 
 
+async def highlight_code_range(
+    *,
+    room: Any,
+    participant_identity: str,
+    from_line: int,
+    to_line: int,
+) -> dict[str, object]:
+    return await _call(
+        room,
+        participant_identity,
+        "highlight_range",
+        fromLine=from_line,
+        toLine=to_line,
+    )
+
+
 def build_code_highlight_tools(*, room: Any, participant_identity: str) -> list[Any]:
     @function_tool(
         name="read_code_range",
         description=(
             "Required before replying when a candidate is unsure, stuck, does not "
             "know, or requests help about an active Coding, Machine coding, or Code "
-            "output editor. Read inclusive one-based lines 1 through 200, never read "
-            "the returned code aloud, then call highlight_code."
+            "output editor. Read inclusive one-based lines 1 through 200 and never "
+            "read the returned code aloud. Call highlight_code only when the candidate "
+            "has written meaningful code and a specific line range is relevant."
         ),
     )
     async def read_code_range(
@@ -71,8 +88,9 @@ def build_code_highlight_tools(*, room: Any, participant_identity: str) -> list[
     @function_tool(
         name="highlight_code",
         description=(
-            "Required after read_code_range in the code-uncertainty flow. Highlight "
-            "the smallest relevant inclusive one-based whole-line range without "
+            "Use after read_code_range only when the candidate has written meaningful "
+            "code and a specific line range is relevant. Highlight the smallest "
+            "relevant inclusive one-based whole-line range without "
             "changing the code, then ask one targeted question that leads the "
             "candidate to the exact output or next implementation step."
         ),
@@ -82,12 +100,11 @@ def build_code_highlight_tools(*, room: Any, participant_identity: str) -> list[
         from_line: int,
         to_line: int,
     ) -> dict[str, object]:
-        return await _call(
-            room,
-            participant_identity,
-            "highlight_range",
-            fromLine=from_line,
-            toLine=to_line,
+        return await highlight_code_range(
+            room=room,
+            participant_identity=participant_identity,
+            from_line=from_line,
+            to_line=to_line,
         )
 
     return [read_code_range, highlight_code]

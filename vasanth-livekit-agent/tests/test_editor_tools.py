@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from interview.question_store import QuestionStore
+from domains.interview.questions.store import QuestionStore
 from tools.interview.start_question import build_start_question_tool
 from tools.interview.whiteboard_highlight import build_whiteboard_highlight_tools
 

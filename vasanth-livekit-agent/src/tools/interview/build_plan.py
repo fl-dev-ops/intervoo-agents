@@ -8,9 +8,9 @@ from typing import Any
 
 from livekit.agents import RunContext, function_tool
 
-from interview.chroma_repository import LOG_PREFIX, build_plan
-from interview.config import BUCKET_ORDER, QUESTION_TYPE_BUCKET
-from interview.question_store import QuestionStore
+from domains.interview.chroma.repository import LOG_PREFIX, build_plan
+from domains.interview.config import BUCKET_ORDER, QUESTION_TYPE_BUCKET
+from domains.interview.questions.store import QuestionStore
 
 logger = logging.getLogger(__name__)
 

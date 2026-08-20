@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import io
 from pathlib import Path
-from profile import load_profile_catalog
+from infrastructure.config.profiles import load_profile_catalog
 from unittest.mock import patch
 
 import pytest
 
-from prompt import (
+from infrastructure.prompt import (
     build_prompt_context,
     clear_prompt_cache,
     load_prompt,
@@ -63,8 +63,6 @@ def test_build_prompt_context_renders_resume_without_duplicating_it() -> None:
     )
 
     assert context["resume_markdown"] == "# Ravi\n\nStaff engineer at Freshworks."
-    # The resume has its own placeholder, so repeating it in additional_context
-    # would put the whole document in the prompt twice.
     assert "Freshworks" not in context["additional_context"]
     assert context["additional_context"] == '{"comfortable_language": "hindi"}'
 
@@ -101,7 +99,7 @@ def test_load_prompt_fetches_url_and_caches() -> None:
         def __exit__(self, *args):
             return False
 
-    with patch("prompt.request.urlopen") as mock_urlopen:
+    with patch("infrastructure.prompt.loader.request.urlopen") as mock_urlopen:
         mock_urlopen.return_value = _Manager(_fake_response(body))
 
         first = load_prompt("https://example.com/p.md")
@@ -116,7 +114,6 @@ def test_load_prompt_reads_vasanth_prompt() -> None:
     prompt = load_prompt("prompts/interview/vasanth.md")
 
     assert "Vasanth" in prompt
-    # The plan is now fetched at runtime via build_interview_plan, not injected.
     assert "build_interview_plan" in prompt
 
 
@@ -134,7 +131,7 @@ def test_load_prompt_raises_on_empty_body() -> None:
         def __exit__(self, *args):
             return False
 
-    with patch("prompt.request.urlopen", return_value=_Manager()):
+    with patch("infrastructure.prompt.loader.request.urlopen", return_value=_Manager()):
         with pytest.raises(ValueError, match="empty"):
             load_prompt("https://example.com/empty.md")
 
@@ -147,6 +144,6 @@ def test_load_prompt_raises_on_http_error() -> None:
         def __exit__(self, *args):
             return False
 
-    with patch("prompt.request.urlopen", return_value=_Manager()):
+    with patch("infrastructure.prompt.loader.request.urlopen", return_value=_Manager()):
         with pytest.raises(RuntimeError, match="HTTP 500"):
             load_prompt("https://example.com/broken.md")

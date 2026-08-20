@@ -5,6 +5,7 @@ FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim AS base
 
 ENV PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
+    PYTHONPATH=/app/src \
     XDG_CACHE_HOME=/app/.cache \
     HF_HOME=/app/.cache/huggingface \
     HF_HUB_CACHE=/app/.cache/huggingface/hub

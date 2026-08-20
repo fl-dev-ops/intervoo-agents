@@ -1,6 +1,6 @@
 """Screen tool adapters kept separate from the screen-analysis runtime."""
 
-from screen_feedback import (
+from domains.screen.feedback.runtime import (
     build_resume_inspection_tool,
     build_screen_inspection_tool,
 )
