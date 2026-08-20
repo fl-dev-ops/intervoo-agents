@@ -13,10 +13,11 @@ class SourceDocumentError(ValueError):
 class PdfRectV1:
     """A normalized PDF rectangle using a top-left coordinate origin."""
 
-    x: float
-    y: float
-    width: float
-    height: float
+    page: int
+    x1: float
+    y1: float
+    x2: float
+    y2: float
 
 
 @dataclass(frozen=True)

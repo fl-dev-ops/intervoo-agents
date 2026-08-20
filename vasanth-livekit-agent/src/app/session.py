@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
 
 from livekit import agents, rtc
-from livekit.agents import AgentSession, room_io
+from livekit.agents import AgentSession, RecordingOptions, room_io
 from livekit.plugins import noise_cancellation
 
 from services.agent.unified import UnifiedAgent
@@ -83,12 +82,22 @@ async def start_auto_session(
     ctx: agents.JobContext,
     session: AgentSession,
     agent: UnifiedAgent,
+    *,
+    recording_options: RecordingOptions | None = None,
 ) -> None:
-    await session.start(
-        room=ctx.room,
-        agent=agent,
-        room_options=build_room_options(),
-    )
+    if recording_options is None:
+        await session.start(
+            room=ctx.room,
+            agent=agent,
+            room_options=build_room_options(),
+        )
+    else:
+        await session.start(
+            room=ctx.room,
+            agent=agent,
+            room_options=build_room_options(),
+            record=recording_options,
+        )
     logger.info("Unified agent auto session started")
 
 
@@ -96,12 +105,22 @@ async def start_ptt_session(
     ctx: agents.JobContext,
     session: AgentSession,
     agent: UnifiedAgent,
+    *,
+    recording_options: RecordingOptions | None = None,
 ) -> None:
-    await session.start(
-        room=ctx.room,
-        agent=agent,
-        room_options=build_room_options(),
-    )
+    if recording_options is None:
+        await session.start(
+            room=ctx.room,
+            agent=agent,
+            room_options=build_room_options(),
+        )
+    else:
+        await session.start(
+            room=ctx.room,
+            agent=agent,
+            room_options=build_room_options(),
+            record=recording_options,
+        )
     session.input.set_audio_enabled(False)
     register_push_to_talk_rpcs(ctx, session)
     logger.info("Unified agent PTT session started")

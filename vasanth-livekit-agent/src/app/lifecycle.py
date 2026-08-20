@@ -4,65 +4,66 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
 
-from langfuse import get_client as get_langfuse_client
-from livekit import agents, rtc
+from livekit import agents, api, rtc
 from livekit.agents import ConversationItemAddedEvent
 
+from domains.interview.evidence.tracker import InterviewEvidenceTracker
+from domains.interview.runtime import (
+    InterviewConfigError,
+    InterviewRuntimeError,
+    RuntimeServices,
+    create_interview_runtime,
+    make_runtime_report,
+    prepare_runtime_prompt,
+    resolve_interview,
+)
 from domains.screen import ScreenFeedbackRuntime
 from domains.session import InteractionMode, build_agent_session
 from infrastructure.config.profiles import ProfileError, pick_profile
-from infrastructure.logging.langfuse import flush_langfuse, setup_langfuse
-from infrastructure.monitoring.watchdog import (
-    cancel_idle_room_watchdog,
-    register_idle_room_watchdog,
-)
-from infrastructure.prompt import (
-    build_prompt_context,
-    extract_prompt_version,
-    load_prompt,
-    render_prompt,
-)
-from services.agent.unified import UnifiedAgent
-from services.identity.resolver import resolve_user_id_from_room_metadata
-from services.simulation import install_answer_submit_shim, merge_simulation_userdata
-from tools.interview.code_highlight import highlight_code_range
-from domains.interview.evidence.tracker import InterviewEvidenceTracker
-from domains.interview.questions.store import QuestionStore, normalize_supplied_questions
 from infrastructure.config.resources import (
+    get_interview_catalog,
     get_or_create_turn_detector,
     get_prewarmed_turn_detector,
     get_profile_catalog,
     get_recording_config,
 )
+from infrastructure.logging.langfuse import flush_langfuse
+from infrastructure.monitoring.watchdog import (
+    cancel_idle_room_watchdog,
+    register_idle_room_watchdog,
+)
+from infrastructure.prompt import load_prompt
+from services.identity.resolver import resolve_user_id_from_room_metadata
+from services.simulation import install_answer_submit_shim, merge_simulation_userdata
+from tools.interview.code_highlight import highlight_code_range
 
 from .config import (
     CALLER_LOOKUP_TIMEOUT_SECONDS,
     EVIDENCE_TRACKER_CLOSE_TIMEOUT_SECONDS,
-    MOCK_INTERVIEW_AGENT_TYPE,
     SCREEN_FEEDBACK_CLOSE_TIMEOUT_SECONDS,
     SessionState,
     StartupTimer,
+    _screen_feedback_runtimes,
+    _session_usage_loggers,
+    _sessions,
     build_recording_metadata,
     extract_session_config,
-    plan_line,
+    parse_private_job_metadata,
     parse_room_metadata,
+    plan_line,
     resolve_interaction_mode,
+    resolve_interview_catalog_path,
     resolve_profile_config_path,
-    _sessions,
-    _session_usage_loggers,
-    _screen_feedback_runtimes,
 )
 from .metrics import attach_metrics_logging
 from .recording import (
+    RecordingStartState,
     finalize_recording_session,
     post_completion_webhook,
     start_recording_for_session,
-    RecordingStartState,
 )
 from .session import resolve_call_state, start_auto_session, start_ptt_session
-from .tools import build_end_call_tool, build_interview_tools, build_screen_tools
 
 logger = logging.getLogger("intervoo_agent")
 
@@ -93,7 +94,7 @@ async def on_session_end(ctx: agents.JobContext) -> None:
         except Exception:
             logger.exception("Failed to close evidence tracker room=%s", ctx.room.name)
 
-    report_dict = _make_report(ctx)
+    report_dict = make_runtime_report(ctx, state.interview_runtime)
     recording_result = await finalize_recording_session(state, ctx, report_dict)
     await post_completion_webhook(state, recording_result, report_dict)
 
@@ -103,81 +104,23 @@ async def on_session_end(ctx: agents.JobContext) -> None:
     flush_langfuse()
 
 
-def _make_report(ctx: agents.JobContext) -> dict:
-    try:
-        report = ctx.make_session_report()
-        d = report.to_dict()
-        d.setdefault("started_at", report.started_at)
-        d.setdefault("duration", report.duration)
-        return d
-    except Exception as e:
-        logger.warning(f"Failed to create session report: {e}")
-        return {}
-
-
-def _setup_prompt(metadata, profile, room_name: str, job_id: str):
-    _prompt_version = extract_prompt_version(profile.prompt_url)
-    try:
-        setup_langfuse(metadata={
-            "langfuse.session.id": room_name,
-            "langfuse.user.id": "anonymous",
-            "agent_id": profile.id,
-            "agent_name": profile.agent_type,
-            "job_id": job_id,
-            "prompt_version": _prompt_version,
-            "langfuse.prompt.name": "diagnostic-agent",
-            "langfuse.prompt.label": _prompt_version,
-        })
-    except Exception as e:
-        logger.warning(f"Langfuse setup failed: {e}")
-
-    try:
-        prompt_template = load_prompt(profile.prompt_url)
-    except Exception as e:
-        logger.error(f"Failed to load prompt for agent_id={profile.id}: {e}")
-        return None, None
-
-    prompt_context = build_prompt_context(metadata)
-    question_store = QuestionStore()
-    supplied = normalize_supplied_questions(metadata.get("questions"))
-    if supplied:
-        question_store.load(supplied)
-        prompt_context["interview_plan"] = "\n".join(plan_line(q) for q in question_store.public_plan())
-    elif isinstance(metadata.get("questions"), list):
-        prompt_context["interview_plan"] = ""
-
-    agent_instructions = render_prompt(prompt_template, context=prompt_context)
-    try:
-        lf = get_langfuse_client()
-        lf.get_prompt("diagnostic-agent", label=_prompt_version, fallback=agent_instructions)
-        lf.trace(id=room_name, metadata={"prompt_version": _prompt_version, "prompt_char_count": len(agent_instructions)})
-    except Exception as e:
-        logger.warning("Langfuse trace enrichment failed: %s", e)
-
-    return agent_instructions, question_store
-
-
-def _build_tools(ctx, question_store, participant_identity, evidence_tracker, evaluator_prompt, prompt_context, userdata, on_question_started, on_plan_loaded, profile, is_mock_interview, screen_feedback, screen_inspection_enabled):
-    tools = []
-    if profile.end_call_enabled and not is_mock_interview:
-        tools.append(build_end_call_tool())
-    if profile.editor_events_enabled:
-        tools.extend(build_interview_tools(
-            ctx=ctx, question_store=question_store, participant_identity=participant_identity,
-            evidence_tracker=evidence_tracker, evaluator_prompt=evaluator_prompt,
-            prompt_context=prompt_context, userdata=userdata,
-            on_question_started=on_question_started, on_plan_loaded=on_plan_loaded,
-        ))
-    if screen_feedback is not None and screen_inspection_enabled:
-        tools.extend(build_screen_tools(screen_feedback))
-    return tools
-
-
 async def entrypoint(ctx: agents.JobContext) -> None:
     timer = StartupTimer(ctx.room.name)
     userdata = ctx.proc.userdata
     room_metadata = ctx.job.room.metadata or ctx.room.metadata
-    metadata = parse_room_metadata(room_metadata)
+    try:
+        private_metadata = parse_private_job_metadata(ctx.job.metadata)
+    except ValueError as error:
+        logger.error(
+            "Cannot parse private job metadata error_type=%s",
+            type(error).__name__,
+        )
+        return
+    metadata = (
+        private_metadata
+        if private_metadata is not None
+        else parse_room_metadata(room_metadata)
+    )
     simulation_ctx = ctx.simulation_context()
     metadata = merge_simulation_userdata(simulation_ctx, metadata)
     profile_catalog = get_profile_catalog(userdata, fallback_path=resolve_profile_config_path())
@@ -188,9 +131,37 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         logger.error(f"Cannot resolve agent profile: {e}")
         return
 
+    interview_catalog = get_interview_catalog(
+        userdata,
+        fallback_path=resolve_interview_catalog_path(),
+    )
+    try:
+        resolved_interview = resolve_interview(
+            metadata,
+            profile=profile,
+            catalog=interview_catalog,
+        )
+        runtime = create_interview_runtime(
+            resolved=resolved_interview,
+            profile=profile,
+            metadata=metadata,
+        )
+        await runtime.prepare()
+    except (InterviewConfigError, InterviewRuntimeError, RuntimeError, ValueError) as error:
+        logger.error(
+            "Cannot prepare interview runtime error_type=%s",
+            type(error).__name__,
+        )
+        return
+
     mode = resolve_interaction_mode(metadata)
     session_config = extract_session_config(metadata)
-    recording_metadata = build_recording_metadata(metadata, mode, profile)
+    recording_metadata = build_recording_metadata(
+        metadata,
+        mode,
+        profile,
+        resume_mode=not runtime.uses_mock_pipeline,
+    )
     timer.mark("metadata_profile")
 
     await ctx.connect()
@@ -209,7 +180,14 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         logger.warning("No participant joined within %ds room=%s", CALLER_LOOKUP_TIMEOUT_SECONDS, ctx.room.name)
         return
 
-    agent_instructions, question_store = _setup_prompt(metadata, profile, ctx.room.name, ctx.job.id)
+    agent_instructions, question_store, prompt_context = prepare_runtime_prompt(
+        metadata=metadata,
+        profile=profile,
+        runtime=runtime,
+        room_name=ctx.room.name,
+        job_id=ctx.job.id,
+        plan_line=plan_line,
+    )
     if agent_instructions is None:
         return
     timer.mark("prompt_render")
@@ -230,7 +208,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     rec_cfg = get_recording_config(userdata)
     evidence_tracker = None
     evaluator_prompt = None
-    is_mock = profile.agent_type == MOCK_INTERVIEW_AGENT_TYPE
+    is_mock = runtime.uses_mock_pipeline
     if is_mock:
         try:
             evaluator_prompt = load_prompt("prompts/interview/vasanth_evaluator.md")
@@ -256,10 +234,14 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             name=f"recording-start:{ctx.room.name}",
         )
 
-    screen_inspection_enabled = profile.screen_inspection_enabled
-    timer_enabled = profile.screen_feedback_timer_enabled
+    screen_inspection_enabled = (
+        profile.screen_inspection_enabled if runtime.uses_editor_events else False
+    )
+    timer_enabled = (
+        profile.screen_feedback_timer_enabled if runtime.uses_editor_events else False
+    )
     screen_feedback = None
-    if profile.editor_events_enabled and (screen_inspection_enabled or timer_enabled):
+    if runtime.uses_editor_events and (screen_inspection_enabled or timer_enabled):
         async def _on_screen_nudge(text):
             await _inject_note(text, {"internal_screen_nudge": True})
 
@@ -279,14 +261,21 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         tts_speaker=profile.voice_speaker, tts_dict_id=profile.voice_dict_id,
         mode=mode, session_config=session_config,
         turn_detector=get_or_create_turn_detector(userdata) if mode is InteractionMode.AUTO else get_prewarmed_turn_detector(userdata),
-        disable_preemptive_generation=profile.editor_events_enabled,
+        disable_preemptive_generation=runtime.uses_editor_events,
     )
-    _session_usage_loggers[ctx.room.name] = attach_metrics_logging(session, ctx.room.name)
+    if runtime.content_tracing_enabled:
+        _session_usage_loggers[ctx.room.name] = attach_metrics_logging(
+            session,
+            ctx.room.name,
+        )
+
+    @session.on("conversation_item_added")
+    def on_item(event: ConversationItemAddedEvent):
+        runtime.on_conversation_item(event.item)
+        if evidence_tracker is not None:
+            evidence_tracker.on_conversation_item(event.item)
 
     if evidence_tracker is not None:
-        @session.on("conversation_item_added")
-        def on_item(event: ConversationItemAddedEvent):
-            evidence_tracker.on_conversation_item(event.item)
         if simulation_ctx is not None:
             install_answer_submit_shim(session, evidence_tracker=evidence_tracker, metadata=metadata)
 
@@ -296,10 +285,39 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         if screen_feedback is not None:
             await screen_feedback.on_question_started(q)
 
-    tools = _build_tools(ctx, question_store, participant_identity, evidence_tracker,
-        evaluator_prompt, dict(_prompt_context if '_prompt_context' in dir() else {}), userdata,
-        _on_question_started, lambda n: evidence_tracker.load_plan(n) if evidence_tracker else None,
-        profile, is_mock, screen_feedback, screen_inspection_enabled)
+    async def _close_resume_room() -> None:
+        try:
+            await ctx.api.room.delete_room(
+                api.DeleteRoomRequest(room=ctx.room.name)
+            )
+        except api.TwirpError as error:
+            if error.code != api.TwirpErrorCode.NOT_FOUND:
+                raise
+
+    def _shutdown_resume_job() -> None:
+        ctx.shutdown(reason="resume_mastery_finished")
+
+    tools = runtime.build_tools(
+        RuntimeServices(
+            ctx=ctx,
+            participant_identity=participant_identity,
+            question_store=question_store,
+            evidence_tracker=evidence_tracker,
+            evaluator_prompt=evaluator_prompt,
+            prompt_context={} if is_mock else prompt_context,
+            userdata=userdata,
+            on_question_started=_on_question_started,
+            on_plan_loaded=(
+                lambda questions: evidence_tracker.load_plan(questions)
+                if evidence_tracker
+                else None
+            ),
+            screen_feedback=screen_feedback,
+            screen_inspection_enabled=screen_inspection_enabled,
+            close_room=_close_resume_room,
+            shutdown_job=_shutdown_resume_job,
+        )
+    )
 
     if screen_feedback is not None and screen_inspection_enabled:
         agent_instructions += ("\n\nDuring an active coding question, use read_code_range followed by "
@@ -312,8 +330,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     timer.mark("tool_build")
 
-    agent = UnifiedAgent(instructions=agent_instructions, tools=tools, initial_reply=profile.initial_reply,
-        participant_identity=participant_identity, room_name=ctx.room.name)
+    agent = runtime.build_agent(
+        instructions=agent_instructions,
+        tools=tools,
+        prompt_context=prompt_context,
+        participant_identity=participant_identity,
+        room_name=ctx.room.name,
+    )
     timer.mark("session_build")
 
     webhook_url_raw = metadata.get("webhook_url")
@@ -330,6 +353,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         audio_url=recording_start.audio_url, audio_s3_key=recording_start.audio_s3_key,
         video_egress_id=recording_start.video_egress_id, video_url=recording_start.video_url,
         video_s3_key=recording_start.video_s3_key, evidence_tracker=evidence_tracker,
+        interview_runtime=runtime,
     )
 
     avatar_request = metadata.get("avatar")
@@ -337,10 +361,21 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     await start_avatar(session, ctx.room, enabled=avatar_request is True or avatar_request == "liveavatar")
     timer.mark("avatar_start")
 
-    if mode is InteractionMode.PTT:
-        await start_ptt_session(ctx, session, agent)
+    start_session = start_ptt_session if mode is InteractionMode.PTT else start_auto_session
+    if runtime.content_tracing_enabled:
+        await start_session(ctx, session, agent)
     else:
-        await start_auto_session(ctx, session, agent)
+        await start_session(
+            ctx,
+            session,
+            agent,
+            recording_options={
+                "audio": True,
+                "traces": False,
+                "logs": False,
+                "transcript": False,
+            },
+        )
 
     if screen_feedback is not None:
         try:

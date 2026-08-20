@@ -88,10 +88,8 @@ def read_s3_json_object(
 
     started = time.monotonic()
     logger.info(
-        "%s read started bucket=%s key=%s elapsed_ms=0",
+        "%s action=read status=started elapsed_ms=0",
         S3_RESUME_LOG_PREFIX,
-        config.bucket,
-        key,
     )
     body = None
     try:
@@ -110,10 +108,8 @@ def read_s3_json_object(
             raise S3JsonReadError("S3 JSON object must contain an object")
     except Exception as error:
         logger.error(
-            "%s read failed bucket=%s key=%s elapsed_ms=%d error_type=%s",
+            "%s action=read status=failed elapsed_ms=%d error_type=%s",
             S3_RESUME_LOG_PREFIX,
-            config.bucket,
-            key,
             int((time.monotonic() - started) * 1000),
             type(error).__name__,
         )
@@ -125,10 +121,8 @@ def read_s3_json_object(
             body.close()
 
     logger.info(
-        "%s read completed bucket=%s key=%s elapsed_ms=%d",
+        "%s action=read status=completed elapsed_ms=%d",
         S3_RESUME_LOG_PREFIX,
-        config.bucket,
-        key,
         int((time.monotonic() - started) * 1000),
     )
     return value

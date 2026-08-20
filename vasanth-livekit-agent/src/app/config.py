@@ -78,6 +78,7 @@ class SessionState:
     video_url: str | None = None
     video_s3_key: str | None = None
     evidence_tracker: InterviewEvidenceTracker | None = None
+    interview_runtime: Any | None = None
 
 
 _sessions: dict[str, SessionState] = {}
@@ -140,6 +141,24 @@ def parse_room_metadata(metadata: str | None) -> dict[str, object]:
     return {}
 
 
+def parse_private_job_metadata(metadata: str | None) -> dict[str, object] | None:
+    """Strictly parse present private dispatch metadata without legacy fallback."""
+
+    if metadata is None or not metadata.strip():
+        return None
+    try:
+        import json
+
+        payload = json.loads(metadata)
+    except Exception as error:
+        raise ValueError("Private job metadata is not valid JSON") from error
+    if not isinstance(payload, dict) or not all(
+        isinstance(key, str) for key in payload
+    ):
+        raise ValueError("Private job metadata must be an object")
+    return payload
+
+
 def extract_session_config(metadata: Mapping[str, object] | None) -> SessionConfig:
     if not metadata:
         return SessionConfig()
@@ -194,8 +213,20 @@ def build_recording_metadata(
     room_metadata: Mapping[str, object] | None,
     mode: InteractionMode,
     profile: AgentProfile,
+    *,
+    resume_mode: bool = False,
 ) -> dict[str, object]:
-    metadata = dict(room_metadata) if room_metadata else {}
+    if resume_mode:
+        metadata: dict[str, object] = {}
+        interview = room_metadata.get("interview") if room_metadata else None
+        if isinstance(interview, Mapping):
+            metadata["interview"] = {
+                key: interview[key]
+                for key in ("type", "version", "round")
+                if isinstance(interview.get(key), str)
+            }
+    else:
+        metadata = dict(room_metadata) if room_metadata else {}
     metadata["interaction_mode"] = mode.value
     metadata["agent_id"] = profile.id
     return metadata

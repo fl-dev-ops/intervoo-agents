@@ -97,12 +97,18 @@ def serialized_json_size(value: Mapping[str, Any]) -> int:
     return len(encoded)
 
 
-def parse_pdf_rect(value: Any, field: str) -> PdfRectV1:
+def parse_pdf_rect(value: Any, field: str, *, anchor_page: int) -> PdfRectV1:
     raw = require_mapping(value, field)
-    keys = {"x", "y", "width", "height"}
+    keys = {"page", "x1", "y1", "x2", "y2"}
     require_exact_keys(raw, required=keys, field=field)
+    page = require_positive_int(raw["page"], f"{field}.page")
+    if page != anchor_page:
+        raise SourceDocumentError(
+            f"{field}.page must match its containing anchor page"
+        )
+
     coordinates: dict[str, float] = {}
-    for key in keys:
+    for key in ("x1", "y1", "x2", "y2"):
         item = raw[key]
         if isinstance(item, bool) or not isinstance(item, (int, float)):
             raise SourceDocumentError(f"{field}.{key} must be a finite number")
@@ -111,15 +117,15 @@ def parse_pdf_rect(value: Any, field: str) -> PdfRectV1:
             raise SourceDocumentError(f"{field}.{key} must be a finite number")
         coordinates[key] = parsed
 
-    x = coordinates["x"]
-    y = coordinates["y"]
-    width = coordinates["width"]
-    height = coordinates["height"]
-    if not 0 <= x <= 1 or not 0 <= y <= 1:
-        raise SourceDocumentError(f"{field} origin must be within normalized bounds")
-    if width <= 0 or height <= 0 or x + width > 1 or y + height > 1:
-        raise SourceDocumentError(f"{field} dimensions must fit normalized bounds")
-    return PdfRectV1(x=x, y=y, width=width, height=height)
+    x1 = coordinates["x1"]
+    y1 = coordinates["y1"]
+    x2 = coordinates["x2"]
+    y2 = coordinates["y2"]
+    if not 0 <= x1 < x2 <= 1 or not 0 <= y1 < y2 <= 1:
+        raise SourceDocumentError(
+            f"{field} must satisfy 0 <= x1 < x2 <= 1 and 0 <= y1 < y2 <= 1"
+        )
+    return PdfRectV1(page=page, x1=x1, y1=y1, x2=x2, y2=y2)
 
 
 def parse_pdf_anchor(
@@ -149,7 +155,11 @@ def parse_pdf_anchor(
             f"{field}.rectangles must contain 1 through {max_rectangles} items"
         )
     rectangles = tuple(
-        parse_pdf_rect(item, f"{field}.rectangles[{index}]")
+        parse_pdf_rect(
+            item,
+            f"{field}.rectangles[{index}]",
+            anchor_page=page,
+        )
         for index, item in enumerate(rectangles_value)
     )
     return PdfAnchorV1(
