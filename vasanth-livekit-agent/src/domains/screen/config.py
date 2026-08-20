@@ -22,8 +22,8 @@ RESUME_SCREEN_SHARE_REQUIRED_MESSAGE = (
 )
 
 ON_DEMAND_ANALYSIS_PROMPT = (
-    "Inspect the candidate's current shared code editor or whiteboard for their "
-    "explicit request. In feedback, first state one concrete detail visibly present "
+    "Inspect the candidate's current shared whiteboard for their explicit request. "
+    "In feedback, first state one concrete detail visibly present "
     "in their work, then give one small Socratic hint or next step. Do not give the "
     "full solution. Use plain spoken text under forty-five words with no code or "
     "formatting. Set should_speak to true. Confidence reflects how clearly the "
@@ -44,9 +44,18 @@ DEVIATION_ANALYSIS_PROMPT = (
 )
 STALL_ANALYSIS_PROMPT = (
     "You are a silent technical interview observer. The candidate has made no code "
-    "or whiteboard progress for at least sixty seconds. Set should_speak to true when "
-    "the relevant work is visible and give one small Socratic hint or technique that "
-    "can restart progress. Never give the full answer. Feedback must be one or two "
+    "or whiteboard progress for at least sixty seconds. For Coding and Machine coding "
+    "questions, estimate the percentage of the requested implementation visibly "
+    "completed and return it in code_completion_percent. At fifty percent or greater, "
+    "set should_speak to true only when there is a meaningful question about one "
+    "specific visible code block. Put that targeted Socratic question in feedback and "
+    "return the smallest inclusive one-based line range for that block in "
+    "highlight_from_line and highlight_to_line. If no meaningful question exists, set "
+    "should_speak to false and leave both line fields null. Below fifty percent, "
+    "feedback may stay general and both line fields must be null. For whiteboards, "
+    "leave code_completion_percent and both line fields null. "
+    "When should_speak is true, use feedback for one small Socratic question, hint, "
+    "or technique that can restart progress. Never give the full answer. Feedback must be one or two "
     "short sentences under thirty words, with plain spoken text and no code or "
     "formatting. Do not repeat the last visual nudge."
 )

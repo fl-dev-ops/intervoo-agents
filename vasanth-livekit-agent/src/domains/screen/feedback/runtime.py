@@ -11,13 +11,6 @@ from collections.abc import Awaitable, Callable
 from livekit import rtc
 from livekit.agents import AgentSession, function_tool
 
-from domains.screen.feedback.analyzer import ScreenFeedbackAnalyzer
-from domains.screen.models import (
-    ResumeEndState,
-    ResumeScrollbarPosition,
-    ScreenFeedbackTrigger,
-    ScreenSnapshot,
-)
 from domains.screen.config import (
     ON_DEMAND_ANALYSIS_PROMPT,
     RESUME_FRAME_WAIT_SECONDS,
@@ -25,8 +18,15 @@ from domains.screen.config import (
     RESUME_SCREEN_SHARE_REQUIRED_MESSAGE,
     SCREEN_FEEDBACK_INTERVAL_SECONDS,
     SCREEN_SHARE_REQUIRED_MESSAGE,
-    SURFACE_STATE_TOPIC,
     SUPPORTED_SURFACES,
+    SURFACE_STATE_TOPIC,
+)
+from domains.screen.feedback.analyzer import ScreenFeedbackAnalyzer
+from domains.screen.models import (
+    ResumeEndState,
+    ResumeScrollbarPosition,
+    ScreenFeedbackTrigger,
+    ScreenSnapshot,
 )
 from domains.screen.resume.inspection import (
     ResumeInspectionState,
@@ -48,11 +48,13 @@ class ScreenFeedbackRuntime:
         participant_identity: str,
         timer_enabled: bool = True,
         note_sink: Callable[[str], Awaitable[None]] | None = None,
+        code_highlight_sink: Callable[[int, int], Awaitable[None]] | None = None,
     ) -> None:
         self._room = room
         self._participant_identity = participant_identity
         self._timer_enabled = timer_enabled
         self._note_sink = note_sink
+        self._code_highlight_sink = code_highlight_sink
         self._vision_client = VisionClient()
         self._analyzer = ScreenFeedbackAnalyzer(self._vision_client)
         self._session: AgentSession | None = None
@@ -130,9 +132,7 @@ class ScreenFeedbackRuntime:
                 self._room.name,
             )
         surface = question.get("surface")
-        self._active_question = (
-            question if self._timer_enabled and surface in SUPPORTED_SURFACES else None
-        )
+        self._active_question = question if surface in SUPPORTED_SURFACES else None
         self._content_revision = 0
         self._last_evaluated_revision = 0
         self._stall_evaluated_revision = None
@@ -435,37 +435,110 @@ class ScreenFeedbackRuntime:
 
         if not self._snapshot_is_current(snapshot):
             return
+        if not self._can_evaluate():
+            logger.debug(
+                "Skipped screen feedback after analysis because conversation state changed room=%s",
+                self._room.name,
+            )
+            return
+
         self._last_evaluated_revision = snapshot.revision
         if trigger is ScreenFeedbackTrigger.STALL:
             self._stall_evaluated_revision = snapshot.revision
 
         feedback = decision.feedback.strip()
         should_speak = self._analyzer.check_decision_quality(
-            decision, feedback, self._last_spoken_at
+            decision,
+            feedback,
+            self._last_spoken_at,
         )
         logger.info(
             "Screen feedback decision room=%s question_id=%s trigger=%s "
-            "should_speak=%s confidence=%.2f",
+            "should_speak=%s confidence=%.2f code_completion_percent=%s "
+            "highlight_from_line=%s highlight_to_line=%s",
             self._room.name,
             snapshot.question.get("id"),
             trigger.value,
             should_speak,
             decision.confidence,
+            decision.code_completion_percent,
+            decision.highlight_from_line,
+            decision.highlight_to_line,
         )
         if not should_speak:
             return
 
+        question_type = snapshot.question.get("questionType")
+        requires_code_highlight = (
+            trigger is ScreenFeedbackTrigger.STALL
+            and question_type in {"coding", "machine-coding"}
+            and decision.code_completion_percent is not None
+            and decision.code_completion_percent >= 50
+        )
+        if requires_code_highlight:
+            from_line = decision.highlight_from_line
+            to_line = decision.highlight_to_line
+            if (
+                self._code_highlight_sink is None
+                or from_line is None
+                or to_line is None
+                or from_line > to_line
+                or not feedback.endswith("?")
+            ):
+                logger.warning(
+                    "Skipped coding stall feedback without valid question and highlight "
+                    "room=%s question_id=%s from_line=%s to_line=%s",
+                    self._room.name,
+                    snapshot.question.get("id"),
+                    from_line,
+                    to_line,
+                )
+                return
+            try:
+                await self._code_highlight_sink(from_line, to_line)
+            except Exception:
+                logger.exception(
+                    "Failed to highlight coding stall feedback room=%s question_id=%s "
+                    "from_line=%d to_line=%d",
+                    self._room.name,
+                    snapshot.question.get("id"),
+                    from_line,
+                    to_line,
+                )
+                return
+            if not self._snapshot_is_current(snapshot) or not self._can_evaluate():
+                logger.debug(
+                    "Skipped coding stall question after highlight because state changed room=%s",
+                    self._room.name,
+                )
+                return
+
         session.say(feedback, allow_interruptions=True, add_to_chat_ctx=False)
+        logger.info(
+            "Screen feedback spoken room=%s question_id=%s highlighted=%s",
+            self._room.name,
+            snapshot.question.get("id"),
+            requires_code_highlight,
+        )
         self._last_feedback = feedback
         self._last_spoken_at = time.monotonic()
         if self._note_sink is not None:
             question_id = snapshot.question.get("id")
-            try:
-                await self._note_sink(
+            if requires_code_highlight:
+                note = (
+                    f'[Internal: a separate screen observer asked aloud: "{feedback}". '
+                    "This is a work-in-progress nudge, not a submitted answer or formal "
+                    "follow-up. If the candidate answers it, briefly acknowledge their "
+                    f"reasoning and let them continue. Question {question_id} is still unanswered.]"
+                )
+            else:
+                note = (
                     f'[Internal: a separate screen observer said aloud: "{feedback}". '
                     "This was not your turn and does not open a thread. Question "
                     f"{question_id} is still unanswered.]"
                 )
+            try:
+                await self._note_sink(note)
             except Exception:
                 logger.exception(
                     "Failed to record screen nudge note room=%s question_id=%s",
@@ -476,6 +549,15 @@ class ScreenFeedbackRuntime:
     async def inspect_shared_screen(self, user_request: str) -> dict[str, object]:
         """Inspect the latest shared-screen frame for an explicit candidate request."""
         question = self._active_question
+        if question is not None and question.get("surface") == "code":
+            return {
+                "status": "editor_code_available",
+                "response_guidance": (
+                    "Use read_code_range, then highlight_code only when the candidate "
+                    "has written meaningful code. Do not inspect the shared screen for "
+                    "editor-code feedback."
+                ),
+            }
         if (
             question is None
             or not self._surface_visible
@@ -928,10 +1010,10 @@ def build_screen_inspection_tool(runtime: ScreenFeedbackRuntime):
     @function_tool(
         name="inspect_shared_screen",
         description=(
-            "Inspect the candidate's current shared code editor or whiteboard. You MUST "
-            "call this before answering when the candidate asks for a hint, expresses a "
-            "doubt, asks whether their current work is correct, asks what is visible, or "
-            "asks what to do next. Use only during code or whiteboard questions. Pass "
+            "Inspect the candidate's current shared whiteboard. Use only for an active "
+            "whiteboard request about visible diagram state. Do not use this for editor "
+            "code; use read_code_range, and highlight_code only after meaningful code "
+            "exists. Pass "
             "their request in user_request. The tool returns a brief visible observation "
             "and one next-step hint without adding the image to the main chat context. "
             "If screen sharing is disabled, say the returned candidate_message and "

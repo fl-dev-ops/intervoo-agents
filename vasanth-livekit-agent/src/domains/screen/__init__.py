@@ -11,7 +11,6 @@ from domains.screen.models import (
     ResumeScrollbarPosition,
     ResumeViewportObservation,
     ScreenFeedbackDecision,
-    ScreenFeedbackTrigger,
     ScreenSnapshot,
 )
 
@@ -22,7 +21,6 @@ __all__ = [
     "ResumeViewportObservation",
     "ScreenFeedbackDecision",
     "ScreenFeedbackRuntime",
-    "ScreenFeedbackTrigger",
     "ScreenSnapshot",
     "build_resume_inspection_tool",
     "build_screen_inspection_tool",

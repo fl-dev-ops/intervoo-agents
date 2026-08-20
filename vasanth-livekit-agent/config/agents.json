@@ -10,7 +10,9 @@
             },
             "tools": {
                 "end_call": true,
-                "editor_events": true
+                "editor_events": true,
+                "screen_inspection": false,
+                "screen_feedback_timer": true
             }
         },
         "mock_interview_v2": {

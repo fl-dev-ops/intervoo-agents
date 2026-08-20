@@ -26,6 +26,8 @@ class AgentProfile:
     voice_dict_id: str | None
     end_call_enabled: bool
     editor_events_enabled: bool
+    screen_inspection_enabled: bool
+    screen_feedback_timer_enabled: bool
 
 
 def _required_str(value: Any, field: str) -> str:
@@ -69,6 +71,10 @@ def _parse_profile(agent_id: str, value: Any) -> AgentProfile:
         voice_dict_id=_optional_str(voice.get("dict_id")),
         end_call_enabled=bool(tools.get("end_call", False)),
         editor_events_enabled=bool(tools.get("editor_events", False)),
+        screen_inspection_enabled=bool(tools.get("screen_inspection", False)),
+        screen_feedback_timer_enabled=bool(
+            tools.get("screen_feedback_timer", False)
+        ),
     )
 
 

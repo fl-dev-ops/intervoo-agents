@@ -7,19 +7,19 @@ import time
 
 from livekit import rtc
 
-from domains.screen.models import (
-    ResumeDetails,
-    ResumeViewportObservation,
-    ScreenFeedbackDecision,
-    ScreenFeedbackTrigger,
-    ScreenSnapshot,
-)
 from domains.screen.config import (
     DEVIATION_ANALYSIS_PROMPT,
     SCREEN_FEEDBACK_CONFIDENCE_THRESHOLD,
     SCREEN_FEEDBACK_COOLDOWN_SECONDS,
     SCREEN_FEEDBACK_STALL_SECONDS,
     STALL_ANALYSIS_PROMPT,
+)
+from domains.screen.models import (
+    ResumeDetails,
+    ResumeViewportObservation,
+    ScreenFeedbackDecision,
+    ScreenFeedbackTrigger,
+    ScreenSnapshot,
 )
 from domains.screen.resume.inspection import ResumeInspectionState
 from domains.screen.vision.client import VisionClient
@@ -57,6 +57,8 @@ class ScreenFeedbackAnalyzer:
             and snapshot.revision != stall_evaluated_revision
         ):
             return ScreenFeedbackTrigger.STALL
+        # A new revision only schedules deviation analysis; the vision decision
+        # determines whether the approach is actually fundamentally non-viable.
         if snapshot.revision != last_evaluated_revision:
             return ScreenFeedbackTrigger.DEVIATION
         return None
@@ -73,6 +75,7 @@ class ScreenFeedbackAnalyzer:
     ) -> str:
         return (
             f"Question: {snapshot.question.get('text', '')}\n"
+            f"Question type: {snapshot.question.get('questionType', '')}\n"
             f"Surface: {snapshot.question.get('surface', '')}\n"
             f"Approximate seconds without code or diagram progress: "
             f"{snapshot.inactive_seconds:.0f}\n"
@@ -87,11 +90,36 @@ class ScreenFeedbackAnalyzer:
         system_prompt: str,
         request_context: str,
     ) -> ScreenFeedbackDecision:
-        return await self._vision_client.analyze_screen(
-            frame=snapshot.frame,
-            system_prompt=system_prompt,
-            user_prompt=self.build_snapshot_prompt(snapshot, request_context),
+        started = time.monotonic()
+        question_id = snapshot.question.get("id")
+        logger.info(
+            "[LLM:screen-feedback] start question_id=%s revision=%d",
+            question_id,
+            snapshot.revision,
         )
+        try:
+            decision = await self._vision_client.analyze_screen(
+                frame=snapshot.frame,
+                system_prompt=system_prompt,
+                user_prompt=self.build_snapshot_prompt(snapshot, request_context),
+            )
+        except Exception as exc:
+            logger.exception(
+                "[LLM:screen-feedback] failed question_id=%s revision=%d "
+                "elapsed_ms=%d error_type=%s",
+                question_id,
+                snapshot.revision,
+                round((time.monotonic() - started) * 1000),
+                type(exc).__name__,
+            )
+            raise
+        logger.info(
+            "[LLM:screen-feedback] complete question_id=%s revision=%d elapsed_ms=%d",
+            question_id,
+            snapshot.revision,
+            round((time.monotonic() - started) * 1000),
+        )
+        return decision
 
     async def analyze_resume_frame(
         self,

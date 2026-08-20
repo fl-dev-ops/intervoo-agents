@@ -27,6 +27,7 @@ from infrastructure.prompt import (
 from services.agent.unified import UnifiedAgent
 from services.identity.resolver import resolve_user_id_from_room_metadata
 from services.simulation import install_answer_submit_shim, merge_simulation_userdata
+from tools.interview.code_highlight import highlight_code_range
 from domains.interview.evidence.tracker import InterviewEvidenceTracker
 from domains.interview.questions.store import QuestionStore, normalize_supplied_questions
 from infrastructure.config.resources import (
@@ -156,7 +157,7 @@ def _setup_prompt(metadata, profile, room_name: str, job_id: str):
     return agent_instructions, question_store
 
 
-def _build_tools(ctx, question_store, participant_identity, evidence_tracker, evaluator_prompt, prompt_context, userdata, on_question_started, on_plan_loaded, profile, is_mock_interview, screen_feedback, timer_screen_feedback_enabled):
+def _build_tools(ctx, question_store, participant_identity, evidence_tracker, evaluator_prompt, prompt_context, userdata, on_question_started, on_plan_loaded, profile, is_mock_interview, screen_feedback, screen_inspection_enabled):
     tools = []
     if profile.end_call_enabled and not is_mock_interview:
         tools.append(build_end_call_tool())
@@ -167,7 +168,7 @@ def _build_tools(ctx, question_store, participant_identity, evidence_tracker, ev
             prompt_context=prompt_context, userdata=userdata,
             on_question_started=on_question_started, on_plan_loaded=on_plan_loaded,
         ))
-    if screen_feedback is not None and timer_screen_feedback_enabled:
+    if screen_feedback is not None and screen_inspection_enabled:
         tools.extend(build_screen_tools(screen_feedback))
     return tools
 
@@ -255,14 +256,24 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             name=f"recording-start:{ctx.room.name}",
         )
 
-    screen_feedback_mode = metadata.get("screen_feedback_mode")
-    timer_enabled = screen_feedback_mode == "timer"
+    screen_inspection_enabled = profile.screen_inspection_enabled
+    timer_enabled = profile.screen_feedback_timer_enabled
     screen_feedback = None
-    if profile.editor_events_enabled and timer_enabled:
+    if profile.editor_events_enabled and (screen_inspection_enabled or timer_enabled):
         async def _on_screen_nudge(text):
             await _inject_note(text, {"internal_screen_nudge": True})
+
+        async def _highlight_screen_feedback_code(from_line: int, to_line: int) -> None:
+            await highlight_code_range(
+                room=ctx.room,
+                participant_identity=participant_identity,
+                from_line=from_line,
+                to_line=to_line,
+            )
+
         screen_feedback = ScreenFeedbackRuntime(room=ctx.room, participant_identity=participant_identity,
-            timer_enabled=timer_enabled, note_sink=_on_screen_nudge)
+            timer_enabled=timer_enabled, note_sink=_on_screen_nudge,
+            code_highlight_sink=_highlight_screen_feedback_code)
 
     session = build_agent_session(
         tts_speaker=profile.voice_speaker, tts_dict_id=profile.voice_dict_id,
@@ -288,14 +299,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     tools = _build_tools(ctx, question_store, participant_identity, evidence_tracker,
         evaluator_prompt, dict(_prompt_context if '_prompt_context' in dir() else {}), userdata,
         _on_question_started, lambda n: evidence_tracker.load_plan(n) if evidence_tracker else None,
-        profile, is_mock, screen_feedback, timer_enabled)
+        profile, is_mock, screen_feedback, screen_inspection_enabled)
 
-    if screen_feedback is not None and timer_enabled:
+    if screen_feedback is not None and screen_inspection_enabled:
         agent_instructions += ("\n\nDuring an active coding question, use read_code_range followed by "
-            "highlight_code, not inspect_shared_screen, before answering uncertainty or any request "
-            "for a hint, doubt clarification, correctness check, or next step about editor code. "
-            "Call inspect_shared_screen for an active whiteboard request or a coding request "
-            "specifically about visual state outside the code editor. Never claim that you cannot "
+            "highlight_code only when meaningful editor code exists; never use "
+            "inspect_shared_screen for coding. Call inspect_shared_screen only for an active "
+            "whiteboard request. Never claim that you cannot "
             "see the candidate's screen. If the result includes candidate_message, say it and "
             "continue the interview. Treat screen_share_required, surface_unavailable, and loading "
             "as normal recoverable states; never call end_call because of them.")

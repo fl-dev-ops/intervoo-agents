@@ -15,6 +15,9 @@ class ScreenFeedbackDecision(BaseModel):
     confidence: float = Field(ge=0, le=1)
     feedback: str
     reason: str
+    code_completion_percent: int | None = Field(default=None, ge=0, le=100)
+    highlight_from_line: int | None = Field(default=None, ge=1)
+    highlight_to_line: int | None = Field(default=None, ge=1)
 
 
 class ResumeEndState(str, Enum):
