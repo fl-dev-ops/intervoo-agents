@@ -28,6 +28,9 @@ from domains.interview.documents.validation import (
 )
 
 RESUME_DOCUMENT_SCHEMA = "resume_document.v1"
+_CLAIM_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
+_MAX_SECTION_CHARACTERS = 120
+_MAX_METRIC_CHARACTERS = 500
 
 _CONTACT_SECTION_RE = re.compile(
     r"^(contact|contact information|personal details|personal information)$",
@@ -116,7 +119,7 @@ class ResumeDocumentLimits:
 
 @dataclass(frozen=True)
 class ResumeDocumentV1:
-    schema: str
+    schema_version: str
     source: SourceDocumentV1
     claim_count: int
     claims: tuple[ResumeClaimV1, ...]
@@ -153,6 +156,7 @@ def _parse_claim(
     anchors_by_id: Mapping[str, PdfAnchorV1],
     max_anchors: int,
     anchor_positions: Mapping[str, int],
+    max_text_characters: int,
 ) -> ResumeClaimV1:
     field = f"document.claims[{index}]"
     raw = require_mapping(value, field)
@@ -160,8 +164,18 @@ def _parse_claim(
     require_exact_keys(raw, required=required, optional={"metric"}, field=field)
 
     claim_id = require_string(raw["id"], f"{field}.id")
+    if not _CLAIM_ID_RE.fullmatch(claim_id):
+        raise SourceDocumentError(f"{field}.id has an invalid format")
     section = require_string(raw["section"], f"{field}.section", verbatim=True)
+    if len(section) > _MAX_SECTION_CHARACTERS:
+        raise SourceDocumentError(
+            f"{field}.section must be at most {_MAX_SECTION_CHARACTERS} characters"
+        )
     text = require_string(raw["text"], f"{field}.text", verbatim=True)
+    if len(text) > max_text_characters:
+        raise SourceDocumentError(
+            f"{field}.text must be at most {max_text_characters} characters"
+        )
     kind_value = require_string(raw["kind"], f"{field}.kind")
     try:
         kind = ResumeClaimKind(kind_value)
@@ -198,10 +212,13 @@ def _parse_claim(
     if normalize_source_text(text) != grounded_text:
         raise SourceDocumentError(f"{field}.text is not exact normalized source text")
 
-    metric_value = raw.get("metric")
     metric = None
-    if metric_value is not None:
-        metric = require_string(metric_value, f"{field}.metric", verbatim=True)
+    if "metric" in raw:
+        metric = require_string(raw["metric"], f"{field}.metric", verbatim=True)
+        if len(metric) > _MAX_METRIC_CHARACTERS:
+            raise SourceDocumentError(
+                f"{field}.metric must be at most {_MAX_METRIC_CHARACTERS} characters"
+            )
         if metric not in text:
             raise SourceDocumentError(f"{field}.metric must be an exact text substring")
 
@@ -227,7 +244,7 @@ def parse_resume_document(
 ) -> ResumeDocumentV1:
     raw = require_mapping(value, "document")
     keys = {
-        "schema",
+        "schema_version",
         "pdf_sha256",
         "page_count",
         "extracted_character_count",
@@ -250,10 +267,13 @@ def parse_resume_document(
     if actual_size <= 0 or actual_size > limits.max_document_json_bytes:
         raise SourceDocumentError("document JSON byte count exceeds configured limit")
 
-    schema = require_string(raw["schema"], "document.schema")
-    if schema != RESUME_DOCUMENT_SCHEMA:
+    schema_version = require_string(
+        raw["schema_version"], "document.schema_version"
+    )
+    if schema_version != RESUME_DOCUMENT_SCHEMA:
         raise SourceDocumentError(
-            f"document.schema must be {RESUME_DOCUMENT_SCHEMA!r}"
+            "document.schema_version must be "
+            f"{RESUME_DOCUMENT_SCHEMA!r}"
         )
     source = parse_source_document(raw, limits=limits.source_limits())
     for index, anchor in enumerate(source.anchors):
@@ -284,6 +304,7 @@ def parse_resume_document(
             anchors_by_id=anchors_by_id,
             max_anchors=limits.max_anchors_per_claim,
             anchor_positions=anchor_positions,
+            max_text_characters=limits.max_extracted_characters,
         )
         for index, item in enumerate(claims_value)
     )
@@ -291,7 +312,7 @@ def parse_resume_document(
     if len(ids) != len(set(ids)):
         raise SourceDocumentError("document.claims contains duplicate ids")
     return ResumeDocumentV1(
-        schema=schema,
+        schema_version=schema_version,
         source=source,
         claim_count=claim_count,
         claims=claims,

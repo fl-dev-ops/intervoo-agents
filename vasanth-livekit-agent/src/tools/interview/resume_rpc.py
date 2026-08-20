@@ -117,12 +117,14 @@ class ResumeRpcClient:
             claim_id,
         )
         payload: dict[str, object] = {
-            "schema": RESUME_RPC_SCHEMA,
+            "schema_version": RESUME_RPC_SCHEMA,
             "action": action,
-            "documentSha256": self._document_sha256,
+            "payload": {"document_sha256": self._document_sha256},
         }
         if action == "highlight_claim":
-            payload["claimId"] = claim_id
+            request_payload = payload["payload"]
+            assert isinstance(request_payload, dict)
+            request_payload["claim_id"] = claim_id
         try:
             # UNVERIFIED against LiveKit MCP; checked against pinned 1.6.6 source and docs.
             response = await self._room.local_participant.perform_rpc(
@@ -133,7 +135,7 @@ class ResumeRpcClient:
                 max_round_trip_latency=response_timeout,
             )
             result = json.loads(response)
-            status = self._response_status(action, result)
+            status = self._response_status(action, claim_id, result)
         except Exception:
             status = ResumeHighlightStatus.VIEWER_UNAVAILABLE.value
         logger.info(
@@ -147,13 +149,21 @@ class ResumeRpcClient:
         )
         return status
 
-    def _response_status(self, action: str, value: object) -> str:
+    def _response_status(self, action: str, claim_id: str, value: object) -> str:
         if not isinstance(value, Mapping):
             return ResumeHighlightStatus.VIEWER_UNAVAILABLE.value
-        if value.get("schema") != RESUME_RPC_SCHEMA:
+        allowed_keys = {"schema_version", "ok", "status"}
+        allowed_keys.update(
+            {"page_count", "anchor_count", "claim_count"}
+            if action == "get_status"
+            else {"claim_id", "page"}
+        )
+        if set(value) - allowed_keys:
             return ResumeHighlightStatus.VIEWER_UNAVAILABLE.value
-        if value.get("documentSha256") != self._document_sha256:
-            return ResumeHighlightStatus.DOCUMENT_MISMATCH.value
+        if value.get("schema_version") != RESUME_RPC_SCHEMA:
+            return ResumeHighlightStatus.VIEWER_UNAVAILABLE.value
+        if value.get("ok") is not True:
+            return ResumeHighlightStatus.VIEWER_UNAVAILABLE.value
         status = value.get("status")
         allowed = (
             {"ready", "loading", "document_mismatch"}
@@ -167,4 +177,22 @@ class ResumeRpcClient:
         )
         if status not in allowed:
             return ResumeHighlightStatus.VIEWER_UNAVAILABLE.value
+        if action == "get_status":
+            for key in ("page_count", "anchor_count", "claim_count"):
+                count = value.get(key)
+                if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+                    return ResumeHighlightStatus.VIEWER_UNAVAILABLE.value
+        else:
+            response_claim_id = value.get("claim_id")
+            if response_claim_id is not None and response_claim_id != claim_id:
+                return ResumeHighlightStatus.VIEWER_UNAVAILABLE.value
+            page = value.get("page")
+            if page is not None and (
+                isinstance(page, bool) or not isinstance(page, int) or page <= 0
+            ):
+                return ResumeHighlightStatus.VIEWER_UNAVAILABLE.value
+            if status == ResumeHighlightStatus.HIGHLIGHTED.value and (
+                response_claim_id != claim_id or page is None
+            ):
+                return ResumeHighlightStatus.VIEWER_UNAVAILABLE.value
         return str(status)

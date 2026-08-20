@@ -18,6 +18,7 @@ from .models import (
 )
 
 _SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
+_SOURCE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 
 
 def require_mapping(value: Any, field: str) -> Mapping[str, Any]:
@@ -140,6 +141,8 @@ def parse_pdf_anchor(
     require_exact_keys(raw, required=keys, field=field)
 
     anchor_id = require_string(raw["id"], f"{field}.id")
+    if not _SOURCE_ID_RE.fullmatch(anchor_id):
+        raise SourceDocumentError(f"{field}.id has an invalid format")
     page = require_positive_int(raw["page"], f"{field}.page")
     if page > page_count:
         raise SourceDocumentError(f"{field}.page exceeds document page_count")

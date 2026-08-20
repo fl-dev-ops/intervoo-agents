@@ -50,6 +50,24 @@ class ResumeMasteryRuntime:
         resolved: ResolvedInterview,
         metadata: Mapping[str, object],
     ) -> None:
+        expected_metadata_keys = {"agent_id", "user_name", "interview", "resume"}
+        if set(metadata) != expected_metadata_keys:
+            raise InterviewRuntimeError(
+                "Resume Mastery private metadata has an invalid shape"
+            )
+        if metadata.get("agent_id") != "mock_interview":
+            raise InterviewRuntimeError(
+                "Resume Mastery requires the mock_interview agent profile"
+            )
+        user_name = metadata.get("user_name")
+        if (
+            not isinstance(user_name, str)
+            or user_name != user_name.strip()
+            or not 1 <= len(user_name) <= 60
+        ):
+            raise InterviewRuntimeError(
+                "Resume Mastery requires a valid user_name"
+            )
         if resolved.request.type is not InterviewType.RESUME_MASTERY:
             raise InterviewRuntimeError(
                 "Resume adapter received a non-Resume interview"
