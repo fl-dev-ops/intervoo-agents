@@ -174,6 +174,7 @@ adaptive opening
 
 ## Change history
 
+- 2026-08-20: Made each Resume Mastery round a separate roughly twenty-minute session with three required main questions, one optional fourth question, and no hard duration cutoff.
 - 2026-08-20: Versioned the exact current Mock Interview prompt at `prompts/interview/v1/mock_interview.md` and added the approved Resume Mastery v1 policy at `prompts/interview/v1/resume.md`.
 - 2026-08-14: Required at least two sequential assessment-backed Whiteboard follow-ups and added an answer-grounded acknowledgement before the tool-owned "Let me prepare my feedback." line.
 - 2026-08-14: Made transitions acknowledge one specific answer point and selectively add earned praise plus a forward cue before `start_question`; the tool remains responsible only for exact question delivery.

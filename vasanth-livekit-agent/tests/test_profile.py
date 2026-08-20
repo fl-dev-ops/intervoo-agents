@@ -28,7 +28,7 @@ def test_prompt_variants_differ_only_by_prompt() -> None:
     catalog = load_profile_catalog(CONFIG_PATH)
     v1 = catalog["mock_interview"]
 
-    assert v1.prompt_url == "prompts/interview/vasanth.md"
+    assert v1.prompt_url == "prompts/interview/v1/mock_interview.md"
     for key, expected in [
         ("mock_interview_v2", "prompts/interview/vasanth_v2.md"),
         ("mock_interview_v3", "prompts/interview/vasanth_v3.md"),
@@ -47,7 +47,7 @@ def test_mock_interview_profile_enables_required_tools() -> None:
     profile = load_profile_catalog(CONFIG_PATH)["mock_interview"]
 
     assert profile.agent_type == "mock-interview-agent"
-    assert profile.prompt_url == "prompts/interview/vasanth.md"
+    assert profile.prompt_url == "prompts/interview/v1/mock_interview.md"
     assert profile.voice_speaker == "rohan"
     assert profile.voice_dict_id == "p_fcfdd23b"
     assert profile.end_call_enabled is True
@@ -82,7 +82,7 @@ def test_parse_catalog_defaults_optional_tools_to_disabled() -> None:
             "agents": {
                 "minimal": {
                     "agent_type": "mock-interview-agent",
-                    "prompt_url": "prompts/interview/vasanth.md",
+                    "prompt_url": "prompts/interview/v1/mock_interview.md",
                     "initial_reply": "hi",
                     "voice": {"speaker": "rohan"},
                     "tools": {},

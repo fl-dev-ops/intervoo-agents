@@ -111,7 +111,7 @@ def test_load_prompt_fetches_url_and_caches() -> None:
 
 
 def test_load_prompt_reads_vasanth_prompt() -> None:
-    prompt = load_prompt("prompts/interview/vasanth.md")
+    prompt = load_prompt("prompts/interview/v1/mock_interview.md")
 
     assert "Vasanth" in prompt
     assert "build_interview_plan" in prompt

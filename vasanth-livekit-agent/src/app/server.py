@@ -5,16 +5,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-from typing import Any
 
 from aiohttp import web
 from livekit import agents
 
 from .config import (
-    APP_DIR,
-    DEFAULT_AGENT_NAME,
     MAX_CONCURRENT_SESSIONS,
     REGISTERED_AGENT_NAME,
+    resolve_interview_catalog_path,
     resolve_profile_config_path,
 )
 
@@ -24,8 +22,8 @@ logger = logging.getLogger("intervoo_agent")
 
 def _prewarm(proc: agents.JobProcess) -> None:
     from domains.session.tts import validate_tts_provider_configuration
-    from services.chroma.repository import chroma_runtime_identity, prewarm_chroma
     from infrastructure.config.resources import prewarm_runtime_resources
+    from services.chroma.repository import chroma_runtime_identity, prewarm_chroma
 
     revision = (os.getenv("AGENT_BUILD_REVISION") or "unknown").strip() or "unknown"
     logger.info(
@@ -37,6 +35,7 @@ def _prewarm(proc: agents.JobProcess) -> None:
     prewarm_runtime_resources(
         proc,
         profile_config_path=resolve_profile_config_path(),
+        interview_catalog_path=resolve_interview_catalog_path(),
     )
     prewarm_chroma(proc.userdata)
 

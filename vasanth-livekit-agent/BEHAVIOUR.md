@@ -3,7 +3,8 @@
 This document describes the candidate-facing interview experience produced by
 the current `mock_interview` profile, prompt, and backend implementation. It
 intentionally excludes Vasanth's personality, tone, phrasing, and general
-communication rules; those remain authoritative in `prompts/interview/vasanth.md`.
+communication rules; those remain authoritative in
+`prompts/interview/v1/mock_interview.md`.
 
 This is a source-level reference. Prompt, profile, and backend changes require a
 worker restart or redeployment before they become live.
@@ -23,9 +24,10 @@ candidate joins
   -> candidate ends the call
 ```
 
-The active default profile uses `prompts/interview/vasanth.md`, enables editor
-events and the proactive screen-feedback timer, and disables on-demand shared
-screen inspection. Configuration combinations are documented in `CONFIG.md`.
+The active default profile uses `prompts/interview/v1/mock_interview.md`,
+enables editor events and the proactive screen-feedback timer, and disables
+on-demand shared screen inspection. Configuration combinations are documented
+in `CONFIG.md`.
 
 ## Adaptive opening
 

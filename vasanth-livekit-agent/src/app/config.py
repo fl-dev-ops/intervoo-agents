@@ -13,11 +13,11 @@ from typing import Any
 
 from dotenv import load_dotenv
 
+from domains.interview.evidence.tracker import InterviewEvidenceTracker
+from domains.recording.config import RecordingConfig
 from domains.screen import ScreenFeedbackRuntime
 from domains.session import InteractionMode, SessionConfig
 from infrastructure.config.profiles import AgentProfile
-from domains.interview.evidence.tracker import InterviewEvidenceTracker
-from domains.recording.config import RecordingConfig
 
 logger = logging.getLogger("intervoo_agent")
 
@@ -41,6 +41,7 @@ APP_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(str(APP_DIR / ".env.local"))
 load_dotenv(str(APP_DIR / ".env"))
 DEFAULT_PROFILE_CONFIG_PATH = APP_DIR / "config" / "agents.json"
+DEFAULT_INTERVIEW_CATALOG_PATH = APP_DIR / "config" / "interviews"
 
 
 def resolve_profile_config_path() -> Path:
@@ -48,6 +49,13 @@ def resolve_profile_config_path() -> Path:
     if override:
         return Path(override)
     return DEFAULT_PROFILE_CONFIG_PATH
+
+
+def resolve_interview_catalog_path() -> Path:
+    override = os.getenv("INTERVIEW_CATALOG_PATH")
+    if override:
+        return Path(override)
+    return DEFAULT_INTERVIEW_CATALOG_PATH
 
 
 REGISTERED_AGENT_NAME = os.getenv("AGENT_NAME", DEFAULT_AGENT_NAME)

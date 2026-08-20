@@ -314,7 +314,7 @@ def test_evaluator_prompt_keeps_vasanth_closure_contract() -> None:
 
 
 def test_interviewer_prompt_requires_whiteboard_followup_before_handoff() -> None:
-    prompt = Path(__file__).parents[1] / "prompts/interview/vasanth.md"
+    prompt = Path(__file__).parents[1] / "prompts/interview/v1/mock_interview.md"
     text = prompt.read_text(encoding="utf-8")
 
     assert "silently call `read_whiteboard_assessment`" in text

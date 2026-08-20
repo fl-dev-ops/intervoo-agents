@@ -10,7 +10,11 @@ from typing import Any
 from livekit.agents import JobProcess
 from livekit.agents.inference import TurnDetector
 
-from domains.interview.runtime import InterviewCatalog, load_interview_catalog
+from domains.interview.runtime import (
+    InterviewCatalog,
+    InterviewConfigError,
+    load_interview_catalog,
+)
 from domains.recording.config import RecordingConfig, build_recording_config
 from infrastructure.config.profiles import AgentProfile, load_profile_catalog
 from infrastructure.prompt.loader import load_prompt
@@ -27,6 +31,7 @@ def prewarm_runtime_resources(
     proc: JobProcess,
     *,
     profile_config_path: Path,
+    interview_catalog_path: Path,
 ) -> None:
     userdata = proc.userdata
 
@@ -36,7 +41,18 @@ def prewarm_runtime_resources(
         logger.info("Turn detector prewarm deferred until job context: %s", e)
 
     profile_catalog = load_profile_catalog(profile_config_path)
-    interview_catalog = load_interview_catalog(profile_config_path.parent / "interviews")
+    interview_catalog = load_interview_catalog(interview_catalog_path)
+    for profile in profile_catalog.values():
+        default = profile.default_interview
+        if default is None:
+            continue
+        try:
+            interview_catalog.require(default.type, default.version)
+        except InterviewConfigError as error:
+            raise InterviewConfigError(
+                f"agents.{profile.id}.default_interview is not registered: {error}"
+            ) from error
+
     userdata[USERDATA_PROFILE_CATALOG] = profile_catalog
     userdata[USERDATA_INTERVIEW_CATALOG] = interview_catalog
     userdata[USERDATA_RECORDING_CONFIG] = build_recording_config()

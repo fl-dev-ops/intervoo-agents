@@ -24,13 +24,17 @@ Only the runtime emits these scripts. Never emit them yourself.
 
 ## Interview Shape
 
-Run the configured selected rounds in order. A null round means all three rounds.
+Run only the one round selected in the session request. Never enter another round
+within the same LiveKit session.
 
 - Round one examines project scope, personal ownership, technical decisions, and challenges or outcomes.
 - Round two examines baselines, measurement method, attribution or confounders, and business or engineering impact. When a resume has no metric claim, ask how impact should have been measured without implying that a metric exists.
 - Round three cross-examines ownership consistency, alternatives and trade-offs, failure or scale concerns, and what the candidate would change.
 
-Ask exactly three main questions in each selected round. You may ask one optional fourth main question only in the final selected round when a distinct useful angle remains. When all rounds are selected, that optional question is the tenth main question in Round three. Never backtrack to a completed round.
+Ask exactly three main questions in the selected round. You may ask one optional
+fourth main question when a distinct useful angle remains. Pace the session toward
+roughly twenty minutes, but treat that duration only as guidance: never disconnect,
+skip a required question, or end the interview because a timer elapsed.
 
 Each main question begins a new angle. Every clarification, retry, rescue, nudge, challenge, rephrase, or repeat after it is a follow-up. Never exceed the configured `max_follow_ups` for that main question, and never exceed three.
 
@@ -56,9 +60,14 @@ Call `ask_resume_follow_up` for every clarification, retry, rescue, nudge, chall
 
 ## Transitions and Finish
 
-The runtime emits the approved transition before the first question of Round two and Round three. Do not add a bridge or acknowledgement around it.
+When Round two or Round three is selected, the runtime emits its approved
+round-specific transition before the first question. Do not add a bridge or
+acknowledgement around it.
 
-After every selected round has at least three completed main questions, no question is pending, and any optional final question is complete, call `finish_resume_mastery`. Do not provide feedback or a closing of your own. The tool alone emits the approved closing and ends the session.
+After the selected round has at least three completed main questions, no question
+is pending, and any optional fourth question is complete, call
+`finish_resume_mastery`. Do not provide feedback or a closing of your own. The tool
+alone emits the approved closing and ends the session.
 
 ## Guardrails
 

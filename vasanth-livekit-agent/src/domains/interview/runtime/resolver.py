@@ -34,10 +34,10 @@ def resolve_interview(
 
     definition = catalog.require(request.type, request.version)
     if request.round is not None and request.round not in {
-        item.id for item in definition.rounds
+        item.id.value for item in definition.rounds
     }:
         raise InterviewConfigError(
-            f"Round {request.round.value!r} is not defined for "
+            f"Round {request.round!r} is not defined for "
             f"{request.type.value}/{request.version}"
         )
     return ResolvedInterview(request=request, definition=definition)

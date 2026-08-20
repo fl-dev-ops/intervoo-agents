@@ -40,7 +40,7 @@ ModeConfig: TypeAlias = MockInterviewConfig | ResumeMasteryConfig
 class InterviewRequest:
     type: InterviewType
     version: str
-    round: ResumeRound | None
+    round: str | None
     config: ModeConfig
 
 
@@ -52,10 +52,25 @@ class InterviewAdapters:
 
 
 @dataclass(frozen=True)
-class InterviewRoundDefinition:
+class ResumeRoundPolicy:
     id: ResumeRound
     title: str
     angles: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class InterviewModeSchema:
+    """Exact backend contract for one registered interview type/version."""
+
+    prompt_url: str
+    scripts: Mapping[str, str]
+    adapters: InterviewAdapters
+    surfaces: tuple[str, ...]
+    tools: tuple[str, ...]
+    evaluation: str
+    limits: Mapping[str, int]
+    round_angles: Mapping[str, tuple[str, ...]]
+    defaults: ModeConfig
 
 
 @dataclass(frozen=True)
@@ -69,7 +84,7 @@ class InterviewDefinition:
     tools: tuple[str, ...]
     evaluation: str
     limits: Mapping[str, int]
-    rounds: tuple[InterviewRoundDefinition, ...]
+    rounds: tuple[ResumeRoundPolicy, ...]
     defaults: ModeConfig
 
 
@@ -163,19 +178,21 @@ def parse_interview_request(value: Any) -> InterviewRequest:
     raw_round = raw.get("round")
 
     if interview_type is InterviewType.MOCK_INTERVIEW:
-        if raw_round is not None:
+        if "round" in raw:
             raise InterviewConfigError("Mock Interview does not accept a round")
         selected_round = None
-    elif raw_round is None:
-        selected_round = None
     else:
+        if "round" not in raw or raw_round is None:
+            raise InterviewConfigError(
+                "Resume Mastery requires exactly one interview.round"
+            )
         round_value = _required_str(raw_round, "interview.round")
         try:
-            selected_round = ResumeRound(round_value)
+            selected_round = ResumeRound(round_value).value
         except ValueError as error:
             allowed = [item.value for item in ResumeRound]
             raise InterviewConfigError(
-                f"interview.round must be null or one of {allowed}; got {round_value!r}"
+                f"interview.round must be one of {allowed}; got {round_value!r}"
             ) from error
 
     return InterviewRequest(

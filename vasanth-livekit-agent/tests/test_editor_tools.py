@@ -66,7 +66,7 @@ async def test_start_question_tool_publishes_and_speaks_once() -> None:
 
 
 def test_interviewer_prompt_does_not_repeat_tool_spoken_question() -> None:
-    prompt = Path(__file__).parents[1] / "prompts/interview/vasanth.md"
+    prompt = Path(__file__).parents[1] / "prompts/interview/v1/mock_interview.md"
     text = prompt.read_text(encoding="utf-8")
 
     assert "use `start_question` with its id as a silent tool action" in text
