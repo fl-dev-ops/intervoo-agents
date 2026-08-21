@@ -60,7 +60,6 @@ class EvaluatorAgent(Agent):
         self._evaluation_payload = evaluation_payload
         self._mcq_assessments = mcq_assessments
         self._candidate_question_turns = 0
-        self._evaluation_result: InterviewEvaluation | None = None
         self._evaluation_task: asyncio.Task[InterviewEvaluation] | None = None
         self._closure_route: ClosureRoute | None = None
 
@@ -77,32 +76,10 @@ class EvaluatorAgent(Agent):
             chat_ctx=chat_ctx,
         )
 
-    def attach_pending_evaluation(self, task: asyncio.Task[None]) -> None:
+    def attach_pending_evaluation(
+        self, task: asyncio.Task[InterviewEvaluation]
+    ) -> None:
         self._evaluation_task = task
-
-    async def _evaluate(self) -> None:
-        try:
-            llm = openai.LLM.with_openrouter(
-                model=EVALUATOR_OPENROUTER_MODEL,
-                parallel_tool_calls=False,
-            )
-            prompt = json.dumps(self._evaluation_payload, indent=2, default=str)
-            chat_ctx = ChatContext()
-            chat_ctx.add_message(role="user", content=prompt)
-            response = await llm.chat(
-                chat_ctx=chat_ctx,
-                response_format=InterviewEvaluation,
-            ).collect()
-            self._evaluation_result = InterviewEvaluation.model_validate_json(
-                response.text
-            )
-            if self._mcq_assessments:
-                enforce_mcq_assessments(
-                    self._evaluation_result, self._mcq_assessments
-                )
-        except Exception as e:
-            logger.error("Evaluation failed: %s", e)
-            self._evaluation_result = None
 
     async def _await_evaluation(self) -> InterviewEvaluation:
         task = self._evaluation_task

@@ -41,6 +41,7 @@ from tools.interview.code_highlight import highlight_code_range
 from .config import (
     CALLER_LOOKUP_TIMEOUT_SECONDS,
     EVIDENCE_TRACKER_CLOSE_TIMEOUT_SECONDS,
+    RECORDING_START_AWAIT_TIMEOUT_SECONDS,
     SCREEN_FEEDBACK_CLOSE_TIMEOUT_SECONDS,
     SessionState,
     StartupTimer,
@@ -207,181 +208,215 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     rec_cfg = get_recording_config(userdata)
     evidence_tracker = None
-    evaluator_prompt = None
-    is_mock = runtime.uses_mock_pipeline
-    if is_mock:
-        try:
-            evaluator_prompt = load_prompt("prompts/interview/vasanth_evaluator.md")
-        except Exception as e:
-            logger.error("Failed to load evaluator prompt: %s", e)
-            return
-        evidence_tracker = InterviewEvidenceTracker(
-            questions=question_store.internal_questions(),
+    recording_task = None
+    try:
+        evaluator_prompt = None
+        is_mock = runtime.uses_mock_pipeline
+        if is_mock:
+            try:
+                evaluator_prompt = load_prompt("prompts/interview/vasanth_evaluator.md")
+            except Exception as e:
+                logger.error("Failed to load evaluator prompt: %s", e)
+                return
+            evidence_tracker = InterviewEvidenceTracker(
+                questions=question_store.internal_questions(),
+                participant_identity=participant_identity,
+                room_name=ctx.room.name,
+                agent_type=profile.agent_type,
+                recording_config=rec_cfg if rec_cfg.enabled else None,
+                on_answer_submitted=_on_answer_submitted,
+            )
+            evidence_tracker.start(ctx.room)
+
+        if rec_cfg.enabled:
+            recording_task = asyncio.create_task(
+                start_recording_for_session(config=rec_cfg, ctx=ctx, profile=profile, room_name=ctx.room.name,
+                    resolved_user_id=resolved_user_id, participant_identity=participant_identity,
+                    phone_number=phone_number, metadata=recording_metadata),
+                name=f"recording-start:{ctx.room.name}",
+            )
+
+        screen_inspection_enabled = (
+            profile.screen_inspection_enabled if runtime.uses_editor_events else False
+        )
+        timer_enabled = (
+            profile.screen_feedback_timer_enabled if runtime.uses_editor_events else False
+        )
+        screen_feedback = None
+        if runtime.uses_editor_events and (screen_inspection_enabled or timer_enabled):
+            async def _on_screen_nudge(text):
+                await _inject_note(text, {"internal_screen_nudge": True})
+
+            async def _highlight_screen_feedback_code(from_line: int, to_line: int) -> None:
+                await highlight_code_range(
+                    room=ctx.room,
+                    participant_identity=participant_identity,
+                    from_line=from_line,
+                    to_line=to_line,
+                )
+
+            screen_feedback = ScreenFeedbackRuntime(room=ctx.room, participant_identity=participant_identity,
+                timer_enabled=timer_enabled, note_sink=_on_screen_nudge,
+                code_highlight_sink=_highlight_screen_feedback_code)
+
+        session = build_agent_session(
+            tts_speaker=profile.voice_speaker, tts_dict_id=profile.voice_dict_id,
+            mode=mode, session_config=session_config,
+            turn_detector=get_or_create_turn_detector(userdata) if mode is InteractionMode.AUTO else get_prewarmed_turn_detector(userdata),
+            disable_preemptive_generation=runtime.uses_editor_events,
+            parallel_tool_calls=runtime.parallel_tool_calls_enabled,
+        )
+        if runtime.content_tracing_enabled:
+            _session_usage_loggers[ctx.room.name] = attach_metrics_logging(
+                session,
+                ctx.room.name,
+            )
+
+        @session.on("conversation_item_added")
+        def on_item(event: ConversationItemAddedEvent):
+            runtime.on_conversation_item(event.item)
+            if evidence_tracker is not None:
+                evidence_tracker.on_conversation_item(event.item)
+
+        if evidence_tracker is not None:
+            if simulation_ctx is not None:
+                install_answer_submit_shim(session, evidence_tracker=evidence_tracker, metadata=metadata)
+
+        async def _on_question_started(q):
+            if evidence_tracker is not None:
+                evidence_tracker.on_question_started(q)
+            if screen_feedback is not None:
+                await screen_feedback.on_question_started(q)
+
+        async def _close_resume_room() -> None:
+            try:
+                await ctx.api.room.delete_room(
+                    api.DeleteRoomRequest(room=ctx.room.name)
+                )
+            except api.TwirpError as error:
+                if error.code != api.TwirpErrorCode.NOT_FOUND:
+                    raise
+
+        def _shutdown_resume_job() -> None:
+            ctx.shutdown(reason="resume_mastery_finished")
+
+        tools = runtime.build_tools(
+            RuntimeServices(
+                ctx=ctx,
+                participant_identity=participant_identity,
+                question_store=question_store,
+                evidence_tracker=evidence_tracker,
+                evaluator_prompt=evaluator_prompt,
+                prompt_context={} if is_mock else prompt_context,
+                userdata=userdata,
+                on_question_started=_on_question_started,
+                on_plan_loaded=(
+                    lambda questions: evidence_tracker.load_plan(questions)
+                    if evidence_tracker
+                    else None
+                ),
+                screen_feedback=screen_feedback,
+                screen_inspection_enabled=screen_inspection_enabled,
+                close_room=_close_resume_room,
+                shutdown_job=_shutdown_resume_job,
+            )
+        )
+
+        if screen_feedback is not None and screen_inspection_enabled:
+            agent_instructions += ("\n\nDuring an active coding question, use read_code_range followed by "
+                "highlight_code only when meaningful editor code exists; never use "
+                "inspect_shared_screen for coding. Call inspect_shared_screen only for an active "
+                "whiteboard request. Never claim that you cannot "
+                "see the candidate's screen. If the result includes candidate_message, say it and "
+                "continue the interview. Treat screen_share_required, surface_unavailable, and loading "
+                "as normal recoverable states; never call end_call because of them.")
+
+        timer.mark("tool_build")
+
+        agent = runtime.build_agent(
+            instructions=agent_instructions,
+            tools=tools,
+            prompt_context=prompt_context,
             participant_identity=participant_identity,
             room_name=ctx.room.name,
-            agent_type=profile.agent_type,
+        )
+        timer.mark("session_build")
+
+        webhook_url_raw = metadata.get("webhook_url")
+        webhook_url = webhook_url_raw.strip() if isinstance(webhook_url_raw, str) and webhook_url_raw.strip() else None
+
+        recording_start = await recording_task if recording_task is not None else RecordingStartState()
+        timer.mark("recording_start")
+
+        _sessions[ctx.room.name] = SessionState(
+            profile=profile, room_name=ctx.room.name, resolved_user_id=resolved_user_id,
+            participant_identity=participant_identity, phone_number=phone_number, webhook_url=webhook_url,
             recording_config=rec_cfg if rec_cfg.enabled else None,
-            on_answer_submitted=_on_answer_submitted,
-        )
-        evidence_tracker.start(ctx.room)
-
-    recording_task = None
-    if rec_cfg.enabled:
-        recording_task = asyncio.create_task(
-            start_recording_for_session(config=rec_cfg, ctx=ctx, profile=profile, room_name=ctx.room.name,
-                resolved_user_id=resolved_user_id, participant_identity=participant_identity,
-                phone_number=phone_number, metadata=recording_metadata),
-            name=f"recording-start:{ctx.room.name}",
+            recording_session_id=recording_start.recording_session_id, egress_id=recording_start.egress_id,
+            audio_url=recording_start.audio_url, audio_s3_key=recording_start.audio_s3_key,
+            video_egress_id=recording_start.video_egress_id, video_url=recording_start.video_url,
+            video_s3_key=recording_start.video_s3_key, evidence_tracker=evidence_tracker,
+            interview_runtime=runtime,
         )
 
-    screen_inspection_enabled = (
-        profile.screen_inspection_enabled if runtime.uses_editor_events else False
-    )
-    timer_enabled = (
-        profile.screen_feedback_timer_enabled if runtime.uses_editor_events else False
-    )
-    screen_feedback = None
-    if runtime.uses_editor_events and (screen_inspection_enabled or timer_enabled):
-        async def _on_screen_nudge(text):
-            await _inject_note(text, {"internal_screen_nudge": True})
+        avatar_request = metadata.get("avatar")
+        from services.agent.avatar import start_avatar
+        await start_avatar(session, ctx.room, enabled=avatar_request is True or avatar_request == "liveavatar")
+        timer.mark("avatar_start")
 
-        async def _highlight_screen_feedback_code(from_line: int, to_line: int) -> None:
-            await highlight_code_range(
-                room=ctx.room,
-                participant_identity=participant_identity,
-                from_line=from_line,
-                to_line=to_line,
+        start_session = start_ptt_session if mode is InteractionMode.PTT else start_auto_session
+        if runtime.content_tracing_enabled:
+            await start_session(ctx, session, agent)
+        else:
+            await start_session(
+                ctx,
+                session,
+                agent,
+                recording_options={
+                    "audio": True,
+                    "traces": False,
+                    "logs": False,
+                    "transcript": False,
+                },
             )
 
-        screen_feedback = ScreenFeedbackRuntime(room=ctx.room, participant_identity=participant_identity,
-            timer_enabled=timer_enabled, note_sink=_on_screen_nudge,
-            code_highlight_sink=_highlight_screen_feedback_code)
-
-    session = build_agent_session(
-        tts_speaker=profile.voice_speaker, tts_dict_id=profile.voice_dict_id,
-        mode=mode, session_config=session_config,
-        turn_detector=get_or_create_turn_detector(userdata) if mode is InteractionMode.AUTO else get_prewarmed_turn_detector(userdata),
-        disable_preemptive_generation=runtime.uses_editor_events,
-    )
-    if runtime.content_tracing_enabled:
-        _session_usage_loggers[ctx.room.name] = attach_metrics_logging(
-            session,
-            ctx.room.name,
-        )
-
-    @session.on("conversation_item_added")
-    def on_item(event: ConversationItemAddedEvent):
-        runtime.on_conversation_item(event.item)
-        if evidence_tracker is not None:
-            evidence_tracker.on_conversation_item(event.item)
-
-    if evidence_tracker is not None:
-        if simulation_ctx is not None:
-            install_answer_submit_shim(session, evidence_tracker=evidence_tracker, metadata=metadata)
-
-    async def _on_question_started(q):
-        if evidence_tracker is not None:
-            evidence_tracker.on_question_started(q)
         if screen_feedback is not None:
-            await screen_feedback.on_question_started(q)
-
-    async def _close_resume_room() -> None:
-        try:
-            await ctx.api.room.delete_room(
-                api.DeleteRoomRequest(room=ctx.room.name)
+            try:
+                await screen_feedback.start(session)
+                _screen_feedback_runtimes[ctx.room.name] = screen_feedback
+            except Exception:
+                logger.exception("Failed to start screen feedback room=%s", ctx.room.name)
+                await screen_feedback.close()
+        timer.mark("session_start")
+    except Exception:
+        logger.exception("Session startup failed room=%s", ctx.room.name)
+        recording_start = RecordingStartState()
+        if recording_task is not None:
+            try:
+                recording_start = await asyncio.wait_for(
+                    recording_task,
+                    timeout=RECORDING_START_AWAIT_TIMEOUT_SECONDS,
+                )
+            except Exception:
+                logger.error(
+                    "Recording start task did not finish during cleanup room=%s",
+                    ctx.room.name,
+                )
+        if ctx.room.name not in _sessions:
+            _sessions[ctx.room.name] = SessionState(
+                profile=profile, room_name=ctx.room.name,
+                resolved_user_id=resolved_user_id,
+                participant_identity=participant_identity, phone_number=phone_number,
+                webhook_url=None,
+                recording_config=rec_cfg if rec_cfg.enabled else None,
+                recording_session_id=recording_start.recording_session_id,
+                egress_id=recording_start.egress_id,
+                audio_url=recording_start.audio_url,
+                audio_s3_key=recording_start.audio_s3_key,
+                video_egress_id=recording_start.video_egress_id,
+                video_url=recording_start.video_url,
+                video_s3_key=recording_start.video_s3_key,
+                evidence_tracker=evidence_tracker,
+                interview_runtime=runtime,
             )
-        except api.TwirpError as error:
-            if error.code != api.TwirpErrorCode.NOT_FOUND:
-                raise
-
-    def _shutdown_resume_job() -> None:
-        ctx.shutdown(reason="resume_mastery_finished")
-
-    tools = runtime.build_tools(
-        RuntimeServices(
-            ctx=ctx,
-            participant_identity=participant_identity,
-            question_store=question_store,
-            evidence_tracker=evidence_tracker,
-            evaluator_prompt=evaluator_prompt,
-            prompt_context={} if is_mock else prompt_context,
-            userdata=userdata,
-            on_question_started=_on_question_started,
-            on_plan_loaded=(
-                lambda questions: evidence_tracker.load_plan(questions)
-                if evidence_tracker
-                else None
-            ),
-            screen_feedback=screen_feedback,
-            screen_inspection_enabled=screen_inspection_enabled,
-            close_room=_close_resume_room,
-            shutdown_job=_shutdown_resume_job,
-        )
-    )
-
-    if screen_feedback is not None and screen_inspection_enabled:
-        agent_instructions += ("\n\nDuring an active coding question, use read_code_range followed by "
-            "highlight_code only when meaningful editor code exists; never use "
-            "inspect_shared_screen for coding. Call inspect_shared_screen only for an active "
-            "whiteboard request. Never claim that you cannot "
-            "see the candidate's screen. If the result includes candidate_message, say it and "
-            "continue the interview. Treat screen_share_required, surface_unavailable, and loading "
-            "as normal recoverable states; never call end_call because of them.")
-
-    timer.mark("tool_build")
-
-    agent = runtime.build_agent(
-        instructions=agent_instructions,
-        tools=tools,
-        prompt_context=prompt_context,
-        participant_identity=participant_identity,
-        room_name=ctx.room.name,
-    )
-    timer.mark("session_build")
-
-    webhook_url_raw = metadata.get("webhook_url")
-    webhook_url = webhook_url_raw.strip() if isinstance(webhook_url_raw, str) and webhook_url_raw.strip() else None
-
-    recording_start = await recording_task if recording_task is not None else RecordingStartState()
-    timer.mark("recording_start")
-
-    _sessions[ctx.room.name] = SessionState(
-        profile=profile, room_name=ctx.room.name, resolved_user_id=resolved_user_id,
-        participant_identity=participant_identity, phone_number=phone_number, webhook_url=webhook_url,
-        recording_config=rec_cfg if rec_cfg.enabled else None,
-        recording_session_id=recording_start.recording_session_id, egress_id=recording_start.egress_id,
-        audio_url=recording_start.audio_url, audio_s3_key=recording_start.audio_s3_key,
-        video_egress_id=recording_start.video_egress_id, video_url=recording_start.video_url,
-        video_s3_key=recording_start.video_s3_key, evidence_tracker=evidence_tracker,
-        interview_runtime=runtime,
-    )
-
-    avatar_request = metadata.get("avatar")
-    from services.agent.avatar import start_avatar
-    await start_avatar(session, ctx.room, enabled=avatar_request is True or avatar_request == "liveavatar")
-    timer.mark("avatar_start")
-
-    start_session = start_ptt_session if mode is InteractionMode.PTT else start_auto_session
-    if runtime.content_tracing_enabled:
-        await start_session(ctx, session, agent)
-    else:
-        await start_session(
-            ctx,
-            session,
-            agent,
-            recording_options={
-                "audio": True,
-                "traces": False,
-                "logs": False,
-                "transcript": False,
-            },
-        )
-
-    if screen_feedback is not None:
-        try:
-            await screen_feedback.start(session)
-            _screen_feedback_runtimes[ctx.room.name] = screen_feedback
-        except Exception:
-            logger.exception("Failed to start screen feedback room=%s", ctx.room.name)
-            await screen_feedback.close()
-    timer.mark("session_start")
+        raise

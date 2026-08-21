@@ -43,6 +43,7 @@ class ResumeMasteryRuntime:
     accepts_frontend_questions = False
     uses_mock_pipeline = False
     uses_editor_events = False
+    parallel_tool_calls_enabled = False
 
     def __init__(
         self,

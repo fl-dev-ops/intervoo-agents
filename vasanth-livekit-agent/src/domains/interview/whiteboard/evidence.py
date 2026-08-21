@@ -253,7 +253,10 @@ class WhiteboardEvidence:
 
         signature = payload.get("signature")
         assessment_hmac = os.getenv("WHITEBOARD_EVALUATION_SIGNING_SECRET", "")
-        if assessment_hmac and isinstance(signature, str):
+        if assessment_hmac:
+            if not isinstance(signature, str) or not signature:
+                await self._reject(question_id, revision, "Missing signature")
+                return
             expected = hmac.new(
                 assessment_hmac.encode(),
                 f"{question_id}:{revision}:{image_sha256}".encode(),

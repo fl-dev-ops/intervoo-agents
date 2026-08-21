@@ -172,6 +172,7 @@ class ResumeQuestionController:
                     _validate_measurement_neutral_fallback(validated)
                 self.progress.queue_main_question(angle_id=angle_id, primary_claim_id=primary_claim_id, related_claim_ids=related_claim_ids)
             except ValueError as error:
+                logger.info("resume_question action=start_main_rejected reason=%s", error)
                 return {"status": "rejected", "message": str(error)}
 
             highlight = await self.rpc.highlight_claim(primary_claim_id)
@@ -209,6 +210,7 @@ class ResumeQuestionController:
                 or pending.kind is not ResumeQuestionKind.MAIN
                 or self._pending_question_text is None
             ):
+                logger.info("resume_question action=present_pending_skipped reason=no_pending_question")
                 return self._snapshot("no_pending_question")
             if not candidate_located:
                 try:
@@ -234,6 +236,7 @@ class ResumeQuestionController:
                 validated = validate_resume_question(question, max_characters=self.max_question_characters)
                 self.progress.queue_follow_up()
             except (ResumeProgressError, ResumeQuestionValidationError) as error:
+                logger.info("resume_question action=follow_up_rejected reason=%s", error)
                 return {"status": "rejected", "message": str(error)}
             try:
                 await self._say(context, validated, "follow_up")
@@ -253,6 +256,7 @@ class ResumeQuestionController:
             try:
                 self.progress.begin_finishing()
             except ResumeProgressError as error:
+                logger.info("resume_question action=finish_rejected reason=%s", error)
                 return {"status": "not_ready", "message": str(error)}
 
             if not self._closing_spoken:

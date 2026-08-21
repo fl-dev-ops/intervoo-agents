@@ -82,6 +82,7 @@ class InterviewRuntime(Protocol):
     accepts_frontend_questions: bool
     uses_mock_pipeline: bool
     uses_editor_events: bool
+    parallel_tool_calls_enabled: bool
 
     async def prepare(self) -> None: ...
 

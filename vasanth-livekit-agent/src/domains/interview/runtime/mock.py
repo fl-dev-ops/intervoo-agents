@@ -18,6 +18,7 @@ class MockInterviewRuntime:
     content_tracing_enabled = True
     accepts_frontend_questions = True
     uses_mock_pipeline = True
+    parallel_tool_calls_enabled = True
 
     def __init__(self, *, resolved: ResolvedInterview | None, profile: Any) -> None:
         if (

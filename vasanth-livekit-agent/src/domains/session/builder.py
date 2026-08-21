@@ -33,6 +33,7 @@ def build_agent_session(
     session_config: SessionConfig | None = None,
     turn_detector: Any | None = None,
     disable_preemptive_generation: bool = False,
+    parallel_tool_calls: bool = True,
 ) -> AgentSession:
     stt = deepgram.STTv2(
         model=DEFAULT_DEEPGRAM_STT_MODEL,
@@ -40,7 +41,7 @@ def build_agent_session(
 
     llm = openai.LLM.with_openrouter(
         model=openrouter_model,
-        parallel_tool_calls=True,
+        parallel_tool_calls=parallel_tool_calls,
     )
 
     effective_session_config = session_config or SessionConfig()
