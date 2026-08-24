@@ -78,6 +78,7 @@ def build_agent_session(
         stt=stt,
         llm=llm,
         tts=tts,
+        max_tool_steps=5,
         turn_handling=TurnHandlingOptions(
             turn_detection=turn_detector or TurnDetector(version="v1"),
             endpointing={

@@ -13,13 +13,6 @@ DEFAULT_SARVAM_TTS_MODEL = "bulbul:v3"
 _SARVAM_POOL_MAX_SESSION_DURATION = 50.0
 
 
-def _required_env(name: str) -> str:
-    value = os.getenv(name, "").strip()
-    if not value:
-        raise ValueError(f"{name} is required when TTS_PROVIDER=qwen")
-    return value
-
-
 def build_sarvam_tts(
     *,
     tts_speaker: str,
@@ -49,23 +42,6 @@ def build_sarvam_tts(
     return tts
 
 
-def build_qwen_tts() -> Any:
-    from interfaces.tts.qwen import QwenTTS
-
-    return QwenTTS(
-        endpoint=_required_env("QWEN_TTS_ENDPOINT"),
-        voice=_required_env("QWEN_TTS_VOICE"),
-        model_label=os.getenv("QWEN_TTS_MODEL_LABEL", "vasanth-best").strip()
-        or "vasanth-best",
-        language=os.getenv("QWEN_TTS_LANGUAGE", "English").strip() or "English",
-        api_key=_required_env("QWEN_TTS_API_KEY"),
-        connect_timeout=float(os.getenv("QWEN_TTS_CONNECT_TIMEOUT_SECONDS", "10")),
-        total_timeout=float(os.getenv("QWEN_TTS_TOTAL_TIMEOUT_SECONDS", "120")),
-        max_retries=int(os.getenv("QWEN_TTS_MAX_RETRIES", "1")),
-        retry_interval=float(os.getenv("QWEN_TTS_RETRY_INTERVAL_SECONDS", "1")),
-    )
-
-
 def build_tts(
     *,
     tts_speaker: str,
@@ -75,6 +51,8 @@ def build_tts(
 ) -> Any:
     provider = os.getenv("TTS_PROVIDER", "sarvam").strip().lower()
     if provider == "qwen":
+        from interfaces.tts.qwen import build_qwen_tts
+
         return build_qwen_tts()
     if provider != "sarvam":
         raise ValueError("TTS_PROVIDER must be either 'sarvam' or 'qwen'")
@@ -89,4 +67,6 @@ def build_tts(
 
 def validate_tts_provider_configuration() -> None:
     if os.getenv("TTS_PROVIDER", "sarvam").strip().lower() == "qwen":
+        from interfaces.tts.qwen import build_qwen_tts
+
         build_qwen_tts()

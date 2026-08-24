@@ -5,6 +5,7 @@ from .artifacts import (
     ResumeArtifactReferenceError,
     parse_resume_artifact_reference,
 )
+from .controller import ResumeQuestionController, ResumeQuestionValidationError
 from .eligibility import (
     ClaimEligibility,
     classify_claim_eligibility,
@@ -37,6 +38,7 @@ from .repository import (
     ResumeDocumentRepository,
     ResumeRepositoryError,
 )
+from .rpc import ResumeRpcClient
 
 __all__ = [
     "RESUME_DOCUMENT_SCHEMA",
@@ -53,9 +55,12 @@ __all__ = [
     "ResumeProgressError",
     "ResumeProgressPhase",
     "ResumeProgressSnapshot",
+    "ResumeQuestionController",
     "ResumeQuestionKind",
     "ResumeQuestionRef",
+    "ResumeQuestionValidationError",
     "ResumeRepositoryError",
+    "ResumeRpcClient",
     "SelectedRoundProgress",
     "classify_claim_eligibility",
     "is_claim_eligible",

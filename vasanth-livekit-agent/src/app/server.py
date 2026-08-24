@@ -21,9 +21,12 @@ logger = logging.getLogger("intervoo_agent")
 
 
 def _prewarm(proc: agents.JobProcess) -> None:
+    from domains.interview.chroma.repository import (
+        chroma_runtime_identity,
+        prewarm_chroma,
+    )
     from domains.session.tts import validate_tts_provider_configuration
     from infrastructure.config.resources import prewarm_runtime_resources
-    from services.chroma.repository import chroma_runtime_identity, prewarm_chroma
 
     revision = (os.getenv("AGENT_BUILD_REVISION") or "unknown").strip() or "unknown"
     logger.info(

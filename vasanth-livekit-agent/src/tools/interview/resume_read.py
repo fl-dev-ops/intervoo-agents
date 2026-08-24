@@ -147,11 +147,7 @@ def build_resume_read_tools(
             return {"status": "not_found"}
 
         text, truncated = _bounded_text(claim.text, CLAIM_DETAIL_CHARACTERS)
-        remaining_angles = tuple(
-            angle
-            for angle in progress.angle_ids
-            if angle not in progress.snapshot().used_angle_ids
-        )
+        remaining_angles = progress.unused_angle_ids_for_claim(claim_id)
         logger.info(
             "resume_claim_read action=get status=ok round=%s count=1",
             selected_round.value,
@@ -171,6 +167,10 @@ def build_resume_read_tools(
                 **_usage(_eligibility(selected_round, claim)),
                 "round_id": selected_round.value,
                 "unused_angle_ids": remaining_angles,
+                "highlighted_sections_per_session": (
+                    progress.highlighted_sections_per_session
+                ),
+                "main_questions_per_section": progress.main_questions_per_section,
             },
         }
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from langfuse import get_client as get_langfuse_client
 from livekit.agents import AgentSession, MetricsCollectedEvent, metrics
@@ -71,18 +70,6 @@ def attach_metrics_logging(session: AgentSession, room_name: str):
                         "stt_latency room=%s duration_ms=%.1f audio_duration_s=%.2f",
                         room_name, dur_ms, m.audio_duration,
                     )
-
-    @session.on("function_tools_executed")
-    def _on_tools_executed(ev: Any) -> None:
-        for function_call, output in ev.zipped():
-            logger.info(
-                "Tool call executed: name=%s call_id=%s arguments=%s output=%s is_error=%s",
-                function_call.name,
-                function_call.call_id,
-                function_call.arguments,
-                output.output if output is not None else None,
-                output.is_error if output is not None else None,
-            )
 
     def _avg(samples: list[float]) -> float | None:
         return round(sum(samples) / len(samples), 1) if samples else None

@@ -29,6 +29,7 @@ from infrastructure.config.resources import (
     get_recording_config,
 )
 from infrastructure.logging.langfuse import flush_langfuse
+from infrastructure.logging.tool_calls import attach_tool_call_logging
 from infrastructure.monitoring.watchdog import (
     cancel_idle_room_watchdog,
     register_idle_room_watchdog,
@@ -266,6 +267,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             disable_preemptive_generation=runtime.uses_editor_events,
             parallel_tool_calls=runtime.parallel_tool_calls_enabled,
         )
+        attach_tool_call_logging(session)
         if runtime.content_tracing_enabled:
             _session_usage_loggers[ctx.room.name] = attach_metrics_logging(
                 session,
@@ -374,7 +376,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 agent,
                 recording_options={
                     "audio": True,
-                    "traces": False,
+                    "traces": True,
                     "logs": False,
                     "transcript": False,
                 },

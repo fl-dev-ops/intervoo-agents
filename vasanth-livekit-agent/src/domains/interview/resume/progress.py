@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from enum import Enum
 
@@ -10,8 +10,6 @@ from domains.interview.runtime import ResumeRound
 
 from .eligibility import require_round_angle
 
-REQUIRED_MAIN_QUESTIONS = 3
-OPTIONAL_MAIN_QUESTIONS = 1
 MAX_CONFIGURED_FOLLOW_UPS = 3
 
 
@@ -53,13 +51,14 @@ class MainQuestionProgress:
 class ResumeProgressSnapshot:
     selected_round: ResumeRound
     phase: ResumeProgressPhase
-    used_angle_ids: tuple[str, ...]
+    highlighted_section_count: int
     main_question_count: int
     follow_up_count: int
+    current_section_main_questions_remaining: int
+    current_main_follow_ups_remaining: int
     active_question: ResumeQuestionRef | None
     pending_question: ResumeQuestionRef | None
     can_finish: bool
-    can_start_optional_main: bool
 
 
 class SelectedRoundProgress:
@@ -70,9 +69,9 @@ class SelectedRoundProgress:
         *,
         selected_round: ResumeRound,
         angle_ids: Iterable[str],
-        max_follow_ups: int,
-        required_main_questions: int = REQUIRED_MAIN_QUESTIONS,
-        optional_main_questions: int = OPTIONAL_MAIN_QUESTIONS,
+        highlighted_sections_per_session: int,
+        main_questions_per_section: int,
+        max_follow_ups_per_main: int,
     ) -> None:
         configured_angles = tuple(angle_ids)
         if not isinstance(selected_round, ResumeRound):
@@ -89,64 +88,68 @@ class SelectedRoundProgress:
         ):
             raise ResumeProgressError("angle_ids must be non-empty and distinct")
         if (
-            isinstance(required_main_questions, bool)
-            or required_main_questions != REQUIRED_MAIN_QUESTIONS
+            isinstance(highlighted_sections_per_session, bool)
+            or not isinstance(highlighted_sections_per_session, int)
+            or highlighted_sections_per_session <= 0
         ):
-            raise ResumeProgressError("Resume Mastery requires exactly 3 main questions")
+            raise ResumeProgressError(
+                "highlighted_sections_per_session must be a positive integer"
+            )
         if (
-            isinstance(optional_main_questions, bool)
-            or optional_main_questions != OPTIONAL_MAIN_QUESTIONS
+            isinstance(main_questions_per_section, bool)
+            or not isinstance(main_questions_per_section, int)
+            or not 1 <= main_questions_per_section <= len(configured_angles)
         ):
-            raise ResumeProgressError("Resume Mastery allows exactly 1 optional main")
+            raise ResumeProgressError(
+                "main_questions_per_section must be between 1 and the configured "
+                "angle count"
+            )
         if (
-            isinstance(max_follow_ups, bool)
-            or not isinstance(max_follow_ups, int)
-            or not 0 <= max_follow_ups <= MAX_CONFIGURED_FOLLOW_UPS
+            isinstance(max_follow_ups_per_main, bool)
+            or not isinstance(max_follow_ups_per_main, int)
+            or not 0 <= max_follow_ups_per_main <= MAX_CONFIGURED_FOLLOW_UPS
         ):
-            raise ResumeProgressError("max_follow_ups must be an integer from 0 through 3")
-        if len(configured_angles) < required_main_questions + optional_main_questions:
-            raise ResumeProgressError("configured angles cannot cover the maximum mains")
+            raise ResumeProgressError(
+                "max_follow_ups_per_main must be an integer from 0 through 3"
+            )
 
         self.selected_round = selected_round
         self.angle_ids = configured_angles
-        self.max_follow_ups = max_follow_ups
-        self.required_main_questions = required_main_questions
-        self.optional_main_questions = optional_main_questions
+        self.requested_highlighted_sections_per_session = (
+            highlighted_sections_per_session
+        )
+        self.highlighted_sections_per_session = highlighted_sections_per_session
+        self.main_questions_per_section = main_questions_per_section
+        self.max_follow_ups_per_main = max_follow_ups_per_main
         self.phase = ResumeProgressPhase.ACTIVE
-        self._used_angle_ids: set[str] = set()
+        self._eligible_claim_ids: frozenset[str] | None = None
+        self._highlighted_claim_ids: list[str] = []
+        self._used_angles_by_claim: dict[str, set[str]] = {}
         self._mains: list[MainQuestionProgress] = []
         self._active_question: ResumeQuestionRef | None = None
         self._pending_question: ResumeQuestionRef | None = None
         self._next_question_sequence = 1
 
-    @classmethod
-    def from_limits(
-        cls,
-        *,
-        selected_round: ResumeRound,
-        angle_ids: Iterable[str],
-        limits: Mapping[str, int],
-        max_follow_ups: int,
-    ) -> SelectedRoundProgress:
-        try:
-            required = limits["main_questions_per_session"]
-            optional = limits["optional_main_questions_per_session"]
-            configured_max = limits["max_follow_ups_per_main"]
-        except KeyError as error:
-            raise ResumeProgressError(
-                f"missing configured progress limit: {error.args[0]}"
-            ) from error
-        if configured_max != MAX_CONFIGURED_FOLLOW_UPS:
-            raise ResumeProgressError("configured maximum follow-ups must be exactly 3")
-        if max_follow_ups > configured_max:
-            raise ResumeProgressError("requested max_follow_ups exceeds configured limit")
-        return cls(
-            selected_round=selected_round,
-            angle_ids=angle_ids,
-            max_follow_ups=max_follow_ups,
-            required_main_questions=required,
-            optional_main_questions=optional,
+    def configure_available_claims(self, claim_ids: Iterable[str]) -> int:
+        """Bind eligible claims before the first question and reduce the section target."""
+
+        if self._eligible_claim_ids is not None:
+            raise ResumeProgressError("available claims are already configured")
+        if self._mains or self._active_question is not None or self._pending_question is not None:
+            raise ResumeProgressError("available claims must be configured before questions")
+        configured = tuple(claim_ids)
+        if (
+            not configured
+            or any(not isinstance(item, str) or not item.strip() for item in configured)
+            or len(configured) != len(set(configured))
+        ):
+            raise ResumeProgressError("available claim IDs must be non-empty and distinct")
+        self._eligible_claim_ids = frozenset(configured)
+        self.highlighted_sections_per_session = min(
+            self.requested_highlighted_sections_per_session,
+            len(configured),
         )
+        return self.highlighted_sections_per_session
 
     @property
     def mains(self) -> tuple[MainQuestionProgress, ...]:
@@ -173,19 +176,43 @@ class SelectedRoundProgress:
         return sum(main.follow_up_count for main in self._mains)
 
     @property
-    def can_finish(self) -> bool:
+    def highlighted_section_count(self) -> int:
+        return len(self._highlighted_claim_ids)
+
+    def _main_question_count_for_claim(self, claim_id: str) -> int:
+        return sum(1 for main in self._mains if main.primary_claim_id == claim_id)
+
+    @property
+    def current_section_main_questions_remaining(self) -> int:
+        if not self._highlighted_claim_ids:
+            return self.main_questions_per_section
+        current_claim_id = self._highlighted_claim_ids[-1]
+        return self.main_questions_per_section - self._main_question_count_for_claim(
+            current_claim_id
+        )
+
+    def unused_angle_ids_for_claim(self, claim_id: str) -> tuple[str, ...]:
+        used = self._used_angles_by_claim.get(claim_id, set())
+        return tuple(angle_id for angle_id in self.angle_ids if angle_id not in used)
+
+    @property
+    def current_main_follow_ups_remaining(self) -> int:
+        main = self.current_main
+        if main is None:
+            return 0
+        return self.max_follow_ups_per_main - main.follow_up_count
+
+    @property
+    def required_main_question_count(self) -> int:
         return (
-            self.phase is ResumeProgressPhase.ACTIVE
-            and self.main_question_count >= self.required_main_questions
-            and self._active_question is None
-            and self._pending_question is None
+            self.highlighted_sections_per_session * self.main_questions_per_section
         )
 
     @property
-    def can_start_optional_main(self) -> bool:
+    def can_finish(self) -> bool:
         return (
             self.phase is ResumeProgressPhase.ACTIVE
-            and self.main_question_count == self.required_main_questions
+            and self.main_question_count == self.required_main_question_count
             and self._active_question is None
             and self._pending_question is None
         )
@@ -218,10 +245,9 @@ class SelectedRoundProgress:
             require_round_angle(angle_id, self.angle_ids)
         except ValueError as error:
             raise ResumeProgressError(str(error)) from error
-        if angle_id in self._used_angle_ids:
-            raise ResumeProgressError("angle_id was already used")
-        maximum = self.required_main_questions + self.optional_main_questions
-        if self.main_question_count >= maximum:
+        if self._eligible_claim_ids is None:
+            raise ResumeProgressError("available claims are not configured")
+        if self.main_question_count >= self.required_main_question_count:
             raise ResumeProgressError("main question limit reached")
         if (
             not isinstance(primary_claim_id, str)
@@ -229,6 +255,28 @@ class SelectedRoundProgress:
             or primary_claim_id != primary_claim_id.strip()
         ):
             raise ResumeProgressError("primary_claim_id must be non-empty")
+        if primary_claim_id not in self._eligible_claim_ids:
+            raise ResumeProgressError("primary_claim_id is not an available claim")
+        if angle_id in self._used_angles_by_claim.get(primary_claim_id, set()):
+            raise ResumeProgressError("angle_id was already used for this claim")
+
+        if self._highlighted_claim_ids:
+            current_claim_id = self._highlighted_claim_ids[-1]
+            current_count = self._main_question_count_for_claim(current_claim_id)
+            if current_count < self.main_questions_per_section:
+                if primary_claim_id != current_claim_id:
+                    raise ResumeProgressError(
+                        "complete the configured main questions for the current section"
+                    )
+            elif primary_claim_id in self._highlighted_claim_ids:
+                raise ResumeProgressError(
+                    "the next section must use a new primary claim"
+                )
+            elif (
+                self.highlighted_section_count
+                >= self.highlighted_sections_per_session
+            ):
+                raise ResumeProgressError("highlighted section limit reached")
         related = tuple(related_claim_ids)
         if any(
             not isinstance(item, str)
@@ -259,7 +307,7 @@ class SelectedRoundProgress:
         main = self.current_main
         if main is None:
             raise ResumeProgressError("a follow-up requires a presented main question")
-        if main.follow_up_count >= self.max_follow_ups:
+        if main.follow_up_count >= self.max_follow_ups_per_main:
             raise ResumeProgressError("follow-up limit reached for the current main")
         pending = ResumeQuestionRef(
             id=self._next_id(ResumeQuestionKind.FOLLOW_UP),
@@ -280,7 +328,12 @@ class SelectedRoundProgress:
         if pending is None:
             raise ResumeProgressError("there is no pending question")
         if pending.kind is ResumeQuestionKind.MAIN:
-            self._used_angle_ids.add(pending.angle_id)
+            if pending.primary_claim_id not in self._highlighted_claim_ids:
+                self._highlighted_claim_ids.append(pending.primary_claim_id)
+            self._used_angles_by_claim.setdefault(
+                pending.primary_claim_id,
+                set(),
+            ).add(pending.angle_id)
             self._mains.append(
                 MainQuestionProgress(
                     question_id=pending.id,
@@ -343,15 +396,14 @@ class SelectedRoundProgress:
         return ResumeProgressSnapshot(
             selected_round=self.selected_round,
             phase=self.phase,
-            used_angle_ids=tuple(
-                angle_id
-                for angle_id in self.angle_ids
-                if angle_id in self._used_angle_ids
-            ),
+            highlighted_section_count=self.highlighted_section_count,
             main_question_count=self.main_question_count,
             follow_up_count=self.follow_up_count,
+            current_section_main_questions_remaining=(
+                self.current_section_main_questions_remaining
+            ),
+            current_main_follow_ups_remaining=self.current_main_follow_ups_remaining,
             active_question=self._active_question,
             pending_question=self._pending_question,
             can_finish=self.can_finish,
-            can_start_optional_main=self.can_start_optional_main,
         )

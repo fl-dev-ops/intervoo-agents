@@ -82,7 +82,7 @@ MODE_SCHEMAS: Mapping[
             defaults=MockInterviewConfig(),
         ),
         (InterviewType.RESUME_MASTERY, "v1"): _schema(
-            prompt_url="prompts/interview/v1/resume.md",
+            prompt_url="prompts/interview/resume/{round}.md",
             scripts={
                 "opening": (
                     "Hi {user_name}, let's begin with your resume. I'll ask about your "
@@ -122,9 +122,6 @@ MODE_SCHEMAS: Mapping[
             ),
             evaluation="none",
             config={
-                "main_questions_per_session": 3,
-                "optional_main_questions_per_session": 1,
-                "max_follow_ups_per_main": 3,
                 "target_duration_minutes": 20,
                 "max_question_characters": 500,
                 "max_pdf_bytes": 10485760,
@@ -156,7 +153,11 @@ MODE_SCHEMAS: Mapping[
                     "what_would_change",
                 ),
             },
-            defaults=ResumeMasteryConfig(max_follow_ups=3),
+            defaults=ResumeMasteryConfig(
+                highlighted_sections_per_session=3,
+                main_questions_per_section=1,
+                max_follow_ups_per_main=1,
+            ),
         ),
     }
 )

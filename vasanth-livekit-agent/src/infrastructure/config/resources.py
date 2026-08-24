@@ -68,15 +68,26 @@ def prewarm_runtime_resources(
             )
 
     for definition in interview_catalog.definitions.values():
-        try:
-            load_prompt(definition.prompt_url)
-        except Exception as e:
-            logger.warning(
-                "Failed to prewarm interview prompt for type=%s version=%s: %s",
-                definition.type.value,
-                definition.version,
-                e,
+        prompt_urls = (
+            tuple(
+                definition.prompt_url.replace("{round}", round_policy.id.value)
+                for round_policy in definition.rounds
             )
+            if "{round}" in definition.prompt_url
+            else (definition.prompt_url,)
+        )
+        for prompt_url in prompt_urls:
+            try:
+                load_prompt(prompt_url)
+            except Exception as e:
+                logger.warning(
+                    "Failed to prewarm interview prompt for type=%s version=%s "
+                    "prompt_url=%s: %s",
+                    definition.type.value,
+                    definition.version,
+                    prompt_url,
+                    e,
+                )
 
     logger.info(
         "Runtime resources prewarmed: profiles=%s interviews=%s",

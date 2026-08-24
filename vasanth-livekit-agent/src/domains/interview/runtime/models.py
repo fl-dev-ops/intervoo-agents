@@ -30,7 +30,9 @@ class MockInterviewConfig:
 
 @dataclass(frozen=True)
 class ResumeMasteryConfig:
-    max_follow_ups: int = 3
+    highlighted_sections_per_session: int
+    main_questions_per_section: int
+    max_follow_ups_per_main: int
 
 
 ModeConfig: TypeAlias = MockInterviewConfig | ResumeMasteryConfig
@@ -147,20 +149,53 @@ def parse_mode_config(interview_type: InterviewType, value: Any) -> ModeConfig:
 
     _reject_unknown_keys(
         raw,
-        allowed={"max_follow_ups"},
-        required=set(),
+        allowed={
+            "highlighted_sections_per_session",
+            "main_questions_per_section",
+            "max_follow_ups_per_main",
+        },
+        required={
+            "highlighted_sections_per_session",
+            "main_questions_per_section",
+            "max_follow_ups_per_main",
+        },
         field="interview.config",
     )
-    max_follow_ups = raw.get("max_follow_ups", 3)
+    highlighted_sections = raw["highlighted_sections_per_session"]
+    main_questions = raw["main_questions_per_section"]
+    max_follow_ups = raw["max_follow_ups_per_main"]
+    if (
+        isinstance(highlighted_sections, bool)
+        or not isinstance(highlighted_sections, int)
+        or not 1 <= highlighted_sections <= 200
+    ):
+        raise InterviewConfigError(
+            "interview.config.highlighted_sections_per_session must be an integer "
+            "from 1 through 200"
+        )
+    if (
+        isinstance(main_questions, bool)
+        or not isinstance(main_questions, int)
+        or not 1 <= main_questions <= 4
+    ):
+        raise InterviewConfigError(
+            "interview.config.main_questions_per_section must be an integer from 1 "
+            "through 4"
+        )
     if (
         isinstance(max_follow_ups, bool)
         or not isinstance(max_follow_ups, int)
         or not 0 <= max_follow_ups <= 3
     ):
         raise InterviewConfigError(
-            "interview.config.max_follow_ups must be an integer from 0 through 3"
+            "interview.config.max_follow_ups_per_main must be an integer from 0 "
+            "through 3"
         )
-    return ResumeMasteryConfig(max_follow_ups=max_follow_ups)
+    return ResumeMasteryConfig(
+        highlighted_sections_per_session=highlighted_sections,
+        main_questions_per_section=main_questions,
+        max_follow_ups_per_main=max_follow_ups,
+    )
 
 
 def parse_interview_request(value: Any) -> InterviewRequest:

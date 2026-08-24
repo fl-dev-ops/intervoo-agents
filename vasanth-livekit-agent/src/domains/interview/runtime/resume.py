@@ -12,18 +12,16 @@ from domains.interview.resume import (
     ResumeDocumentLimits,
     ResumeDocumentRepository,
     ResumeProgressPhase,
+    ResumeQuestionController,
+    ResumeRpcClient,
     SelectedRoundProgress,
     parse_resume_artifact_reference,
 )
 from infrastructure.prompt import build_prompt_context
 from infrastructure.storage import build_s3_json_read_config, read_s3_json_object
 from services.agent.resume import ResumeMasteryAgent
-from tools.interview.resume_questions import (
-    ResumeQuestionController,
-    build_resume_question_tools,
-)
+from tools.interview.resume_questions import build_resume_question_tools
 from tools.interview.resume_read import build_resume_read_tools
-from tools.interview.resume_rpc import ResumeRpcClient
 
 from .factory import InterviewRuntimeError, RuntimeServices
 from .models import (
@@ -83,9 +81,12 @@ class ResumeMasteryRuntime:
             raise InterviewRuntimeError("Resume Mastery requires one selected round")
 
         self.resolved = resolved
-        self.prompt_url = resolved.definition.prompt_url
         self.initial_reply = ""
         self.selected_round = ResumeRound(resolved.request.round)
+        self.prompt_url = resolved.definition.prompt_url.replace(
+            "{round}",
+            self.selected_round.value,
+        )
         self._metadata = metadata
         policy = next(
             (
@@ -108,11 +109,18 @@ class ResumeMasteryRuntime:
             limits=limits,
             read_json_object=partial(read_s3_json_object, s3_config),
         )
-        self.progress = SelectedRoundProgress.from_limits(
+        self.progress = SelectedRoundProgress(
             selected_round=self.selected_round,
             angle_ids=policy.angles,
-            limits=resolved.definition.config,
-            max_follow_ups=resolved.request.config.max_follow_ups,
+            highlighted_sections_per_session=(
+                resolved.request.config.highlighted_sections_per_session
+            ),
+            main_questions_per_section=(
+                resolved.request.config.main_questions_per_section
+            ),
+            max_follow_ups_per_main=(
+                resolved.request.config.max_follow_ups_per_main
+            ),
         )
         self._scripts = resolved.definition.scripts
         self._max_question_characters = resolved.definition.config[
@@ -135,13 +143,31 @@ class ResumeMasteryRuntime:
             raise InterviewRuntimeError(
                 "Resume document has no eligible claim for the selected round"
             )
+        effective_sections = self.progress.configure_available_claims(
+            claim.id for claim in eligible
+        )
+        requested_sections = (
+            self.progress.requested_highlighted_sections_per_session
+        )
+        logger.info(
+            "resume_progress action=configure status=%s "
+            "highlighted_sections_requested=%d highlighted_sections_effective=%d "
+            "main_questions_per_section=%d max_follow_ups_per_main=%d eligible=%d",
+            "reduced" if effective_sections < requested_sections else "ready",
+            requested_sections,
+            effective_sections,
+            self.progress.main_questions_per_section,
+            self.progress.max_follow_ups_per_main,
+            len(eligible),
+        )
         logger.info(
             "[EXT-API:resume-runtime] action=load status=completed mode=%s "
-            "version=%s round=%s count=%d elapsed_ms=%d",
+            "version=%s round=%s count=%d highlighted_sections=%d elapsed_ms=%d",
             self.resolved.request.type.value,
             self.resolved.request.version,
             self.selected_round.value,
             len(eligible),
+            effective_sections,
             round((asyncio.get_running_loop().time() - started) * 1000),
         )
 
@@ -149,7 +175,18 @@ class ResumeMasteryRuntime:
         self, metadata: Mapping[str, object]
     ) -> dict[str, str]:
         context = build_prompt_context(metadata)
-        return {"user_name": context["user_name"]}
+        return {
+            "user_name": context["user_name"],
+            "highlighted_sections_per_session": str(
+                self.progress.highlighted_sections_per_session
+            ),
+            "main_questions_per_section": str(
+                self.progress.main_questions_per_section
+            ),
+            "max_follow_ups_per_main": str(
+                self.progress.max_follow_ups_per_main
+            ),
+        }
 
     def build_tools(self, services: RuntimeServices) -> list[Any]:
         rpc = ResumeRpcClient(
@@ -216,6 +253,7 @@ class ResumeMasteryRuntime:
                     if snapshot.phase is ResumeProgressPhase.FINISHED
                     else "incomplete"
                 ),
+                "highlighted_section_count": snapshot.highlighted_section_count,
                 "main_question_count": snapshot.main_question_count,
                 "follow_up_count": snapshot.follow_up_count,
             }

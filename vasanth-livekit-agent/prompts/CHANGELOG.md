@@ -133,6 +133,17 @@ adaptive opening
 - After the second follow-up answer, give one short answer-grounded acknowledgement and call `finish_interview` in the same turn. The tool alone says: "Let me prepare my feedback."
 - Use screen inspection only for help or correctness requests related to the active whiteboard task.
 
+## Resume Mastery follow-up allowance
+
+- The resume prompt states the per-main follow-up budget through the `{max_follow_ups}` placeholder, rendered from the resolved request config. Never replace it with a hardcoded number.
+- Resume question tool results report `current_main_follow_ups_remaining`. The prompt must direct the model to close the main-question thread when it reaches zero, not to discover the cap through tool rejection.
+
+## Resume Mastery transitions and acknowledgements
+
+- Every Resume main question after the first opens its `question` text with one short answer-grounded acknowledgement sentence; the session's first main and all follow-ups carry none.
+- The final answer's acknowledgement reaches the candidate only as the validated `transition` argument of `finish_resume_mastery`, spoken by the tool before the fixed closing. The model never speaks an acknowledgement directly.
+- An acknowledgement is never a question, praise, a score, or a summary, and never reuses a stock phrase.
+
 ## Contradictions to check before saving
 
 - Building the plan "after the introduction" must not conflict with another section that requires more standalone context gathering first.
@@ -173,6 +184,10 @@ adaptive opening
 - Do not claim that runtime speech, tool timing, or interview transitions were verified unless the user has performed that verification.
 
 ## Change history
+
+- 2026-08-24: Made Resume Mastery transitions answer-grounded: mains after the first open with one short acknowledgement inside the question text, and `finish_resume_mastery` speaks a validated `transition` acknowledgement before the fixed closing.
+
+- 2026-08-24: Injected the configured Resume Mastery per-main follow-up budget into the prompt as `{max_follow_ups}` and made question tool results report `current_main_follow_ups_remaining`, so the model closes each main-question thread at zero instead of discovering the cap through tool rejection.
 
 - 2026-08-20: Made each Resume Mastery round a separate roughly twenty-minute session with three required main questions, one optional fourth question, and no hard duration cutoff.
 - 2026-08-20: Versioned the exact current Mock Interview prompt at `prompts/interview/v1/mock_interview.md` and added the approved Resume Mastery v1 policy at `prompts/interview/v1/resume.md`.
