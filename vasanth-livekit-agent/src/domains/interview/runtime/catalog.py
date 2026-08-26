@@ -82,7 +82,7 @@ MODE_SCHEMAS: Mapping[
             defaults=MockInterviewConfig(),
         ),
         (InterviewType.RESUME_MASTERY, "v1"): _schema(
-            prompt_url="prompts/interview/resume/{round}.md",
+            prompt_url="prompts/interview/v1/resume/{round}.md",
             scripts={
                 "opening": (
                     "Hi {user_name}, let's begin with your resume. I'll ask about your "
