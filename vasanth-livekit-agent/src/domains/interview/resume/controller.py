@@ -158,6 +158,17 @@ class ResumeQuestionController:
             "current_main_follow_ups_remaining": snapshot.current_main_follow_ups_remaining,
         }
 
+    def _log_main_progress(self) -> None:
+        logger.info(
+            "resume_progress action=main_started highlighted_sections=%d "
+            "main_questions_per_section=%d main_questions_completed=%d "
+            "main_questions_required=%d",
+            self.progress.highlighted_sections_per_session,
+            self.progress.main_questions_per_section,
+            self.progress.main_question_count,
+            self.progress.required_main_question_count,
+        )
+
     async def _say(self, context: RunContext, text: str, action: str) -> None:
         started = time.monotonic()
         logger.info("[EXT-API:resume-speech] action=%s status=started elapsed_ms=0", action)
@@ -211,6 +222,7 @@ class ResumeQuestionController:
                     self.progress.cancel_pending()
                     return self._snapshot("speech_failed")
                 self.progress.mark_pending_presented()
+                self._log_main_progress()
                 return self._snapshot("started")
 
             if highlight.status is ResumeHighlightStatus.NOT_FOUND:
@@ -256,6 +268,7 @@ class ResumeQuestionController:
                 return self._snapshot("speech_failed")
             self.progress.mark_pending_presented()
             self._pending_question_text = None
+            self._log_main_progress()
             return self._snapshot("started")
 
     async def ask_follow_up(self, context: RunContext, *, question: str) -> dict[str, object]:

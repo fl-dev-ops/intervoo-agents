@@ -235,6 +235,13 @@ class ResumeMasteryRuntime:
             initial_scripts=tuple(scripts),
             participant_identity=participant_identity,
             room_name=room_name,
+            selected_round=self.selected_round.value,
+            highlighted_sections_per_session=(
+                self.progress.highlighted_sections_per_session
+            ),
+            main_questions_per_section=self.progress.main_questions_per_section,
+            max_follow_ups_per_main=self.progress.max_follow_ups_per_main,
+            required_main_question_count=self.progress.required_main_question_count,
         )
 
     def on_conversation_item(self, item: object) -> None:

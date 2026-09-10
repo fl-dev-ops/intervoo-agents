@@ -40,15 +40,40 @@ async def tool_only_chunks(chunks: AsyncIterable[Any]) -> AsyncIterator[Any]:
 class ResumeMasteryAgent(UnifiedAgent):
     """Speak fixed startup scripts and permit only model-emitted tool calls."""
 
-    def __init__(self, *, initial_scripts: tuple[str, ...], **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        initial_scripts: tuple[str, ...],
+        selected_round: str,
+        highlighted_sections_per_session: int,
+        main_questions_per_section: int,
+        max_follow_ups_per_main: int,
+        required_main_question_count: int,
+        **kwargs: Any,
+    ) -> None:
         if not initial_scripts or any(not script for script in initial_scripts):
             raise ValueError("Resume initial scripts must be non-empty")
         self._initial_scripts = initial_scripts
+        self._selected_round = selected_round
+        self._highlighted_sections_per_session = highlighted_sections_per_session
+        self._main_questions_per_section = main_questions_per_section
+        self._max_follow_ups_per_main = max_follow_ups_per_main
+        self._required_main_question_count = required_main_question_count
         super().__init__(initial_reply="", **kwargs)
 
     async def on_enter(self) -> None:
         self._start_session_timer()
         started_at = time.perf_counter()
+        logger.info(
+            "resume_session action=start round=%s highlighted_sections=%d "
+            "main_questions_per_section=%d max_follow_ups_per_main=%d "
+            "required_main_questions=%d",
+            self._selected_round,
+            self._highlighted_sections_per_session,
+            self._main_questions_per_section,
+            self._max_follow_ups_per_main,
+            self._required_main_question_count,
+        )
         logger.info("startup_phase phase=resume_fixed_opening_start")
         try:
             for script in self._initial_scripts:

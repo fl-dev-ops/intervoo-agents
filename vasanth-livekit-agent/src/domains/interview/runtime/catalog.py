@@ -351,7 +351,6 @@ def parse_interview_definition(value: Any) -> InterviewDefinition:
     )
     _require_exact("interview definition.config", definition.config, schema.config)
     _require_exact("interview definition.rounds", round_angles, expected_round_angles)
-    _require_exact("interview definition.defaults", definition.defaults, schema.defaults)
     return definition
 
 
