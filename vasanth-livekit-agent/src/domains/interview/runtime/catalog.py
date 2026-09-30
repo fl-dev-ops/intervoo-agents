@@ -60,9 +60,11 @@ MODE_SCHEMAS: Mapping[
             prompt_url="prompts/interview/v1/mock_interview.md",
             scripts={
                 "initial_reply": (
-                    "Follow the Introduction Flow in your system instructions now. "
-                    "Use the candidate's actual name, then ask the exact introduction "
-                    "question specified there."
+                    "Greet the user and briefly introduce yourself using the identity "
+                    "and role in your system instructions, then ask: What is your name? "
+                    "Do not assume their name from metadata. Ask only this question and "
+                    "wait for their answer. After they answer, use the name they give "
+                    "and continue the conversation without introducing yourself again."
                 )
             },
             adapters=("mock_interview", "chroma", "question_store"),

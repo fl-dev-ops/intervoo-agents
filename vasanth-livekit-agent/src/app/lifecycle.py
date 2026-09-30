@@ -215,7 +215,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         is_mock = runtime.uses_mock_pipeline
         if is_mock:
             try:
-                evaluator_prompt = load_prompt("prompts/interview/vasanth_evaluator.md")
+                evaluator_prompt_url = (
+                    profile.evaluator_prompt_url
+                    or "prompts/interview/vasanth_evaluator.md"
+                )
+                evaluator_prompt = load_prompt(evaluator_prompt_url)
             except Exception as e:
                 logger.error("Failed to load evaluator prompt: %s", e)
                 return
@@ -262,6 +266,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
         session = build_agent_session(
             tts_speaker=profile.voice_speaker, tts_dict_id=profile.voice_dict_id,
+            voice_provider=profile.voice_provider, voice_id=profile.voice_id,
             mode=mode, session_config=session_config,
             turn_detector=get_or_create_turn_detector(userdata) if mode is InteractionMode.AUTO else get_prewarmed_turn_detector(userdata),
             disable_preemptive_generation=runtime.uses_editor_events,
@@ -363,7 +368,25 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
         avatar_request = metadata.get("avatar")
         from services.agent.avatar import start_avatar
-        await start_avatar(session, ctx.room, enabled=avatar_request is True or avatar_request == "liveavatar")
+        provider_name = (
+            avatar_request
+            if isinstance(avatar_request, str)
+            and avatar_request.strip().lower() not in {"true", "1"}
+            else None
+        )
+        avatar_enabled = avatar_request is True or (
+            isinstance(avatar_request, str)
+            and avatar_request.strip().lower() not in {"false", "0", "none", "off", "disabled"}
+        )
+        await start_avatar(
+            session,
+            ctx.room,
+            enabled=avatar_enabled,
+            provider_name=provider_name,
+            persona_id=profile.avatar_persona_id,
+            avatar_id=profile.avatar_id,
+            persona_name=profile.avatar_persona_name,
+        )
         timer.mark("avatar_start")
 
         start_session = start_ptt_session if mode is InteractionMode.PTT else start_auto_session
