@@ -58,6 +58,29 @@
         "end_call": true,
         "editor_events": true
       }
+    },
+    "olga": {
+      "agent_type": "mock-interview-agent",
+      "prompt_url": "prompts/interview/olga/SALES.md",
+      "resume_prompt_url": "prompts/interview/olga/SALES.md",
+      "evaluator_prompt_url": "prompts/interview/olga/SALES.md",
+      "avatar": {
+        "persona_id": "e21ed456-3bf3-579f-8229-60010062f6ec",
+        "persona_name": "Olga"
+      },
+      "initial_reply": "Say one opening line from the Opening section of your system instructions, then wait for the agent's response.",
+      "voice": {
+        "speaker": "rohan",
+        "dict_id": "p_fcfdd23b",
+        "provider": "voxcpm2",
+        "id": "cnbixz8meextefkch1a2zwahi"
+      },
+      "tools": {
+        "end_call": false,
+        "editor_events": false,
+        "screen_inspection": false,
+        "screen_feedback_timer": false
+      }
     }
   }
 }

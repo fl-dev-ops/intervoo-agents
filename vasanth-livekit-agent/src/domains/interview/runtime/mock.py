@@ -29,7 +29,7 @@ class MockInterviewRuntime:
         self.resolved = resolved
         self._profile = profile
         self.uses_editor_events = bool(profile.editor_events_enabled)
-        if resolved is None:
+        if resolved is None or profile.id == "olga":
             self.prompt_url = profile.prompt_url
             self.initial_reply = profile.initial_reply
         else:
@@ -83,6 +83,13 @@ class MockInterviewRuntime:
             instructions=instructions,
             tools=tools,
             initial_reply=self.initial_reply,
+            turn_exceeded_instruction=(
+                "The speaker has been talking for a while. Briefly acknowledge "
+                "them and ask one focused question about their client's objection. "
+                "Stay in your sales-coaching role."
+                if self._profile.id == "olga"
+                else None
+            ),
             participant_identity=participant_identity,
             room_name=room_name,
         )

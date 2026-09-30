@@ -121,7 +121,7 @@ def create_interview_runtime(
     ):
         from .resume import ResumeMasteryRuntime
 
-        return ResumeMasteryRuntime(resolved=resolved, metadata=metadata)
+        return ResumeMasteryRuntime(resolved=resolved, metadata=metadata, profile=profile)
 
     from .mock import MockInterviewRuntime
 

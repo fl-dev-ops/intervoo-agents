@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +49,20 @@ def build_tts(
     tts_dict_id: str | None,
     tts_model: str,
     session_config: Any,
+    voice_provider: str | None = None,
+    voice_id: str | None = None,
 ) -> Any:
-    provider = os.getenv("TTS_PROVIDER", "sarvam").strip().lower()
+    provider = (voice_provider or os.getenv("TTS_PROVIDER", "sarvam")).strip().lower()
+    if provider == "voxcpm2":
+        from interfaces.tts.voxcpm2 import build_voxcpm2_tts
+
+        return build_voxcpm2_tts(voice=voice_id or "")
     if provider == "qwen":
         from interfaces.tts.qwen import build_qwen_tts
 
         return build_qwen_tts()
     if provider != "sarvam":
-        raise ValueError("TTS_PROVIDER must be either 'sarvam' or 'qwen'")
+        raise ValueError("TTS provider must be 'sarvam', 'qwen', or 'voxcpm2'")
 
     return build_sarvam_tts(
         tts_speaker=tts_speaker,

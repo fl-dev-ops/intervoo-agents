@@ -1523,6 +1523,18 @@ wheels = [
 ]
 
 [[package]]
+name = "livekit-plugins-anam"
+version = "1.6.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "livekit-agents" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7d/8a/d6f9bb66bd6a6d1627e8e221343c7b175ba85ac7bff5231b6661c19cdc46/livekit_plugins_anam-1.6.6.tar.gz", hash = "sha256:b52f534e16da309ce994f322870d42916de7f99de8d315188b32471a9e589efd", size = 7616, upload-time = "2026-07-18T04:17:03.727Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f9/0f/96269f37e21b6d233655dbbc0ada476a34a66290c1a648f43428df5f8468/livekit_plugins_anam-1.6.6-py3-none-any.whl", hash = "sha256:8f72fd2ac3ff7165f2e72dc8d913bc02eb6cbaa15b3cea677a8e30c38ed85133", size = 8739, upload-time = "2026-07-18T04:17:02.664Z" },
+]
+
+[[package]]
 name = "livekit-plugins-assemblyai"
 version = "1.6.6"
 source = { registry = "https://pypi.org/simple" }
@@ -1546,6 +1558,30 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/0d/3c/fd3f9b2398fa51b410f6dcedd188a72daf92d15b526c042bf47e631e516d/livekit_plugins_deepgram-1.6.6.tar.gz", hash = "sha256:384d38b9098c9262c380208053e07b48e8a4dd1526a42cef889b9d60e76ac0db", size = 22607, upload-time = "2026-07-18T04:17:27.994Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fb/e9/4eb44bfd67bc6b9d5f448639def94016a57b08af2ba532d7343c3627e10a/livekit_plugins_deepgram-1.6.6-py3-none-any.whl", hash = "sha256:c6fb33b397495519089f56f049c564cbc7e1f2a9f1a4f656cfab531f68b9e582", size = 26081, upload-time = "2026-07-18T04:17:26.923Z" },
+]
+
+[[package]]
+name = "livekit-plugins-did"
+version = "1.6.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "livekit-agents" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3c/8d/a045d2cd48bc147402be6140ccd4b36f8f8bf9f1d6ef94884d22d5353131/livekit_plugins_did-1.6.6.tar.gz", hash = "sha256:775c86b3212d164af0b904603f34228163c80bf73158b0af7a87e25a4d872370", size = 5951, upload-time = "2026-07-18T04:17:28.244Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/27/7d/52dbab2075daa7a5be22aaa87b815ebea5411eaebeb3c0b492ceeb292ae9/livekit_plugins_did-1.6.6-py3-none-any.whl", hash = "sha256:3e955af6e58c9495fea05084ef15273d73bdd4391d24f7d396284c351d53f39f", size = 6909, upload-time = "2026-07-18T04:17:27.095Z" },
+]
+
+[[package]]
+name = "livekit-plugins-keyframe"
+version = "1.6.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "livekit-agents" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8a/27/e9ec0afe3e89958ca6e0c30d9fcfc654356623aba62ab9b7c14ac0567e9f/livekit_plugins_keyframe-1.6.6.tar.gz", hash = "sha256:6f4b9d4e64c412b8e08f572cc7cefe4847290b05b424fd2c0fb14fd825a682d1", size = 6340, upload-time = "2026-07-18T04:18:05.656Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ed/1f/e054052fb1581e5b4319e1aca9dd0b46698d061eb3abd34d361bacabbd28/livekit_plugins_keyframe-1.6.6-py3-none-any.whl", hash = "sha256:7f4c753088c817adc5a630214585e3b8559dd72aa0f011d6dc5fe768e71284cb", size = 6994, upload-time = "2026-07-18T04:18:04.444Z" },
 ]
 
 [[package]]
@@ -3795,8 +3831,11 @@ dependencies = [
     { name = "chromadb" },
     { name = "langfuse" },
     { name = "livekit-agents" },
+    { name = "livekit-plugins-anam" },
     { name = "livekit-plugins-assemblyai" },
     { name = "livekit-plugins-deepgram" },
+    { name = "livekit-plugins-did" },
+    { name = "livekit-plugins-keyframe" },
     { name = "livekit-plugins-liveavatar" },
     { name = "livekit-plugins-noise-cancellation" },
     { name = "livekit-plugins-openai" },
@@ -3821,8 +3860,11 @@ requires-dist = [
     { name = "chromadb", specifier = ">=0.5.0" },
     { name = "langfuse", specifier = ">=3.0" },
     { name = "livekit-agents", specifier = "==1.6.6" },
+    { name = "livekit-plugins-anam", specifier = "==1.6.6" },
     { name = "livekit-plugins-assemblyai", specifier = "==1.6.6" },
     { name = "livekit-plugins-deepgram", specifier = "==1.6.6" },
+    { name = "livekit-plugins-did", specifier = "==1.6.6" },
+    { name = "livekit-plugins-keyframe", specifier = "==1.6.6" },
     { name = "livekit-plugins-liveavatar", specifier = "==1.6.4" },
     { name = "livekit-plugins-noise-cancellation", specifier = "~=0.2.6" },
     { name = "livekit-plugins-openai", specifier = "==1.6.6" },

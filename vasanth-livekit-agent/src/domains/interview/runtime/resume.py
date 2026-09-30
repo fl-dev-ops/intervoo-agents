@@ -48,15 +48,16 @@ class ResumeMasteryRuntime:
         *,
         resolved: ResolvedInterview,
         metadata: Mapping[str, object],
+        profile: Any,
     ) -> None:
         expected_metadata_keys = {"agent_id", "user_name", "interview", "resume"}
         if set(metadata) != expected_metadata_keys:
             raise InterviewRuntimeError(
                 "Resume Mastery private metadata has an invalid shape"
             )
-        if metadata.get("agent_id") != "mock_interview":
+        if metadata.get("agent_id") != profile.id:
             raise InterviewRuntimeError(
-                "Resume Mastery requires the mock_interview agent profile"
+                f"Resume Mastery requires the {profile.id} agent profile"
             )
         user_name = metadata.get("user_name")
         if (
@@ -83,7 +84,8 @@ class ResumeMasteryRuntime:
         self.resolved = resolved
         self.initial_reply = ""
         self.selected_round = ResumeRound(resolved.request.round)
-        self.prompt_url = resolved.definition.prompt_url.replace(
+        prompt_template = profile.resume_prompt_url or resolved.definition.prompt_url
+        self.prompt_url = prompt_template.replace(
             "{round}",
             self.selected_round.value,
         )

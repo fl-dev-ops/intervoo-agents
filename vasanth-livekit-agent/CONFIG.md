@@ -58,4 +58,42 @@ speech and use `read_code_range` and `highlight_code` when `editor_events=true`,
 but it will not proactively detect deviation, inactivity, or fifty-percent
 completion.
 
-Restart or redeploy the worker after changing `config/agents.json`.
+## Persona prompt overrides
+
+Optional fields let one interview contract serve multiple personas without
+touching the versioned interview definitions:
+
+```json
+{
+  "prompt_url": "prompts/interview/olga/SALES.md",
+  "resume_prompt_url": "prompts/interview/olga/SALES.md",
+  "evaluator_prompt_url": "prompts/interview/olga/SALES.md"
+}
+```
+
+- `prompt_url` — the profile's system prompt. Used when the session resolves no
+  interview definition (the mock/role-play path).
+- `resume_prompt_url` — optional. Used for Resume Mastery sessions instead of the
+  definition's `prompts/interview/v1/resume/{round}.md`; `{round}` expands to
+  `round_1`/`round_2`/`round_3`.
+- `evaluator_prompt_url` — optional. Evaluator/feedback prompt for the mock
+  pipeline. Defaults to `prompts/interview/vasanth_evaluator.md`.
+
+## Avatar persona overrides
+
+Profiles may override the avatar persona from `config/agents.json`:
+
+```json
+{
+  "avatar": {
+    "persona_id": "...",
+    "avatar_id": "...",
+    "persona_name": "Olga"
+  }
+}
+```
+
+`persona_id` references a saved Anam persona and takes precedence over
+`avatar_id`. Unset fields fall back to the `ANAM_AVATAR_ID` /
+`ANAM_PERSONA_NAME` environment variables. Restart or redeploy the worker
+after changing `config/agents.json`.

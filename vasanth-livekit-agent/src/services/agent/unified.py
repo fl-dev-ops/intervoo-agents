@@ -24,10 +24,12 @@ class UnifiedAgent(Agent):
         instructions: str,
         tools: list[Any],
         initial_reply: str,
+        turn_exceeded_instruction: str | None = None,
         participant_identity: str | None = None,
         room_name: str | None = None,
     ) -> None:
         self.initial_reply = initial_reply
+        self.turn_exceeded_instruction = turn_exceeded_instruction
         self.participant_identity = participant_identity
         self.room_name = room_name
         self._session_timer_task: asyncio.Task[None] | None = None
@@ -115,7 +117,8 @@ class UnifiedAgent(Agent):
     async def on_user_turn_exceeded(self, ev: UserTurnExceededEvent) -> None:
         await self.session.generate_reply(
             user_input=ev.transcript,
-            instructions="The user has been speaking too long. Interrupt them by saying exactly: 'I could get where you are heading to, let's move to next question now'. Do not say anything else.",
+            instructions=self.turn_exceeded_instruction
+            or "The user has been speaking too long. Interrupt them by saying exactly: 'I could get where you are heading to, let's move to next question now'. Do not say anything else.",
             allow_interruptions=False,
             tool_choice="none",
         )

@@ -185,6 +185,14 @@ adaptive opening
 
 ## Change history
 
+- 2026-09-30: Added a client-objection coaching example to Olga’s live twin prompt, aligned with its voice and factual guardrails.
+
+- 2026-09-30: Changed Olga from a planned mock interview to a natural real estate sales coaching conversation; removed Olga's interview tools and supplied question plan.
+
+- 2026-09-30: Replaced Olga mock interview instructions with a spoken sales interview and supplied sales-only main questions from the frontend.
+
+- 2026-09-29: Added the Olga sales-persona prompt (prompts/interview/olga/SALES.md) as a single-file persona adaptation of the v1 prompts; interview behaviour is unchanged.
+
 - 2026-08-24: Made Resume Mastery transitions answer-grounded: mains after the first open with one short acknowledgement inside the question text, and `finish_resume_mastery` speaks a validated `transition` acknowledgement before the fixed closing.
 
 - 2026-08-24: Injected the configured Resume Mastery per-main follow-up budget into the prompt as `{max_follow_ups}` and made question tool results report `current_main_follow_ups_remaining`, so the model closes each main-question thread at zero instead of discovering the cap through tool rejection.

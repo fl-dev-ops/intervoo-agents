@@ -26,11 +26,18 @@ class AgentProfile:
     initial_reply: str
     voice_speaker: str
     voice_dict_id: str | None
+    voice_provider: str | None
+    voice_id: str | None
     end_call_enabled: bool
     editor_events_enabled: bool
     screen_inspection_enabled: bool
     screen_feedback_timer_enabled: bool
     default_interview: InterviewRequest | None
+    resume_prompt_url: str | None
+    evaluator_prompt_url: str | None
+    avatar_persona_id: str | None
+    avatar_id: str | None
+    avatar_persona_name: str | None
 
 
 def _required_str(value: Any, field: str) -> str:
@@ -67,6 +74,9 @@ def _parse_profile(agent_id: str, value: Any) -> AgentProfile:
     except ValueError as e:
         raise ProfileError(f"agents.{agent_id}.default_interview is invalid: {e}") from e
 
+    raw_avatar = value.get("avatar")
+    avatar = raw_avatar if isinstance(raw_avatar, Mapping) else {}
+
     return AgentProfile(
         id=agent_id,
         agent_type=_required_str(
@@ -82,6 +92,8 @@ def _parse_profile(agent_id: str, value: Any) -> AgentProfile:
             voice.get("speaker"), f"agents.{agent_id}.voice.speaker"
         ),
         voice_dict_id=_optional_str(voice.get("dict_id")),
+        voice_provider=_optional_str(voice.get("provider")),
+        voice_id=_optional_str(voice.get("id")),
         end_call_enabled=bool(tools.get("end_call", False)),
         editor_events_enabled=bool(tools.get("editor_events", False)),
         screen_inspection_enabled=bool(tools.get("screen_inspection", False)),
@@ -89,6 +101,11 @@ def _parse_profile(agent_id: str, value: Any) -> AgentProfile:
             tools.get("screen_feedback_timer", False)
         ),
         default_interview=default_interview,
+        resume_prompt_url=_optional_str(value.get("resume_prompt_url")),
+        evaluator_prompt_url=_optional_str(value.get("evaluator_prompt_url")),
+        avatar_persona_id=_optional_str(avatar.get("persona_id")),
+        avatar_id=_optional_str(avatar.get("avatar_id")),
+        avatar_persona_name=_optional_str(avatar.get("persona_name")),
     )
 
 

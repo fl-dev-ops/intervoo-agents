@@ -15,6 +15,7 @@ from domains.interview.runtime import (
     InterviewConfigError,
     load_interview_catalog,
 )
+from domains.interview.runtime.models import ResumeRound
 from domains.recording.config import RecordingConfig, build_recording_config
 from infrastructure.config.profiles import AgentProfile, load_profile_catalog
 from infrastructure.prompt.loader import load_prompt
@@ -58,14 +59,24 @@ def prewarm_runtime_resources(
     userdata[USERDATA_RECORDING_CONFIG] = build_recording_config()
 
     for profile in profile_catalog.values():
-        try:
-            load_prompt(profile.prompt_url)
-        except Exception as e:
-            logger.warning(
-                "Failed to prewarm prompt for agent_id=%s: %s",
-                profile.id,
-                e,
+        prompt_urls = [profile.prompt_url]
+        if profile.evaluator_prompt_url:
+            prompt_urls.append(profile.evaluator_prompt_url)
+        if profile.resume_prompt_url:
+            prompt_urls.extend(
+                profile.resume_prompt_url.replace("{round}", round_id.value)
+                for round_id in ResumeRound
             )
+        for prompt_url in prompt_urls:
+            try:
+                load_prompt(prompt_url)
+            except Exception as e:
+                logger.warning(
+                    "Failed to prewarm prompt for agent_id=%s prompt_url=%s: %s",
+                    profile.id,
+                    prompt_url,
+                    e,
+                )
 
     for definition in interview_catalog.definitions.values():
         prompt_urls = (

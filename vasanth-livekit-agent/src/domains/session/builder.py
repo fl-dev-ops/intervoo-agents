@@ -28,6 +28,8 @@ def build_agent_session(
     openrouter_model: str = DEFAULT_OPENROUTER_MODEL,
     tts_speaker: str,
     tts_dict_id: str | None,
+    voice_provider: str | None = None,
+    voice_id: str | None = None,
     tts_model: str = DEFAULT_SARVAM_TTS_MODEL,
     mode: InteractionMode = InteractionMode.AUTO,
     session_config: SessionConfig | None = None,
@@ -50,6 +52,8 @@ def build_agent_session(
         tts_dict_id=tts_dict_id,
         tts_model=tts_model,
         session_config=effective_session_config,
+        voice_provider=voice_provider,
+        voice_id=voice_id,
     )
 
     if mode is InteractionMode.PTT:
