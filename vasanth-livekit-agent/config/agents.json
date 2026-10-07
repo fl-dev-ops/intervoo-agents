@@ -59,6 +59,28 @@
         "editor_events": true
       }
     },
+    "jameel": {
+      "agent_type": "mock-interview-agent",
+      "prompt_url": "prompts/interview/jameel/SUPPLY_CHAIN.md",
+      "resume_prompt_url": "prompts/interview/jameel/SUPPLY_CHAIN.md",
+      "evaluator_prompt_url": "prompts/interview/jameel/SUPPLY_CHAIN.md",
+      "avatar": {
+        "persona_id": "f3feae9e-e376-4ffc-bb56-ed3e69505108",
+        "persona_name": "Jameel"
+      },
+      "initial_reply": "Introduce yourself as Jameel's live AI training twin, then ask: What is your name? Do not assume their name from metadata. Ask only this question and wait for their answer. After they answer, use the name they give and continue the conversation without introducing yourself again.",
+      "voice": {
+        "speaker": "rohan",
+        "provider": "voxcpm2",
+        "id": "cmuxy35xd0000g82ucue0ly26"
+      },
+      "tools": {
+        "end_call": false,
+        "editor_events": false,
+        "screen_inspection": false,
+        "screen_feedback_timer": false
+      }
+    },
     "olga": {
       "agent_type": "mock-interview-agent",
       "prompt_url": "prompts/interview/olga/SALES.md",

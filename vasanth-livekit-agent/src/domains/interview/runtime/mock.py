@@ -87,7 +87,7 @@ class MockInterviewRuntime:
                 "The speaker has been talking for a while. Briefly acknowledge "
                 "them and ask one focused question about their client's objection. "
                 "Stay in your sales-coaching role."
-                if self._profile.id == "olga"
+                if self._profile.id in {"olga", "jameel"}
                 else None
             ),
             participant_identity=participant_identity,
