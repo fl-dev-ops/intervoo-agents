@@ -1,7 +1,7 @@
 {
   "type": "resume_mastery",
   "version": "v1",
-  "prompt_url": "prompts/interview/resume/{round}.md",
+  "prompt_url": "prompts/interview/v1/resume/{round}.md",
   "scripts": {
     "opening": "Hi {user_name}, let's begin with your resume. I'll ask about your projects, impact, and decisions.",
     "round_2_transition": "Let's move to the impact you claimed and how you measured it.",

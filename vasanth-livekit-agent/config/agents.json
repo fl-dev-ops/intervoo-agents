@@ -61,9 +61,9 @@
     },
     "jameel": {
       "agent_type": "mock-interview-agent",
-      "prompt_url": "prompts/interview/jameel/SUPPLY_CHAIN.md",
-      "resume_prompt_url": "prompts/interview/jameel/SUPPLY_CHAIN.md",
-      "evaluator_prompt_url": "prompts/interview/jameel/SUPPLY_CHAIN.md",
+      "prompt_url": "prompts/interview/jameel/DEMAND_PLANNER.md",
+      "resume_prompt_url": "prompts/interview/jameel/DEMAND_PLANNER.md",
+      "evaluator_prompt_url": "prompts/interview/jameel/DEMAND_PLANNER.md",
       "avatar": {
         "persona_id": "f3feae9e-e376-4ffc-bb56-ed3e69505108",
         "persona_name": "Jameel"
