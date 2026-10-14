@@ -103,6 +103,28 @@
         "screen_inspection": false,
         "screen_feedback_timer": false
       }
+    },
+    "prathosh": {
+      "agent_type": "mock-interview-agent",
+      "prompt_url": "prompts/interview/prathosh/MFML.md",
+      "resume_prompt_url": "prompts/interview/prathosh/MFML.md",
+      "evaluator_prompt_url": "prompts/interview/prathosh/MFML.md",
+      "avatar": {
+        "persona_id": "4e0d8cb3-37e2-4f6f-a45b-1422f152571e",
+        "persona_name": "Prathosh"
+      },
+      "initial_reply": "Start the conversation with the exact OPENING MESSAGE from your system instructions, then wait for the learner's doubt.",
+      "voice": {
+        "speaker": "rohan",
+        "provider": "voxcpm2",
+        "id": "cmv6eccxg00002sesxltt8xvn"
+      },
+      "tools": {
+        "end_call": false,
+        "editor_events": false,
+        "screen_inspection": false,
+        "screen_feedback_timer": false
+      }
     }
   }
 }
