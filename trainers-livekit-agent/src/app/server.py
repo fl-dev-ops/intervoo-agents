@@ -9,6 +9,10 @@ import os
 from aiohttp import web
 from livekit import agents
 
+# LiveKit plugins must register on the main thread, so import the avatar
+# plugins at module load rather than lazily inside a job thread.
+import services.agent.avatar  # noqa: F401
+
 from .config import (
     MAX_CONCURRENT_SESSIONS,
     REGISTERED_AGENT_NAME,
