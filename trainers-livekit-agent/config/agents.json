@@ -147,6 +147,28 @@
         "screen_inspection": false,
         "screen_feedback_timer": false
       }
+    },
+    "antoni": {
+      "agent_type": "mock-interview-agent",
+      "prompt_url": "prompts/interview/antoni/AMA.md",
+      "resume_prompt_url": "prompts/interview/antoni/AMA.md",
+      "evaluator_prompt_url": "prompts/interview/antoni/AMA.md",
+      "avatar": {
+        "persona_id": "e1cfca27-1bfc-4136-8126-0c9a4a680a8d",
+        "persona_name": "Antoni"
+      },
+      "initial_reply": "Start the conversation with the exact OPENING MESSAGE from your system instructions, then wait for the user's reply.",
+      "voice": {
+        "speaker": "rohan",
+        "provider": "voxcpm2",
+        "id": "cmvi3lxy600005ouldck9ktgk"
+      },
+      "tools": {
+        "end_call": false,
+        "editor_events": false,
+        "screen_inspection": false,
+        "screen_feedback_timer": false
+      }
     }
   }
 }
