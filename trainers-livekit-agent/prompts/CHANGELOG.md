@@ -185,6 +185,8 @@ adaptive opening
 
 ## Change history
 
+- 2026-10-22: Replaced Antoni's open "ask me anything" twin prompt (prompts/interview/antoni/AMA.md) with a supplied pitch-practice coaching flow: get to know the person, listen to the pitch, give Antoni-style feedback, retry and close.
+
 - 2026-09-30: Added a client-objection coaching example to Olga’s live twin prompt, aligned with its voice and factual guardrails.
 
 - 2026-09-30: Changed Olga from a planned mock interview to a natural real estate sales coaching conversation; removed Olga's interview tools and supplied question plan.
