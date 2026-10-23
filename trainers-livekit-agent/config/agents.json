@@ -126,28 +126,6 @@
         "screen_feedback_timer": false
       }
     },
-    "daniele": {
-      "agent_type": "mock-interview-agent",
-      "prompt_url": "prompts/interview/prathosh/MFML.md",
-      "resume_prompt_url": "prompts/interview/prathosh/MFML.md",
-      "evaluator_prompt_url": "prompts/interview/prathosh/MFML.md",
-      "avatar": {
-        "persona_id": "ccb84f93-83b4-442f-a028-fd274108497d",
-        "persona_name": "Prathosh"
-      },
-      "initial_reply": "Start the conversation with the exact OPENING MESSAGE from your system instructions, then wait for the learner's doubt.",
-      "voice": {
-        "speaker": "rohan",
-        "provider": "voxcpm2",
-        "id": "cmvgch36a00004culkbo66luq"
-      },
-      "tools": {
-        "end_call": false,
-        "editor_events": false,
-        "screen_inspection": false,
-        "screen_feedback_timer": false
-      }
-    },
     "antoni": {
       "agent_type": "mock-interview-agent",
       "prompt_url": "prompts/interview/antoni/AMA.md",
