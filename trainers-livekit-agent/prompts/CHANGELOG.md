@@ -185,6 +185,8 @@ adaptive opening
 
 ## Change history
 
+- 2026-10-23: Added Johnny, Daniele Ponzo's practice assistant (prompts/interview/johnny-daniele/PRACTICE.md): set the scene, role-play with interruptions, interrupt only for communication-blocking errors, short feedback at the end (one strength, one or two fixes, one improved sentence, under about 80 words), one retry.
+
 - 2026-10-22: Replaced Antoni's open "ask me anything" twin prompt (prompts/interview/antoni/AMA.md) with a supplied pitch-practice coaching flow: get to know the person, listen to the pitch, give Antoni-style feedback, retry and close.
 
 - 2026-09-30: Added a client-objection coaching example to Olga’s live twin prompt, aligned with its voice and factual guardrails.

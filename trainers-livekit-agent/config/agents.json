@@ -126,6 +126,28 @@
         "screen_feedback_timer": false
       }
     },
+    "johnny-daniele": {
+      "agent_type": "mock-interview-agent",
+      "prompt_url": "prompts/interview/johnny-daniele/PRACTICE.md",
+      "resume_prompt_url": "prompts/interview/johnny-daniele/PRACTICE.md",
+      "evaluator_prompt_url": "prompts/interview/johnny-daniele/PRACTICE.md",
+      "avatar": {
+        "persona_id": "fed50a63-7c88-48f9-bae2-673fa83acb4f",
+        "persona_name": "Johnny"
+      },
+      "initial_reply": "Start the conversation with the exact OPENING MESSAGE from your system instructions, then wait for the user's reply.",
+      "voice": {
+        "speaker": "rohan",
+        "provider": "voxcpm2",
+        "id": "cmvkojoav0000jsul6de9s6wh"
+      },
+      "tools": {
+        "end_call": false,
+        "editor_events": false,
+        "screen_inspection": false,
+        "screen_feedback_timer": false
+      }
+    },
     "antoni": {
       "agent_type": "mock-interview-agent",
       "prompt_url": "prompts/interview/antoni/AMA.md",
