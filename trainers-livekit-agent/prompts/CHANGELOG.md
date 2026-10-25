@@ -185,6 +185,8 @@ adaptive opening
 
 ## Change history
 
+- 2026-10-25: Johnny now talks in Daniele Ponzo's spoken style, taken from his call transcripts (prompts/interview/johnny-daniele/PRACTICE.md): new casual opening, person-like reactions, his natural words in moderation, a banned list of chatbot phrases, unlabelled and varied feedback, and rewritten examples and handoff. Flow, method and feedback rules are unchanged.
+
 - 2026-10-23: Added Johnny, Daniele Ponzo's practice assistant (prompts/interview/johnny-daniele/PRACTICE.md): set the scene, role-play with interruptions, interrupt only for communication-blocking errors, short feedback at the end (one strength, one or two fixes, one improved sentence, under about 80 words), one retry.
 
 - 2026-10-22: Replaced Antoni's open "ask me anything" twin prompt (prompts/interview/antoni/AMA.md) with a supplied pitch-practice coaching flow: get to know the person, listen to the pitch, give Antoni-style feedback, retry and close.
