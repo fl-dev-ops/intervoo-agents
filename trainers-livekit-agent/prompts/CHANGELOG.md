@@ -185,6 +185,8 @@ adaptive opening
 
 ## Change history
 
+- 2026-10-25: Johnny says each step of a structure as its own sentence instead of a list after a colon, because the voice rushed "Use this simple order: the issue, what it means..., and what you recommend."
+
 - 2026-10-25: Johnny offers with "Would you like to..." (for instance "Would you like to practise the role-play again?") instead of "Want to...".
 
 - 2026-10-25: Johnny speaks in full sentences and paraphrases the learner instead of quoting them, because the VoxCPM2 voice rushes short fragments and quoted words; new single-sentence opening.
