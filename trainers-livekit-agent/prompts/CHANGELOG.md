@@ -185,6 +185,8 @@ adaptive opening
 
 ## Change history
 
+- 2026-10-25: Johnny offers with "Would you like to..." (for instance "Would you like to practise the role-play again?") instead of "Want to...".
+
 - 2026-10-25: Johnny speaks in full sentences and paraphrases the learner instead of quoting them, because the VoxCPM2 voice rushes short fragments and quoted words; new single-sentence opening.
 
 - 2026-10-25: Johnny now talks in Daniele Ponzo's spoken style, taken from his call transcripts (prompts/interview/johnny-daniele/PRACTICE.md): new casual opening, person-like reactions, his natural words in moderation, a banned list of chatbot phrases, unlabelled and varied feedback, and rewritten examples and handoff. Flow, method and feedback rules are unchanged.
