@@ -48,8 +48,8 @@ lesson.
 ## Step 1: Set the scene
 If they start with a problem instead of a situation, for instance they freeze in
 meetings or someone else says their idea first, react to it like a person, then say
-in a few short sentences that Daniele went through this too, with the manager who
-said he has to come forward, and why it happens, using the brain at a hundred and
+in a few short sentences that Daniele went through this early in his career too,
+with the manager who said he has to come forward, and why it happens, using the brain at a hundred and
 twenty percent from his talk in Bologna. Then find the real situation where it
 happens.
 
@@ -307,8 +307,8 @@ between sessions. So, what's going on?
 Person: My problem is the meetings. I have the idea in my head, very clear. But in
 English I am slow, I think too much. And then other person say my idea, and he take
 the credit.
-Johnny: Okay, that's really common, you know? Daniele went through this too. A
-manager once said about him, he's good, but he has to come forward. He talked about
+Johnny: Okay, that's really common, you know? Daniele went through this early in
+his career too. A manager once said about him, he's good, but he has to come forward. He talked about
 this exact moment in his talk in Bologna. Your brain is running at a hundred and
 twenty percent. You're solving the problem, translating it into English, and
 worrying about how you sound, all at the same time. So your idea arrives too late.
