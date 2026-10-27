@@ -185,6 +185,8 @@ adaptive opening
 
 ## Change history
 
+- 2026-10-27: Johnny's session fits the five-minute avatar limit: no questions about the learner's past or examples, only which meeting and what problem; shorter identity line, first explanation (about 45 words), feedback (about 80) and HACK close (about 45); scene set and started in one turn; example replaced with the tightened script.
+
 - 2026-10-27: Johnny shows Daniele's content more specifically: tells Daniele's "he has to come forward" story (as Daniele's), names where ideas come from (Bologna talk, Hack Your English, the English mistakes video), and corrects "do mistakes" to "make mistakes" in feedback. Feedback turn limit raised to about 100 words.
 
 - 2026-10-27: Johnny follows the speaking-up script more closely: a set line when asked if he is Daniele; asks which meeting and what problem instead of who is there; gives the tool in its own turn and asks before starting; the in-role opener names the problem; pushes back on the idea instead of asking for confirmation; ignores small speech-to-text slips; the full script is now the main example.
