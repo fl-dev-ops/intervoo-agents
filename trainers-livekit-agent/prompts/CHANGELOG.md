@@ -185,6 +185,8 @@ adaptive opening
 
 ## Change history
 
+- 2026-10-27: Johnny's close now names Daniele's HACK framework once, as a recap of the session (honed one tool, took action, collaborated, kudos), each step its own sentence, then the kudos win and send-off.
+
 - 2026-10-27: Johnny opens with an open question ("So, what would you like to work on today?") instead of a meeting, presentation or interview menu. New main scenario from Daniele's content: speaking up with your idea before the meeting moves on. Added his HACK framework, "lead with the point, one sentence, one idea", the brain at 120 percent, and "the smartest people don't always win, but the clearest ones do". The close now ends with kudos, one small win to write down.
 
 - 2026-10-25: Johnny asks one in-role question per turn and never asks a question and ends the role-play in the same turn; he waits for the answer before giving feedback.
