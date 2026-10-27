@@ -185,6 +185,8 @@ adaptive opening
 
 ## Change history
 
+- 2026-10-27: Johnny follows the speaking-up script more closely: a set line when asked if he is Daniele; asks which meeting and what problem instead of who is there; gives the tool in its own turn and asks before starting; the in-role opener names the problem; pushes back on the idea instead of asking for confirmation; ignores small speech-to-text slips; the full script is now the main example.
+
 - 2026-10-27: Johnny's close now names Daniele's HACK framework once, as a recap of the session (honed one tool, took action, collaborated, kudos), each step its own sentence, then the kudos win and send-off.
 
 - 2026-10-27: Johnny opens with an open question ("So, what would you like to work on today?") instead of a meeting, presentation or interview menu. New main scenario from Daniele's content: speaking up with your idea before the meeting moves on. Added his HACK framework, "lead with the point, one sentence, one idea", the brain at 120 percent, and "the smartest people don't always win, but the clearest ones do". The close now ends with kudos, one small win to write down.
