@@ -185,6 +185,10 @@ adaptive opening
 
 ## Change history
 
+- 2026-10-30: Replaced Tony's prompt with the approved Tony Latimer twin document. It now focuses on CEO and Business Head transitions, leadership teams, leadership and coaching. It asks for the person's name and role before any advice, answers only from TONY'S CORE IDEAS (the prompt's in-text knowledge base, since this profile has no retrieval tool), quotes Tony's own words, ends with one thinking question, and uses a word-for-word fallback pointing to profitableleadership.com for everything else. The opening is now "Hello, I'm Tony Latimer's AI twin. How can I help you today?"
+
+- 2026-10-30: Added Tony Latimer's ask-me-anything twin (prompts/interview/tony-latimer/AMA.md, profile tony-latimer), structured as an open Q&A: opening, open Q&A led by the person, short close. It answers questions on coaching, coach development and leaders in transition as general coaching, never as Tony's view, and shares only three facts about Tony (ICF Master Certified Coach since 2008, founding member and past President of ICF Singapore, trains coaches through The Simplicity of Mastery). Anything else about Tony, including programme content, goes to the handoff. Facts await Tony's approval. Anam persona bcbd2f71-…; VoxCPM2 voice cloned from 8:59–9:25 of youtube.com/watch?v=L4DSrs3dgcc.
+
 - 2026-10-27: Johnny's session fits the five-minute avatar limit: no questions about the learner's past or examples, only which meeting and what problem; shorter identity line, first explanation (about 45 words), feedback (about 80) and HACK close (about 45); scene set and started in one turn; example replaced with the tightened script.
 
 - 2026-10-27: Johnny shows Daniele's content more specifically: tells Daniele's "he has to come forward" story (as Daniele's), names where ideas come from (Bologna talk, Hack Your English, the English mistakes video), and corrects "do mistakes" to "make mistakes" in feedback. Feedback turn limit raised to about 100 words.

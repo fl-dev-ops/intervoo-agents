@@ -169,6 +169,28 @@
         "screen_inspection": false,
         "screen_feedback_timer": false
       }
+    },
+    "tony-latimer": {
+      "agent_type": "mock-interview-agent",
+      "prompt_url": "prompts/interview/tony-latimer/AMA.md",
+      "resume_prompt_url": "prompts/interview/tony-latimer/AMA.md",
+      "evaluator_prompt_url": "prompts/interview/tony-latimer/AMA.md",
+      "avatar": {
+        "persona_id": "bcbd2f71-6310-40e6-885a-c4b0779f6462",
+        "persona_name": "Tony"
+      },
+      "initial_reply": "Start the conversation with the exact OPENING MESSAGE from your system instructions, then wait for the user's reply.",
+      "voice": {
+        "speaker": "rohan",
+        "provider": "voxcpm2",
+        "id": "cmvutknbt00009u3cgo02rmze"
+      },
+      "tools": {
+        "end_call": false,
+        "editor_events": false,
+        "screen_inspection": false,
+        "screen_feedback_timer": false
+      }
     }
   }
 }
