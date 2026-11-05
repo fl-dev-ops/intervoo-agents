@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from collections.abc import Callable
 from typing import Any, Protocol
 
 from livekit import rtc
-from livekit.agents import AgentSession
+from livekit.agents import AgentSession, APIStatusError
 from livekit.plugins import anam, did, keyframe, liveavatar, simli
 from livekit.plugins.anam import api as _anam_api
 
@@ -16,6 +17,10 @@ logger = logging.getLogger(__name__)
 
 SIMLI_ROOM_LIFETIME_SECONDS = 1 * 60 * 60
 PERSONA_ID_PREFIX = "persona-id:"
+# Anam rejects a new engine session with 429 while the organization is at its
+# concurrent session limit, for example while a just-ended call is still closing.
+# Wait between retries before falling back to an audio-only agent.
+ANAM_BUSY_RETRY_DELAYS_SECONDS = (2.0, 3.0, 5.0)
 
 # The installed Anam plugin (1.6.6) only serializes ``avatarId`` in the
 # session-token payload, but Anam's API expects saved personas to be
@@ -37,6 +42,18 @@ async def _anam_post_with_persona_support(
             if isinstance(avatar_id, str) and avatar_id.startswith(PERSONA_ID_PREFIX):
                 persona["personaId"] = avatar_id.split(":", 1)[1]
                 del persona["avatarId"]
+    if not endpoint.endswith("/engine/session"):
+        return await _ANAM_POST(self, endpoint, payload, headers)
+    for delay in ANAM_BUSY_RETRY_DELAYS_SECONDS:
+        try:
+            return await _ANAM_POST(self, endpoint, payload, headers)
+        except APIStatusError as error:
+            if error.status_code != 429:
+                raise
+            logger.warning(
+                "Anam concurrent session limit reached; retrying in %.0fs", delay
+            )
+            await asyncio.sleep(delay)
     return await _ANAM_POST(self, endpoint, payload, headers)
 
 
