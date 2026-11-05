@@ -170,6 +170,28 @@
         "screen_feedback_timer": false
       }
     },
+    "darren-mitchell": {
+      "agent_type": "mock-interview-agent",
+      "prompt_url": "prompts/interview/darren-mitchell/AMA.md",
+      "resume_prompt_url": "prompts/interview/darren-mitchell/AMA.md",
+      "evaluator_prompt_url": "prompts/interview/darren-mitchell/AMA.md",
+      "avatar": {
+        "persona_id": "23267272-7a4a-4b05-a1ab-0222114ab216",
+        "persona_name": "Darren"
+      },
+      "initial_reply": "Start the conversation with the exact OPENING MESSAGE from your system instructions, then wait for the user's reply.",
+      "voice": {
+        "speaker": "rohan",
+        "provider": "voxcpm2",
+        "id": "cmw3cr34d0000d63c8m2zyjl5"
+      },
+      "tools": {
+        "end_call": false,
+        "editor_events": false,
+        "screen_inspection": false,
+        "screen_feedback_timer": false
+      }
+    },
     "tony-latimer": {
       "agent_type": "mock-interview-agent",
       "prompt_url": "prompts/interview/tony-latimer/AMA.md",
