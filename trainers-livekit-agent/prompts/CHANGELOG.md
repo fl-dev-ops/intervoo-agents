@@ -237,3 +237,5 @@ adaptive opening
 - 2026-08-13: Made code uncertainty trigger a mandatory read, highlight, and targeted one-question guidance flow.
 - 2026-08-13: Added highlighted code follow-ups and capped every planned question at one response-grounded follow-up.
 - 2026-08-12: Added Vasanth's explicit acknowledgements for partial answers and candidates who do not know an answer.
+
+- 2026-11-08: Added Marcus Cauchi's ask-me-anything twin prompt (prompts/interview/marcus-cauchi/AMA.md), from the supplied prompt document, checked quote by quote against his three podcast transcripts in trainertwin-lore (98 of 101 quoted phrases are Marcus's own words). Changes from the document: the fractional CRO facts reworded to his own phrasing (two phrases came from a host), "sales training franchise" cut to "franchise" (he never says what kind), and core ideas added for CRAFTED, the four forces, customers renting outcomes, research before the call, sell hot not cold with his referral numbers, and his budget example; no quotation marks in replies (VoxCPM rushes quoted text). Not wired into config/agents.json yet: it needs an Anam persona and a VoxCPM2 voice.
