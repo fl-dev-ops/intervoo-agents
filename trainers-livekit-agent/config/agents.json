@@ -213,6 +213,28 @@
         "screen_inspection": false,
         "screen_feedback_timer": false
       }
+    },
+    "marcus-cauchi": {
+      "agent_type": "mock-interview-agent",
+      "prompt_url": "prompts/interview/marcus-cauchi/AMA.md",
+      "resume_prompt_url": "prompts/interview/marcus-cauchi/AMA.md",
+      "evaluator_prompt_url": "prompts/interview/marcus-cauchi/AMA.md",
+      "avatar": {
+        "persona_id": "113a034b-f60a-4145-9d43-dcf2914f8671",
+        "persona_name": "Marcus"
+      },
+      "initial_reply": "Start the conversation with the exact OPENING MESSAGE from your system instructions, then wait for the user's reply.",
+      "voice": {
+        "speaker": "rohan",
+        "provider": "voxcpm2",
+        "id": "cmw8s9xdc00008wuhpm2g3u06"
+      },
+      "tools": {
+        "end_call": false,
+        "editor_events": false,
+        "screen_inspection": false,
+        "screen_feedback_timer": false
+      }
     }
   }
 }
