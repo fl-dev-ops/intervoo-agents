@@ -246,7 +246,7 @@
         "persona_name": "Bevan"
       },
       "initial_reply": "Start the conversation with the exact OPENING MESSAGE from your system instructions, then wait for the user's reply.",
-      "starter_reply": "The user picked this question on the welcome page before the call started, so treat it as their first message. Do not say the OPENING MESSAGE word for word. In two or three short spoken sentences: acknowledge their question briefly, without answering it yet; say you are Bevan Broadbent's AI twin; then ask their name and what they are working on at the moment, so you can answer it properly. Once they reply, come back to their question.",
+      "starter_reply": "This conversation is different: the user picked the question they just asked on the welcome page, before the call started. For this conversation, your first reply replaces the OPENING MESSAGE, so do not say the OPENING MESSAGE. In two or three short spoken sentences: first acknowledge their question in a few words, without answering it yet. Then say you are Bevan Broadbent's AI twin. Then ask their name and what they are working on at the moment, so you can answer it properly. Once they reply, come back to their question.",
       "ama_reply": "Start the conversation by saying exactly: Hello, I'm Bevan Broadbent's AI twin. Feel free to ask me anything. Then wait for the user's reply.",
       "voice": {
         "speaker": "rohan",

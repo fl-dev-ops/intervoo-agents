@@ -106,6 +106,11 @@ class UnifiedAgent(Agent):
             self.room_name,
         )
         try:
+            logger.info(
+                "first_reply mode=%s room=%s",
+                "starter" if self.starter and self.starter_reply else "opening",
+                self.room_name,
+            )
             if self.starter and self.starter_reply:
                 # The user picked a starter question on the welcome page: it becomes their
                 # first message, and the twin adapts its opening to it.
