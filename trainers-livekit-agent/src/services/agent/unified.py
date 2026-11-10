@@ -114,8 +114,12 @@ class UnifiedAgent(Agent):
             if self.starter and self.starter_reply:
                 # The user picked a starter question on the welcome page: it becomes their
                 # first message, and the twin adapts its opening to it.
+                # Not interruptible: background noise in the first seconds would otherwise cut it
+                # off and the twin would fall back to its fixed opener.
                 await self.session.generate_reply(
-                    user_input=self.starter, instructions=self.starter_reply
+                    user_input=self.starter,
+                    instructions=self.starter_reply,
+                    allow_interruptions=False,
                 )
             else:
                 await self.session.generate_reply(instructions=self.initial_reply)

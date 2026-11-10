@@ -63,6 +63,7 @@ async def test_first_reply_uses_starter_question_when_given() -> None:
     assert call == {
         "user_input": "Why don't I delegate?",
         "instructions": "Acknowledge it, then ask their name.",
+        "allow_interruptions": False,
     }
 
 
