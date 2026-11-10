@@ -235,6 +235,28 @@
         "screen_inspection": false,
         "screen_feedback_timer": false
       }
+    },
+    "bevan-broadbent": {
+      "agent_type": "mock-interview-agent",
+      "prompt_url": "prompts/interview/bevan-broadbent/AMA.md",
+      "resume_prompt_url": "prompts/interview/bevan-broadbent/AMA.md",
+      "evaluator_prompt_url": "prompts/interview/bevan-broadbent/AMA.md",
+      "avatar": {
+        "persona_id": "88e28654-b290-4ee9-ad58-45597d4b0013",
+        "persona_name": "Bevan"
+      },
+      "initial_reply": "Start the conversation with the exact OPENING MESSAGE from your system instructions, then wait for the user's reply.",
+      "voice": {
+        "speaker": "rohan",
+        "provider": "voxcpm2",
+        "id": "cmwa1xg0n0000xfuh5e9c1eeq"
+      },
+      "tools": {
+        "end_call": false,
+        "editor_events": false,
+        "screen_inspection": false,
+        "screen_feedback_timer": false
+      }
     }
   }
 }
