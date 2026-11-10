@@ -24,11 +24,15 @@ class UnifiedAgent(Agent):
         instructions: str,
         tools: list[Any],
         initial_reply: str,
+        starter: str | None = None,
+        starter_reply: str | None = None,
         turn_exceeded_instruction: str | None = None,
         participant_identity: str | None = None,
         room_name: str | None = None,
     ) -> None:
         self.initial_reply = initial_reply
+        self.starter = starter
+        self.starter_reply = starter_reply
         self.turn_exceeded_instruction = turn_exceeded_instruction
         self.participant_identity = participant_identity
         self.room_name = room_name
@@ -102,7 +106,14 @@ class UnifiedAgent(Agent):
             self.room_name,
         )
         try:
-            await self.session.generate_reply(instructions=self.initial_reply)
+            if self.starter and self.starter_reply:
+                # The user picked a starter question on the welcome page: it becomes their
+                # first message, and the twin adapts its opening to it.
+                await self.session.generate_reply(
+                    user_input=self.starter, instructions=self.starter_reply
+                )
+            else:
+                await self.session.generate_reply(instructions=self.initial_reply)
         finally:
             logger.info(
                 "startup_phase phase=first_generate_reply_end room=%s elapsed_ms=%.2f",

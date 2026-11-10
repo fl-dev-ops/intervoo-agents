@@ -38,6 +38,8 @@ class AgentProfile:
     avatar_persona_id: str | None
     avatar_id: str | None
     avatar_persona_name: str | None
+    starter_reply: str | None = None
+    ama_reply: str | None = None
 
 
 def _required_str(value: Any, field: str) -> str:
@@ -106,6 +108,8 @@ def _parse_profile(agent_id: str, value: Any) -> AgentProfile:
         avatar_persona_id=_optional_str(avatar.get("persona_id")),
         avatar_id=_optional_str(avatar.get("avatar_id")),
         avatar_persona_name=_optional_str(avatar.get("persona_name")),
+        starter_reply=_optional_str(value.get("starter_reply")),
+        ama_reply=_optional_str(value.get("ama_reply")),
     )
 
 

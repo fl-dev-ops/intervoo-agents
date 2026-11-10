@@ -11,6 +11,9 @@ from services.agent.unified import UnifiedAgent
 from .factory import InterviewRuntimeError, RuntimeServices
 from .models import InterviewType, ResolvedInterview
 
+# Longest starter question accepted from room metadata.
+STARTER_MAX_CHARS = 300
+
 
 class MockInterviewRuntime:
     """Route the current prompt, tools, evaluator, and screen behavior unchanged."""
@@ -28,6 +31,8 @@ class MockInterviewRuntime:
             raise InterviewRuntimeError("Mock adapter received a non-Mock interview")
         self.resolved = resolved
         self._profile = profile
+        self.starter: str | None = None
+        self.ama = False
         self.uses_editor_events = bool(profile.editor_events_enabled)
         if resolved is None or profile.id == "olga":
             self.prompt_url = profile.prompt_url
@@ -42,6 +47,11 @@ class MockInterviewRuntime:
     def build_prompt_context(
         self, metadata: Mapping[str, object]
     ) -> dict[str, str]:
+        starter = metadata.get("starter")
+        if isinstance(starter, str) and starter.strip():
+            self.starter = " ".join(starter.split())[:STARTER_MAX_CHARS]
+        # "Ask me anything" on the welcome page asks for a different opening.
+        self.ama = metadata.get("opener") == "ama"
         return build_prompt_context(metadata)
 
     def build_tools(self, services: RuntimeServices) -> list[Any]:
@@ -82,7 +92,13 @@ class MockInterviewRuntime:
         return UnifiedAgent(
             instructions=instructions,
             tools=tools,
-            initial_reply=self.initial_reply,
+            initial_reply=(
+                self._profile.ama_reply
+                if self.ama and getattr(self._profile, "ama_reply", None)
+                else self.initial_reply
+            ),
+            starter=self.starter,
+            starter_reply=getattr(self._profile, "starter_reply", None),
             turn_exceeded_instruction=(
                 "The speaker has been talking for a while. Briefly acknowledge "
                 "them and ask one focused question about their client's objection. "
