@@ -309,6 +309,30 @@
         "screen_inspection": false,
         "screen_feedback_timer": false
       }
+    },
+    "sean-weafer": {
+      "agent_type": "mock-interview-agent",
+      "prompt_url": "prompts/interview/sean-weafer/AMA.md",
+      "resume_prompt_url": "prompts/interview/sean-weafer/AMA.md",
+      "evaluator_prompt_url": "prompts/interview/sean-weafer/AMA.md",
+      "avatar": {
+        "persona_id": "0c9f08c6-b5b7-42d3-8fce-6614cb449caf",
+        "persona_name": "Sean"
+      },
+      "initial_reply": "Start the conversation with the exact OPENING MESSAGE from your system instructions, then wait for the user's reply.",
+      "starter_reply": "This conversation is different: the user picked the question they just asked on the welcome page, before the call started. For this conversation, your first reply replaces the OPENING MESSAGE, so do not say the OPENING MESSAGE. In two or three short spoken sentences: first, in one short sentence, reflect back what they asked in your own words, so it is clear you heard this particular question. Never use a generic line such as good question or great question. Do not answer it yet. Then say you are Seán Weafer's AI twin. Then ask their name and what they do, so you can answer it properly. Once they reply, come back to their question and go deeper into it.",
+      "ama_reply": "Start the conversation by saying exactly: Hi, I'm Seán Weafer's AI twin. Feel free to ask me anything. Then wait for the user's reply.",
+      "voice": {
+        "speaker": "rohan",
+        "provider": "voxcpm2",
+        "id": "cmwd8v71700009fitdk2g5s5n"
+      },
+      "tools": {
+        "end_call": false,
+        "editor_events": false,
+        "screen_inspection": false,
+        "screen_feedback_timer": false
+      }
     }
   }
 }
