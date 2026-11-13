@@ -30,6 +30,7 @@ def build_agent_session(
     tts_dict_id: str | None,
     voice_provider: str | None = None,
     voice_id: str | None = None,
+    voice_pronounce: dict[str, str] | None = None,
     tts_model: str = DEFAULT_SARVAM_TTS_MODEL,
     mode: InteractionMode = InteractionMode.AUTO,
     session_config: SessionConfig | None = None,
@@ -54,6 +55,7 @@ def build_agent_session(
         session_config=effective_session_config,
         voice_provider=voice_provider,
         voice_id=voice_id,
+        voice_pronounce=voice_pronounce,
     )
 
     if mode is InteractionMode.PTT:

@@ -40,6 +40,8 @@ class AgentProfile:
     avatar_persona_name: str | None
     starter_reply: str | None = None
     ama_reply: str | None = None
+    # Spoken-only spellings sent to the TTS, e.g. {"Seán": "Shawn"}; transcripts keep the original text.
+    voice_pronounce: tuple[tuple[str, str], ...] = ()
 
 
 def _required_str(value: Any, field: str) -> str:
@@ -52,6 +54,16 @@ def _optional_str(value: Any) -> str | None:
     if isinstance(value, str) and value.strip():
         return value.strip()
     return None
+
+
+def _parse_pronounce(value: Any, agent_id: str) -> tuple[tuple[str, str], ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, Mapping) or not all(
+        isinstance(k, str) and k.strip() and isinstance(v, str) and v.strip() for k, v in value.items()
+    ):
+        raise ProfileError(f"agents.{agent_id}.voice.pronounce must map words to spoken spellings")
+    return tuple((k.strip(), v.strip()) for k, v in value.items())
 
 
 def _parse_profile(agent_id: str, value: Any) -> AgentProfile:
@@ -96,6 +108,7 @@ def _parse_profile(agent_id: str, value: Any) -> AgentProfile:
         voice_dict_id=_optional_str(voice.get("dict_id")),
         voice_provider=_optional_str(voice.get("provider")),
         voice_id=_optional_str(voice.get("id")),
+        voice_pronounce=_parse_pronounce(voice.get("pronounce"), agent_id),
         end_call_enabled=bool(tools.get("end_call", False)),
         editor_events_enabled=bool(tools.get("editor_events", False)),
         screen_inspection_enabled=bool(tools.get("screen_inspection", False)),

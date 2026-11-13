@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 import uuid
 from urllib.parse import urlsplit
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class VoxCPM2TTS(tts.TTS):
-    def __init__(self, *, endpoint: str, voice: str, api_key: str) -> None:
+    def __init__(self, *, endpoint: str, voice: str, api_key: str, pronounce: dict[str, str] | None = None) -> None:
         super().__init__(
             capabilities=tts.TTSCapabilities(streaming=False),
             sample_rate=48_000,
@@ -39,10 +40,21 @@ class VoxCPM2TTS(tts.TTS):
         self.endpoint = endpoint
         self.voice = voice
         self.api_key = api_key
+        self.pronounce = dict(pronounce or {})
+        self._pronounce_re = (
+            re.compile(r"\b(" + "|".join(re.escape(w) for w in sorted(self.pronounce, key=len, reverse=True)) + r")\b")
+            if self.pronounce else None
+        )
         self.http: aiohttp.ClientSession | None = None
         job_context = get_job_context(required=False)
         if job_context is not None:
             job_context.add_shutdown_callback(self.aclose)
+
+    def spoken(self, text: str) -> str:
+        """Swap words for spoken spellings (e.g. Seán -> Shawn) in the audio only."""
+        if self._pronounce_re is None:
+            return text
+        return self._pronounce_re.sub(lambda m: self.pronounce[m.group(1)], text)
 
     @property
     def model(self) -> str:
@@ -83,7 +95,7 @@ class VoxCPM2Stream(tts.ChunkedStream):
             async with vox.session().post(
                 vox.endpoint,
                 headers={"Authorization": f"Bearer {vox.api_key}"},
-                json={"model": vox.model, "voice": vox.voice, "input": self.input_text,
+                json={"model": vox.model, "voice": vox.voice, "input": vox.spoken(self.input_text),
                       "stream": True, "response_format": "pcm"},
                 timeout=aiohttp.ClientTimeout(total=60, sock_connect=10),
             ) as response:
@@ -122,10 +134,11 @@ class VoxCPM2Stream(tts.ChunkedStream):
             raise APIConnectionError("VoxCPM2 TTS connection failed", retryable=audio_bytes == 0) from error
 
 
-def build_voxcpm2_tts(*, voice: str) -> VoxCPM2TTS:
+def build_voxcpm2_tts(*, voice: str, pronounce: dict[str, str] | None = None) -> VoxCPM2TTS:
     service_url = os.getenv("TTS_SERVICE_URL", "https://tts.trainertwin.com").rstrip("/")
     return VoxCPM2TTS(
         endpoint=f"{service_url}/v1/audio/speech",
         voice=voice,
         api_key=os.getenv("TTS_SERVICE_KEY", "").strip(),
+        pronounce=pronounce,
     )

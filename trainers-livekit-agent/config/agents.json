@@ -325,7 +325,11 @@
       "voice": {
         "speaker": "rohan",
         "provider": "voxcpm2",
-        "id": "cmwd8v71700009fitdk2g5s5n"
+        "id": "cmwd8v71700009fitdk2g5s5n",
+        "pronounce": {
+          "Seán": "Shawn",
+          "Sean": "Shawn"
+        }
       },
       "tools": {
         "end_call": false,

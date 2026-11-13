@@ -4,6 +4,7 @@ Read this checklist before editing an interview prompt or creating a new version
 
 ## Before editing
 
+- 2026-11-13: Seán Weafer: the voice now says "Shawn" (Lalith: it was saying "see-yawn"). New optional `voice.pronounce` map in agents.json swaps words in the TTS input only; transcripts keep "Seán". No prompt text changed.
 - Read the complete current prompt and any source prompt being adapted.
 - Decide which existing behavior is being preserved and which behavior is intentionally changing.
 - Search the whole prompt for every instruction governing the behavior being changed. Update or remove all conflicting copies.

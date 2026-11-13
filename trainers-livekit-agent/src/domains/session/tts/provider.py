@@ -51,12 +51,13 @@ def build_tts(
     session_config: Any,
     voice_provider: str | None = None,
     voice_id: str | None = None,
+    voice_pronounce: dict[str, str] | None = None,
 ) -> Any:
     provider = (voice_provider or os.getenv("TTS_PROVIDER", "sarvam")).strip().lower()
     if provider == "voxcpm2":
         from interfaces.tts.voxcpm2 import build_voxcpm2_tts
 
-        return build_voxcpm2_tts(voice=voice_id or "")
+        return build_voxcpm2_tts(voice=voice_id or "", pronounce=voice_pronounce)
     if provider == "qwen":
         from interfaces.tts.qwen import build_qwen_tts
 

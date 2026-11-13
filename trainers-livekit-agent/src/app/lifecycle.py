@@ -267,6 +267,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         session = build_agent_session(
             tts_speaker=profile.voice_speaker, tts_dict_id=profile.voice_dict_id,
             voice_provider=profile.voice_provider, voice_id=profile.voice_id,
+            voice_pronounce=dict(profile.voice_pronounce),
             mode=mode, session_config=session_config,
             turn_detector=get_or_create_turn_detector(userdata) if mode is InteractionMode.AUTO else get_prewarmed_turn_detector(userdata),
             disable_preemptive_generation=runtime.uses_editor_events,
