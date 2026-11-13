@@ -4,6 +4,7 @@ Read this checklist before editing an interview prompt or creating a new version
 
 ## Before editing
 
+- 2026-11-13: Seán Weafer: removed AI-cliché patterns (Lalith). "Here's the thing" kept (he says it 12 times in 6 talks) but at most once per conversation; opening-formula and self-answered-question lines removed; new "Writing patterns you never use" section (no invented it's-not-X-it's-Y lines, no rule-of-three, no And honestly / here's the kicker / tapestry etc., no em dashes).
 - 2026-11-13: Seán Weafer: the voice now says "Shawn" (Lalith: it was saying "see-yawn"). New optional `voice.pronounce` map in agents.json swaps words in the TTS input only; transcripts keep "Seán". No prompt text changed.
 - Read the complete current prompt and any source prompt being adapted.
 - Decide which existing behavior is being preserved and which behavior is intentionally changing.
