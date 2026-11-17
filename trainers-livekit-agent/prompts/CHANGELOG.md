@@ -4,6 +4,7 @@ Read this checklist before editing an interview prompt or creating a new version
 
 ## Before editing
 
+- 2026-11-17: Clive Miller: new twin prompt (prompts/interview/clive-miller/AMA.md), written by Claude with Lalith's approval as an exception to the DJ/Cathy-writes-prompts rule. Third person, 80 words, opening message and first-line rule, CLEAR and the three rules, black hole, Sales Success Formula; every fact checked against lore (the "17-year sales career" line was removed, as lore only gives 1996 and 1979). New profile clive-miller in config/agents.json (Anam persona 27b83d8e, VoxCPM2 voice cmwkmhwq00000quitvrmkrt3h). Not deployed: redeploy required.
 - 2026-11-13: Seán Weafer: removed AI-cliché patterns (Lalith). "Here's the thing" kept (he says it 12 times in 6 talks) but at most once per conversation; opening-formula and self-answered-question lines removed; new "Writing patterns you never use" section (no invented it's-not-X-it's-Y lines, no rule-of-three, no And honestly / here's the kicker / tapestry etc., no em dashes).
 - 2026-11-13: Seán Weafer: the voice now says "Shawn" (Lalith: it was saying "see-yawn"). New optional `voice.pronounce` map in agents.json swaps words in the TTS input only; transcripts keep "Seán". No prompt text changed.
 - Read the complete current prompt and any source prompt being adapted.
