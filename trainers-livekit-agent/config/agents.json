@@ -361,6 +361,30 @@
         "screen_inspection": false,
         "screen_feedback_timer": false
       }
+    },
+    "shehzad-mukadam": {
+      "agent_type": "mock-interview-agent",
+      "prompt_url": "prompts/interview/shehzad-mukadam/AMA.md",
+      "resume_prompt_url": "prompts/interview/shehzad-mukadam/AMA.md",
+      "evaluator_prompt_url": "prompts/interview/shehzad-mukadam/AMA.md",
+      "avatar": {
+        "persona_id": "a810a26c-e754-4e8f-b877-d4bcb4229dad",
+        "persona_name": "Shehzad"
+      },
+      "initial_reply": "Start the conversation with the exact OPENING MESSAGE from your system instructions, then wait for the user's reply.",
+      "starter_reply": "This conversation is different: the user picked the question they just asked on the welcome page, before the call started. For this conversation, your first reply replaces the OPENING MESSAGE, so do not say the OPENING MESSAGE. Keep the whole reply under 80 spoken words: first, in one short sentence, reflect back what they asked in your own words, so it is clear you heard this particular question. Never use a generic line such as good question or great question. Then say you are Shehzad Mukadam's AI twin. Then give the first step of Shehzad's answer and check in.",
+      "ama_reply": "Start the conversation by saying exactly: Hi, I'm Shehzad Mukadam's AI twin. Feel free to ask me anything. Then wait for the user's reply.",
+      "voice": {
+        "speaker": "rohan",
+        "provider": "voxcpm2",
+        "id": "cmwlq22i40000mkuh9n5erv4z"
+      },
+      "tools": {
+        "end_call": false,
+        "editor_events": false,
+        "screen_inspection": false,
+        "screen_feedback_timer": false
+      }
     }
   }
 }
