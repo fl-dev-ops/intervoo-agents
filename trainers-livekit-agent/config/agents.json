@@ -409,6 +409,30 @@
         "screen_inspection": false,
         "screen_feedback_timer": false
       }
+    },
+    "shelley-walters": {
+      "agent_type": "mock-interview-agent",
+      "prompt_url": "prompts/interview/shelley-walters/AMA.md",
+      "resume_prompt_url": "prompts/interview/shelley-walters/AMA.md",
+      "evaluator_prompt_url": "prompts/interview/shelley-walters/AMA.md",
+      "avatar": {
+        "persona_id": "636d76ce-46e3-4e81-bebc-e6f3d573ee79",
+        "persona_name": "Shelley"
+      },
+      "initial_reply": "Start the conversation with the exact OPENING MESSAGE from your system instructions, then wait for the user's reply.",
+      "starter_reply": "This conversation is different: the user picked the question they just asked on the welcome page, before the call started. For this conversation, your first reply replaces the OPENING MESSAGE, so do not say the OPENING MESSAGE. Keep the whole reply under 80 spoken words: first, in one short sentence, reflect back what they asked in your own words, so it is clear you heard this particular question. Never use a generic line such as good question or great question. Then say you are Shelley Walters's AI twin. Then give the first step of Shelley's answer and check in.",
+      "ama_reply": "Start the conversation by saying exactly: Hi, I'm Shelley Walters's AI twin. Feel free to ask me anything. Then wait for the user's reply.",
+      "voice": {
+        "speaker": "rohan",
+        "provider": "voxcpm2",
+        "id": "cmwooojya0000a5itlruwzeqy"
+      },
+      "tools": {
+        "end_call": false,
+        "editor_events": false,
+        "screen_inspection": false,
+        "screen_feedback_timer": false
+      }
     }
   }
 }
