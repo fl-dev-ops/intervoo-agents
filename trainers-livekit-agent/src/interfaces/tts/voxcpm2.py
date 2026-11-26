@@ -23,6 +23,20 @@ from livekit.agents import (
 logger = logging.getLogger(__name__)
 
 
+_FORMULA = re.compile(r"\[\[(.*?)\|\|(.*?)\]\]", re.S)
+
+
+def speak_formulas(text: str) -> str:
+    """[[ latex || words ]] -> words, for the voice. Also copes with a marker split across two text chunks."""
+    if "[[" not in text and "||" not in text and "]]" not in text:
+        return text
+    text = _FORMULA.sub(lambda m: m.group(2).strip(), text)
+    text = re.sub(r"\[\[[^\]]*?\|\|", "", text)   # opened here, closed in a later chunk: keep only the words
+    text = re.sub(r"^[^\[]*?\|\|", "", text)        # opened in an earlier chunk: drop the formula half
+    text = re.sub(r"\[\[[^|\]]*$", "", text)        # a formula that has not reached its words yet
+    return text.replace("]]", "").replace("[[", "").replace("||", "").strip()
+
+
 class VoxCPM2TTS(tts.TTS):
     def __init__(self, *, endpoint: str, voice: str, api_key: str, pronounce: dict[str, str] | None = None) -> None:
         super().__init__(
@@ -51,7 +65,9 @@ class VoxCPM2TTS(tts.TTS):
             job_context.add_shutdown_callback(self.aclose)
 
     def spoken(self, text: str) -> str:
-        """Swap words for spoken spellings (e.g. Seán -> Shawn) in the audio only."""
+        """Audio-only rewrites. Formulas written as [[ latex || words ]] are spoken as the words (the chat shows the
+        typeset formula), and words get their spoken spellings (e.g. Seán -> Shawn)."""
+        text = speak_formulas(text)
         if self._pronounce_re is None:
             return text
         return self._pronounce_re.sub(lambda m: self.pronounce[m.group(1)], text)
