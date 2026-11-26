@@ -150,20 +150,20 @@ Lecture 37, SVM Formulation
 - At 0:20: two divided by the norm of w.
 - At 1:10: minimize over w, the norm of w divided by two.
 - At 1:10: subject to, w transpose x i plus b, times y i.
-- At 3:40: minimize over W, the norm of W divided by two.
-- At 3:40: subject to, W transpose x i plus b, times y i, is greater than or equal to one, for all i.
-- At 5:40: minimize over w, the norm of W divided by two.
-- At 11:10: one minus, W transpose x i plus b.
+- At 3:40: minimize over w, the norm of w divided by two.
+- At 3:40: subject to, w transpose x i plus b, times y i, is greater than or equal to one, for all i.
+- At 5:40: minimize over w, the norm of w divided by two.
+- At 11:10: one minus, w transpose x i plus b.
 - At 12:00: L of w, mu, b equals w transpose w over two plus the sum from i equals one to n of the quantity one minus y sub i times the quantity w transpose x sub i plus b, all multiplied by mu sub i.
-- At 12:40: L of W, mu, b equals W transpose W over two, plus the sum from i equals one to n, of, open bracket, one minus y sub i times, open parenthesis, W transpose x sub i plus b, close parenthesis, close bracket, times mu sub i.
-- At 13:20: The gradient with respect to W of L, evaluated at W star, mu star, equals zero.
-- At 13:30: The gradient with respect to W of L of W star semicolon mu star equals zero.
+- At 12:40: L of w, mu, b equals w transpose w over two, plus the sum from i equals one to n, of, open bracket, one minus y sub i times, open parenthesis, w transpose x sub i plus b, close parenthesis, close bracket, times mu sub i.
+- At 13:20: The gradient with respect to w of L, evaluated at w star, mu star, equals zero.
+- At 13:30: The gradient with respect to w of L of w star semicolon mu star equals zero.
 - At 13:30: Mu sub j star is greater than or equal to zero.
-- At 14:00: mu j star times the quantity 1 minus y i times the quantity W transpose x i plus b, equals 0.
+- At 14:00: mu j star times the quantity 1 minus y i times the quantity w transpose x i plus b, equals 0.
 - At 14:40: nabla sub w L of w star semicolon mu star equals zero.
 - At 14:40: mu j star times open parenthesis one minus y j times open parenthesis w transpose x j plus b close parenthesis close parenthesis equals zero.
 - At 14:40: nabla sub w L equals zero implies w star equals the sum from i equals one to n of mu i.
-- At 14:50: mu sub j star times open parenthesis 1 minus y sub j times open parenthesis W transpose x sub j plus b close parenthesis close parenthesis equals 0.
+- At 14:50: mu sub j star times open parenthesis 1 minus y sub j times open parenthesis w transpose x sub j plus b close parenthesis close parenthesis equals 0.
 - At 16:50: The gradient of L with respect to w equals zero implies w star equals the sum from i equals one to n of mu i y i x i.
 - At 16:50: The gradient of L with respect to b equals zero implies the sum from i equals one to n of mu i star y i equals zero.
 - At 17:00: mu j star times open parenthesis one minus y j times open parenthesis w transpose x j plus b close parenthesis close parenthesis equals zero.
@@ -171,30 +171,30 @@ Lecture 37, SVM Formulation
 - At 17:00: mu i is greater than or equal to zero.
 - At 17:10: The gradient of L with respect to w equals zero implies w star equals the sum from i equals one to n of mu i star y i x i.
 - At 17:10: mu i is greater than or equal to zero for all i.
-- At 17:30: nabla sub w L equals zero implies W star equals the sum from i equals one to n of M i y i x i.
+- At 17:30: nabla sub w L equals zero implies w star equals the sum from i equals one to n of mu i y i x i.
 - At 17:30: nabla sub b L equals zero implies the sum from i equals one to n of M i y i equals zero.
 - At 17:30: M i is greater than or equal to zero for all i.
-- At 17:50: nabla W L equals zero.
-- At 17:50: W star equals the sum from i equals one to n of mu i star y i x i.
+- At 17:50: nabla w L equals zero.
+- At 17:50: w star equals the sum from i equals one to n of mu i star y i x i.
 - At 17:50: nabla b L equals zero implies the sum from i equals one to n of mu i star y i equals zero.
 - At 17:50: mu i is greater than or equal to zero for all i.
 - At 18:00: S equals the set of x i such that mu i star is greater than zero.
-- At 18:00: W star equals the sum over S of mu i y i.
+- At 18:00: w star equals the sum over S of mu i y i.
 - At 18:10: mu sub i is greater than or equal to zero for all i.
-- At 18:30: W star equals the sum over S of mu i y i x i.
-- At 18:40: W star equals the sum over S of mu sub i star y sub i x sub i.
+- At 18:30: w star equals the sum over S of mu i y i x i.
+- At 18:40: w star equals the sum over S of mu sub i star y sub i x sub i.
 - At 18:50: S equals the set of all x sub i such that mu sub i is greater than zero.
-- At 18:50: This implies that W star equals the sum over S of mu sub i star, y sub i, x sub i.
-- At 19:10: This implies W star equals the sum over S of mu i y i x i.
+- At 18:50: This implies that w star equals the sum over S of mu sub i star, y sub i, x sub i.
+- At 19:10: This implies w star equals the sum over S of mu i y i x i.
 - At 22:20: mu sub i star.
-- At 23:00: L of W comma M equals f of w.
+- At 23:00: L of w comma M equals f of w.
 - At 23:10: nabla sub w L of w star comma mu star equals zero.
 - At 23:10: nabla sub w L equals zero implies w star equals the sum from i equals one to n of mu i star y i x i.
 - At 23:10: nabla sub b L equals zero implies the sum from i equals one to n hat of mu i star y i equals zero.
 - At 23:20: mu sub j is greater than or equal to zero.
-- At 25:10: L of W comma mu equals W transpose W over two plus the sum from i equals one to n of open bracket one minus y sub i times open parenthesis W transpose x sub i plus b close parenthesis close bracket mu sub i.
+- At 25:10: L of w comma mu equals w transpose w over two plus the sum from i equals one to n of open bracket one minus y sub i times open parenthesis w transpose x sub i plus b close parenthesis close bracket mu sub i.
 - At 25:10: q maps from R to the power n to R.
-- At 25:10: q of mu equals the infimum over W of L of W comma mu.
+- At 25:10: q of mu equals the infimum over w of L of w comma mu.
 - At 27:00: q maps from the set of real numbers to the set of real numbers.
 - At 27:00: q of mu equals the infimum over w of L of w comma mu.
 - At 27:50: maximize over mu, q of mu.
@@ -202,12 +202,12 @@ Lecture 37, SVM Formulation
 - At 28:20: subject to mu sub i is greater than or equal to zero, for all i.
 - At 28:40: subject to mu sub i is greater than or equal to zero, for all i.
 - At 29:10: w star, mu star.
-- At 29:50: W star, mu star.
-- At 29:50: W star and mu star.
-- At 30:50: L of W star, mu star, equals the minimum over W of q of mu star.
+- At 29:50: w star, mu star.
+- At 29:50: w star and mu star.
+- At 30:50: L of w star, mu star, equals the minimum over w of q of mu star.
 - At 31:10: subject to mu sub i is greater than or equal to zero for all i.
-- At 31:30: L of W star semicolon mu star equals the minimum over W of q of mu star.
-- At 33:00: L of W star comma mu star equals the minimum over W of L of W comma mu star.
+- At 31:30: L of w star semicolon mu star equals the minimum over w of q of mu star.
+- At 33:00: L of w star comma mu star equals the minimum over w of L of w comma mu star.
 
 # VOICE (calibrated from his lectures; never stack markers)
 - "So the question is...": to restate a doubt
