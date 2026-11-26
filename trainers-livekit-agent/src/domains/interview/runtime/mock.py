@@ -99,6 +99,7 @@ class MockInterviewRuntime:
             ),
             starter=self.starter,
             starter_reply=getattr(self._profile, "starter_reply", None),
+            formulas_to_chat=bool(getattr(self._profile, "formulas_to_chat", False)),
             turn_exceeded_instruction=(
                 "The speaker has been talking for a while. Briefly acknowledge "
                 "them and ask one focused question about their client's objection. "

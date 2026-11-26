@@ -8,8 +8,11 @@ import logging
 import time
 from typing import Any
 
-from livekit.agents import Agent
+from livekit.agents import Agent, get_job_context, llm
+from livekit.agents.voice.agent import ModelSettings
 from livekit.agents.voice.events import UserTurnExceededEvent
+
+from services.agent.formulas import formulas_to_chat, room_publisher
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +29,7 @@ class UnifiedAgent(Agent):
         initial_reply: str,
         starter: str | None = None,
         starter_reply: str | None = None,
+        formulas_to_chat: bool = False,
         turn_exceeded_instruction: str | None = None,
         participant_identity: str | None = None,
         room_name: str | None = None,
@@ -33,6 +37,7 @@ class UnifiedAgent(Agent):
         self.initial_reply = initial_reply
         self.starter = starter
         self.starter_reply = starter_reply
+        self.formulas_to_chat = formulas_to_chat
         self.turn_exceeded_instruction = turn_exceeded_instruction
         self.participant_identity = participant_identity
         self.room_name = room_name
@@ -129,6 +134,21 @@ class UnifiedAgent(Agent):
                 self.room_name,
                 (time.perf_counter() - started_at) * 1000,
             )
+
+    async def llm_node(
+        self,
+        chat_ctx: llm.ChatContext,
+        tools: list[llm.Tool],
+        model_settings: ModelSettings,
+    ) -> Any:
+        chunks = Agent.default.llm_node(self, chat_ctx, tools, model_settings)
+        if not self.formulas_to_chat:
+            async for chunk in chunks:
+                yield chunk
+            return
+        publish = room_publisher(get_job_context().room)
+        async for chunk in formulas_to_chat(chunks, publish):
+            yield chunk
 
     async def on_exit(self) -> None:
         await self._stop_session_timer()

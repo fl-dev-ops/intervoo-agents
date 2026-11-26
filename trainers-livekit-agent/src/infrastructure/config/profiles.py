@@ -42,6 +42,8 @@ class AgentProfile:
     ama_reply: str | None = None
     # Spoken-only spellings sent to the TTS, e.g. {"Seán": "Shawn"}; transcripts keep the original text.
     voice_pronounce: tuple[tuple[str, str], ...] = ()
+    # The model writes formulas as [[ latex || words ]]: the voice says the words, the chat typesets the LaTeX.
+    formulas_to_chat: bool = False
 
 
 def _required_str(value: Any, field: str) -> str:
@@ -123,6 +125,7 @@ def _parse_profile(agent_id: str, value: Any) -> AgentProfile:
         avatar_persona_name=_optional_str(avatar.get("persona_name")),
         starter_reply=_optional_str(value.get("starter_reply")),
         ama_reply=_optional_str(value.get("ama_reply")),
+        formulas_to_chat=bool(value.get("formulas_to_chat", False)),
     )
 
 
