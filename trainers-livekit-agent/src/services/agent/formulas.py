@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import uuid
 from collections.abc import AsyncIterable, AsyncIterator, Callable
 from typing import Any
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 FORMULA_TOPIC = "twin-formula"
 _OPEN, _SEP, _CLOSE = "[[", "||", "]]"
 _MAX_PENDING = 600  # a marker that never closes is released as plain text after this many characters
+_INLINE_DELIMS = re.compile(r"\\[()\[\]]")  # \( \) \[ \] written outside the markers
 
 
 class FormulaSplitter:
@@ -31,8 +33,19 @@ class FormulaSplitter:
     def __init__(self, on_formula: Callable[[str, str], None]) -> None:
         self._on_formula = on_formula
         self._pending = ""
+        self._carry = ""
 
     def feed(self, piece: str) -> str:
+        text = self._split(piece)
+        # Inline LaTeX the model wrote outside the markers, like \(w\): keep the letters, drop the delimiters.
+        # A trailing backslash waits for the next piece in case it starts one.
+        text = self._carry + text
+        self._carry = ""
+        if text.endswith("\\"):
+            text, self._carry = text[:-1], "\\"
+        return _INLINE_DELIMS.sub("", text)
+
+    def _split(self, piece: str) -> str:
         self._pending += piece
         out = []
         while True:
@@ -58,7 +71,8 @@ class FormulaSplitter:
 
     def flush(self) -> str:
         rest, self._pending = self._pending, ""
-        return self._clean(rest)
+        carry, self._carry = self._carry, ""
+        return _INLINE_DELIMS.sub("", carry + self._clean(rest)).replace("\\", "")
 
     def _resolve(self, inner: str) -> str:
         if _SEP not in inner:
