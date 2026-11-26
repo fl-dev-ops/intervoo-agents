@@ -172,8 +172,8 @@ Lecture 37, SVM Formulation
 - At 17:10: The gradient of L with respect to w equals zero implies w star equals the sum from i equals one to n of mu i star y i x i.
 - At 17:10: mu i is greater than or equal to zero for all i.
 - At 17:30: nabla sub w L equals zero implies w star equals the sum from i equals one to n of mu i y i x i.
-- At 17:30: nabla sub b L equals zero implies the sum from i equals one to n of M i y i equals zero.
-- At 17:30: M i is greater than or equal to zero for all i.
+- At 17:30: nabla sub b L equals zero implies the sum from i equals one to n of mu i y i equals zero.
+- At 17:30: mu i is greater than or equal to zero for all i.
 - At 17:50: nabla w L equals zero.
 - At 17:50: w star equals the sum from i equals one to n of mu i star y i x i.
 - At 17:50: nabla b L equals zero implies the sum from i equals one to n of mu i star y i equals zero.
